@@ -43,7 +43,10 @@ discord = oauth.register(
 
 
 @router.get("/", include_in_schema=False)
-async def login():
+async def login(req: Request):
+    if req.session.get(ACCOUNT, None):
+        return RedirectResponse(url="/", status_code=303)
+
     return HTMLResponse(
         """<!doctype html>
 <html lang="en">
@@ -146,18 +149,30 @@ async def login():
 
 @router.get("/google/login")
 async def login_via_google(req: Request):
-    redirect_uri = req.url_for('auth_via_google')
-    return await google.authorize_redirect(req, redirect_uri)
+    if req.session.get(ACCOUNT, None):
+        return RedirectResponse(url="/", status_code=303)
+        
+    return await google.authorize_redirect(
+        req,
+        req.url_for('auth_via_google'),
+        prompt="none",
+    )
 
 
 @router.get("/google")
 async def auth_via_google(req: Request,  q: Repository):
+    if req.query_params.get("error"):
+        return await google.authorize_redirect(
+            req,
+            req.url_for("auth_via_google"),
+        )
+
     token = await google.authorize_access_token(req)
     usr = token['userinfo']
     account = Account(
         provider=Provider.GOOGLE,
         subject=usr.get("sub"),
-        email=usr.get("email")
+        email=usr.get("email"),
     ).model_dump()
 
     req.session[ACCOUNT] = account
@@ -168,11 +183,23 @@ async def auth_via_google(req: Request,  q: Repository):
 
 @router.get("/discord/login")
 async def login_via_discord(req: Request):
-    return await discord.authorize_redirect(req, req.url_for("auth_via_discord"))
+    if req.session.get(ACCOUNT, None):
+        return RedirectResponse(url="/", status_code=303)
+    return await discord.authorize_redirect(
+        req, 
+        req.url_for("auth_via_discord"), 
+        prompt="none",
+    )
 
 
 @router.get("/discord")
 async def auth_via_discord(req: Request, q: Repository):
+    if req.query_params.get("error"):
+        return await discord.authorize_redirect(
+            req,
+            req.url_for("auth_via_discord"),
+        )
+
     token = await discord.authorize_access_token(req)
     client = httpx.AsyncClient()
     resp = await client.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token["access_token"]}'})

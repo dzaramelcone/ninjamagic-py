@@ -9,7 +9,7 @@ from functools import cached_property
 from typing import runtime_checkable
 
 import ninjamagic.bus as bus
-from ninjamagic import client, parser, outbox
+from ninjamagic import conn, parser, outbox
 TICK_HZ = 1000
 TPS = 1.0 / TICK_HZ
 
@@ -98,7 +98,7 @@ class State(BaseState):
         while True:
             frame_start = time.perf_counter()
 
-            client.process()
+            conn.process()
 
             parser.process()
 

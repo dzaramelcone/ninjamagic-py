@@ -4,7 +4,7 @@ import logging
 
 import esper
 from ninjamagic import bus
-from ninjamagic.util import Client, Subject
+from ninjamagic.util import Connection, Subject
 
 log = logging.getLogger("uvicorn.access")
 def flush():
@@ -23,5 +23,5 @@ def flush():
     # Send the packets to their recipients.
     loop = asyncio.get_running_loop()
     for eid, packet in packets.items():
-        if ws := esper.try_component(eid, Client):
+        if ws := esper.try_component(eid, Connection):
             loop.create_task(ws.send_json(packet))

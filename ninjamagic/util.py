@@ -2,33 +2,34 @@ from enum import StrEnum
 
 from fastapi import WebSocket
 
+ACCOUNT = "user"
 
 class Cardinal(StrEnum):
-    north = "north"
-    northeast = "northeast"
-    east = "east"
-    southeast = "southeast"
-    south = "south"
-    southwest = "southwest"
-    west = "west"
-    northwest = "northwest"
+    NORTH = "north"
+    NORTHEAST = "northeast"
+    EAST = "east"
+    SOUTHEAST = "southeast"
+    SOUTH = "south"
+    SOUTHWEST = "southwest"
+    WEST = "west"
+    NORTHWEST = "northwest"
 
     def _missing_(cls, value):
         value = value.lower()
         match value:
             case "ne":
-                return cls.northeast
+                return cls.NORTHEAST
             case "se":
-                return cls.southeast
+                return cls.SOUTHEAST
             case "sw":
-                return cls.southwest
+                return cls.SOUTHWEST
             case "nw":
-                return cls.northwest
+                return cls.NORTHWEST
             case _:
                 for member in cls:
                     if member.value == value:
                         return member
                 return None
-ACCOUNT = "user"
-Client = WebSocket
+
+Connection = WebSocket
 Subject = str
