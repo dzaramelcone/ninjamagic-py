@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MUD Prototype - Split UI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">  <link rel="stylesheet" href="/static/xterm.css" />
+  <script src="/static/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-webgl@0.18.0/lib/addon-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+
+<style>
+:root{
+  /* ─── Material-3 palette ───────────────────────── */
+  --bg        : #1B1E26;
+  --surface   : #1C1F27;
+  --on-surface: #ECE6F0;
+  --primary   : #7DD3FC;
+  --danger    : #F38BA8;
+
+  /* 16-colour ANSI map */
+  --ansi-black         : var(--bg);
+  --ansi-red           : var(--danger);
+  --ansi-green         : #8BD5A1;
+  --ansi-yellow        : #F9E2AF;
+  --ansi-blue          : var(--primary);
+  --ansi-magenta       : #D0A8FF;
+  --ansi-cyan          : #94E2D5;
+  --ansi-white         : var(--on-surface);
+  --ansi-bright-black  : #2A2E37;
+  --ansi-bright-red    : #F6A0B8;
+  --ansi-bright-green  : #A6E3B0;
+  --ansi-bright-yellow : #FAF0BF;
+  --ansi-bright-blue   : #A5E4FF;
+  --ansi-bright-magenta: #E1C2FF;
+  --ansi-bright-cyan   : #B0F1E4;
+  --ansi-bright-white  : #FFFFFF;
+
+  --row-h : 22px;
+}
+
+html,body{
+  margin:0;height:100%;
+  background:var(--bg);
+  color:var(--on-surface);
+  font-family:'IBM Plex Mono',monospace;
+  display:flex;justify-content:center;align-items:center;
+}
+
+/* ─── card ────────────────────────────────────────── */
+#card {
+  position: relative;
+  width: calc(50ch + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+#mapBox{
+  align-self:center;
+  border-radius:12px;
+  overflow:hidden;
+  z-index: 0;
+}
+
+#chat {
+  width:100%;
+  height:calc(var(--row-h) * 8);   /* lock in 8 rows */
+  flex:0 0 calc(var(--row-h) * 8); /* <- same number keeps card size fixed */
+  display:flex;flex-direction:column;
+  justify-content:flex-end;            /* newest sticks to bottom      */
+  overflow:hidden;
+}
+
+/* one <div class="msg"> per line (now variable height)  */
+.msg{
+  margin:2px 0;                        /* breathing room, no overlap   */
+  white-space:pre-wrap;                /* wrap but keep spaces         */
+  word-break:break-word;               /* break long words if needed   */
+  font:19px 'IBM Plex Mono', monospace;
+  font-weight:300;
+  color:var(--primary);
+  transition:opacity .4s;
+}
+
+/* ─── prompt ──────────────────────────────────────── */
+#prompt{
+  width:100%;
+  padding-top:8px;
+  display:flex;align-items:center;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+#cmd{
+  flex:1;border:none;outline:none;padding:0;
+  background:transparent;
+  font:19px 'IBM Plex Mono',monospace;
+  font-weight:300;
+  color:var(--primary);
+  caret-color:var(--primary);
+}
+
+/* hide native xterm caret */
+.xterm-cursor-layer{opacity:0}
+</style>
+
+</head>
+<body>
+<div id="card">
+  <div id="mapBox"></div>
+    <div id="chat"></div>
+  <div id="prompt"><input id="cmd" autocomplete="off"></div>
+</div>
+<script>
+/*--------------------------------------------------
+  1.  Constants & world generation  (40 × 12 grid)
+--------------------------------------------------*/
+/* tiny colour helpers */
+const pack   =(r,g,b)=>(r<<16)|(g<<8)|b;
+const unpack =rgb=>[(rgb>>16)&255,(rgb>>8)&255,rgb&255];
+const hex2int = hex => pack(...hex2rgb(hex));
+function int2hex(rgbInt) {
+  const [r, g, b] = unpack(rgbInt);
+  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+const hex2rgb = hex => hex.match(/\w\w/g).map(h=>parseInt(h,16));
+function rgb2hsv(r, g, b) {          // r-g-b 0-255 → h 0-1, s/v 0-1
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d   = max - min;
+  const v   = max;
+  const s   = max === 0 ? 0 : d / max;
+  let h     = 0;
+
+  if (d !== 0) {
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2;               break;
+      case b: h = (r - g) / d + 4;               break;
+    }
+    h /= 6;
+  }
+  return [h, s, v];
+}
+function hsv2rgb(h, s, v) {          // h 0-1, s/v 0-1 → r-g-b 0-255
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  return [r * 255 | 0, g * 255 | 0, b * 255 | 0];
+}
+function lerpHSV(aRgb, bRgb, t) {
+  const [ar, ag, ab] = unpack(aRgb);
+  const [br, bg, bb] = unpack(bRgb);
+  let   [h1, s1, v1] = rgb2hsv(ar, ag, ab);
+  let   [h2, s2, v2] = rgb2hsv(br, bg, bb);
+
+  /* wrap hue through shortest arc */
+  let dh = h2 - h1;
+  if (dh >  0.5) dh -= 1;
+  if (dh < -0.5) dh += 1;
+  const h = (h1 + dh * t + 1) % 1;
+  const s = s1 + (s2 - s1) * t;
+  const v = v1 + (v2 - v1) * t;
+
+  const [r, g, b] = hsv2rgb(h, s, v);
+  return pack(r, g, b);
+}
+
+const css = getComputedStyle(document.documentElement);
+const cssVar = name => css.getPropertyValue(name).trim();
+const ansi = n => cssVar(`--ansi-${n}`);
+const FG_WATER = hex2rgb(cssVar('--ansi-blue'));          // water uses theme blue
+const FG_LAND  = hex2rgb(cssVar('--ansi-bright-black'));  // land = bright black
+const BG_PAGE  = pack(...hex2rgb(cssVar('--surface')));            // background surface
+const theme = {
+  background : cssVar('--surface'),
+  foreground : cssVar('--on-surface'),
+  cursor     : cssVar('--primary'),
+
+  black         : ansi('black'),
+  red           : ansi('red'),
+  green         : ansi('green'),
+  yellow        : ansi('yellow'),
+  blue          : ansi('blue'),
+  magenta       : ansi('magenta'),
+  cyan          : ansi('cyan'),
+  white         : ansi('white'),
+  brightBlack   : ansi('bright-black'),
+  brightRed     : ansi('bright-red'),
+  brightGreen   : ansi('bright-green'),
+  brightYellow  : ansi('bright-yellow'),
+  brightBlue    : ansi('bright-blue'),
+  brightMagenta : ansi('bright-magenta'),
+  brightCyan    : ansi('bright-cyan'),
+  brightWhite   : ansi('bright-white')
+};
+const COLS = 13, ROWS = 13;
+/* world array & lake mask */
+
+
+
+/*--------------------------------------------------
+  2. Layer buffers
+--------------------------------------------------*/
+const baseGlyph    = new Uint16Array(COLS * ROWS);
+const baseFG       = new Uint32Array(COLS * ROWS);
+const world        = Array.from({ length: ROWS }, () => Array(COLS).fill('.'));
+const lakeMask     = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+
+const vignette      = new Float32Array(COLS * ROWS);
+const radiusFactor  = .9;   // 1 = edge-to-edge, 0.75 = wider bright core
+const falloffPower  = 1.4;    // <2 keeps mid-tones brighter, >2 darkens
+const cx = (COLS - 1) / 2, cy = (ROWS - 1) / 2;
+const maxR = Math.hypot(cx, cy) * radiusFactor;   // shrink “max” radius
+for (let y = 0; y < ROWS; y++) {
+  for (let x = 0; x < COLS; x++) {
+    const d = Math.hypot(x - cx, y - cy) / maxR;  // 0 → centre, >1 outside
+    const t = Math.min(1, d);                     // clamp
+    const k = (1 - t) ** falloffPower;            // 1 → 0 brightness
+    vignette[y * COLS + x] = k;
+  }
+}
+
+for (let y = 0; y < ROWS; y++) {
+  for (let x = 0; x < COLS; x++) {
+    const n = (Math.sin(x * 0.15) + Math.sin(y * 0.12) + Math.sin((x + y) * 0.08)) / 3;
+    lakeMask[y][x] = n > 0.15;
+    if (lakeMask[y][x]) world[y][x] = 'ᖗ';
+  }
+}
+/* seed base layer */
+(function initBase(){
+  for (let y=0;y<ROWS;y++){
+    for (let x=0;x<COLS;x++){
+      const i = y*COLS + x;
+      const water = lakeMask[y][x];
+
+      baseGlyph[i] = water ? 'ᖗ'.codePointAt(0) : '.'.codePointAt(0);
+      baseFG[i]    = water ? pack(...FG_WATER)  : pack(...FG_LAND);
+    }
+  }
+})();
+const keyframes = [
+  { t: 0.00, pal: { bg:'#1B1E26', surface:'#1C1F27', primary:'#7DD3FC', onSurface:'#ECE6F0' }}, // true midnight
+  { t: 0.50, pal: { bg:'#2A2E37', surface:'#333745', primary:'#7DD3FC', onSurface:'#ECE6F0' }}, // your “dimly-lit” look
+  { t: 1.00, pal: { bg:'#1B1E26', surface:'#1C1F27', primary:'#7DD3FC', onSurface:'#ECE6F0' }}  // back to midnight
+];
+function paletteAt(t) {
+  for (let i = 1; i < keyframes.length; i++) {
+    if (t <= keyframes[i].t) {
+      const a = keyframes[i - 1], b = keyframes[i];
+      const span = (t - a.t) / (b.t - a.t);
+      const hex2int = hex => pack(...hex2rgb(hex));
+      return {
+        bg:        lerpHSV(hex2int(a.pal.bg),       hex2int(b.pal.bg),      span),
+        surface:   lerpHSV(hex2int(a.pal.surface),  hex2int(b.pal.surface), span),
+        primary:   lerpHSV(hex2int(a.pal.primary),  hex2int(b.pal.primary), span),
+        onSurface: lerpHSV(hex2int(a.pal.onSurface),hex2int(b.pal.onSurface),span)
+      };
+    }
+  }
+}
+/*--------------------------------------------------
+  5. Per-cell composition
+--------------------------------------------------*/
+function composeCell(idx) {
+  let fg = baseFG[idx];
+  let g  = baseGlyph[idx];
+  const k = vignette[idx];
+  fg = lerpHSV(fg, BG_PAGE, 1 - k);
+  return { g, fg };
+}
+
+/*--------------------------------------------------
+  6. Frame renderer
+--------------------------------------------------*/
+function composeFrame(term) {
+  let out = '';
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const idx = y * COLS + x;
+      const { g, fg } = composeCell(idx);         // ignore bg
+      const [r, g2, b] = unpack(fg);
+      out += `\x1b[38;2;${r};${g2};${b}m${String.fromCodePoint(g)}`;
+    }
+    if (y < ROWS - 1) out += '\r\n';
+  }
+  term.write('\x1b[H' + out + '\x1b[0m');        // reset at end
+}
+/*--------------------------------------------------
+  7. Boot xterm
+--------------------------------------------------*/
+
+
+const term = new Terminal({
+  rows: ROWS,
+  cols: COLS,
+  allowProposedApi:true,
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize:32,
+  letterSpacing:20,
+  theme
+});
+
+const webgl = new WebglAddon.WebglAddon();
+term.loadAddon(webgl);
+term.open(document.getElementById('mapBox'));
+
+/*--------------------------------------------------
+  8. Main loop
+--------------------------------------------------*/
+const CYCLE_MS = 30_000;
+function tick(){
+  const t = (performance.now() % CYCLE_MS) / CYCLE_MS;
+  const { bg, surface, onSurface, primary } = paletteAt(t);
+  document.documentElement.style.setProperty('--bg',         int2hex(bg));
+  document.documentElement.style.setProperty('--surface',    int2hex(surface));
+  document.documentElement.style.setProperty('--on-surface', int2hex(onSurface));
+  document.documentElement.style.setProperty('--primary',    int2hex(primary));
+  composeFrame(term);
+  requestAnimationFrame(tick);
+}
+tick();
+/*--------------------------------------------------
+chat initialisation (alignment & fade)
+--------------------------------------------------*/
+const chat = document.getElementById('chat');
+const cmd  = document.getElementById('cmd');
+cmd.focus();
+
+function postLine(text){
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.textContent = text;
+  chat.appendChild(div);
+
+  /* keep only the newest 8 */
+  while (chat.children.length > 8) chat.removeChild(chat.firstChild);
+
+  /* exponential fade: 1.00, 0.55, 0.30 … bottom → top */
+  [...chat.children].reverse().forEach((el, i) => {
+    el.style.opacity = Math.max(0.07, Math.pow(0.55, i));
+  });
+}
+const url = new URL("/ws", location.href);
+url.protocol = url.protocol.replace("http", "ws");
+const ws = new WebSocket(url.toString());
+ws.addEventListener("open", () => {
+  postLine("*** connected ***");
+});
+ws.addEventListener("message", ev => {
+  postLine(ev.data);           // every text frame → chat pane
+});
+ws.addEventListener("close", ev => {
+  postLine("*** disconnected (" + ev.code + ") ***");
+});
+ws.addEventListener("error", () => {
+  postLine("*** websocket error ***");
+});
+
+
+postLine('*** Welcome to the prototype! ***');
+
+cmd.addEventListener('keydown', e=>{
+  if (e.key === 'Enter' && cmd.value.trim()){
+    postLine(cmd.value);
+    ws.send(cmd.value);
+    cmd.value = '';
+  }
+});
+
+
+</script>
+</body>
+</html>
