@@ -1,4 +1,3 @@
--- Core tables
 CREATE TABLE IF NOT EXISTS accounts (
     id          BIGSERIAL PRIMARY KEY,
     provider    TEXT        NOT NULL CHECK (provider IN ('google','discord')),
@@ -8,12 +7,10 @@ CREATE TABLE IF NOT EXISTS accounts (
     UNIQUE (provider, subject)
 );
 
--- Fixed 2 character slots (0 and 1)
 CREATE TABLE IF NOT EXISTS slots (
     slot SMALLINT PRIMARY KEY
 );
 
--- Seed the two slots
 INSERT INTO slots(slot) VALUES (0) ON CONFLICT DO NOTHING;
 INSERT INTO slots(slot) VALUES (1) ON CONFLICT DO NOTHING;
 

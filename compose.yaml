@@ -6,7 +6,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
+      POSTGRES_PORT: 5432
     ports:
       - "5432:5432"
     volumes:
-      - ./ninjamagic/sqlc/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ./ninjamagic/sqlc/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    command: ["postgres", "-c", "log_statement=all"]
