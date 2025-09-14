@@ -14,8 +14,11 @@ def flush():
     # Collate the packets.
     packets = defaultdict(list)
     for signal in bus.outbound:
-        sig = esper.try_component(signal.to, Subject) or "none"
-        packets[signal.to].append({"m": signal.text, "sig": sig})
+        packets[signal.to].append({"m": signal.text})
+
+    for rcp, packet in packets.items():
+        sig = esper.try_component(rcp, Subject) or "none"
+        packet.append({"sig": sig})
     
     # Send the packets to their recipients.
     loop = asyncio.get_running_loop()
