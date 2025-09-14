@@ -9,9 +9,17 @@ from functools import cached_property
 from typing import runtime_checkable
 
 import ninjamagic.bus as bus
-from ninjamagic import conn, parser, outbox
-TICK_HZ = 1000
-TPS = 1.0 / TICK_HZ
+from ninjamagic import conn, parser, outbox, act
+
+TPS = 1000
+STEP = 1.0 / TPS
+MAX_LAG_RESET = 0.25
+
+# for exponential moving average:
+HALF_LIFE_SECONDS = 5.0
+TICKS_PER_HALF_LIFE = int(HALF_LIFE_SECONDS * TPS)
+ALPHA = 1 - 2 ** (-1 / TICKS_PER_HALF_LIFE)
+
 
 log = logging.getLogger(__name__)
 
@@ -94,19 +102,47 @@ class BaseState:
 @dataclass(slots=True, frozen=True)
 class State(BaseState):
     async def step(self) -> None:
-        log.info("Beginning core tick loop.")
+        last_logged_sec = 0
+        loop = asyncio.get_running_loop()
+        deadline = loop.time()
+        prev_ns = time.perf_counter_ns()
+
+        jitter_ema = 0.0
+
         while True:
-            frame_start = time.perf_counter()
+            frame_start_ns = time.perf_counter_ns()
+            dt = (frame_start_ns - prev_ns) * 1e-9
+            prev_ns = frame_start_ns
 
+            # invoke systems        #
             conn.process()
-
             parser.process()
-
+            act.process(loop.time())
             outbox.flush()
-
             bus.clear()
+            #                       #
 
-            elapsed = time.perf_counter() - frame_start
-            sleep_for = TPS - elapsed
-            if sleep_for > 0:
-                await asyncio.sleep(sleep_for)
+            deadline += STEP
+            delay = deadline - loop.time()
+            if delay > 0:
+                long = delay - 0.001
+                if long > 0:
+                    await asyncio.sleep(long)
+                while True:
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        break
+                    await asyncio.sleep(0)
+            else:
+                # We're late.
+                lag = -delay
+                if lag > MAX_LAG_RESET:
+                    deadline = loop.time()
+
+            fired_at = loop.time()
+            jitter = fired_at - deadline
+            jitter_ema = (1 - ALPHA) * jitter_ema + ALPHA * jitter
+            current_sec = int(fired_at)
+            if current_sec % 5 == 0 and current_sec != last_logged_sec:
+                log.info("jitter_ema=%.6f", jitter_ema)
+                last_logged_sec = current_sec
