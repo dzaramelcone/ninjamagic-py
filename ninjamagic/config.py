@@ -9,6 +9,6 @@ class Settings(BaseSettings):
     google: OAuthSettings = Field(default_factory=OAuthSettings)
     discord: OAuthSettings
     pg: PostgresDsn
-    model_config = SettingsConfigDict(env_file="ninjamagic.env")
+    model_config = SettingsConfigDict(env_nested_delimiter="__", env_file="ninjamagic.env")
 
 settings = Settings()

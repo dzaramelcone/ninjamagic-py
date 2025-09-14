@@ -1,16 +1,29 @@
+import httpx
+
+from authlib.integrations.starlette_client import OAuth
+from enum import StrEnum
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-import httpx
+from pydantic import BaseModel
 from starlette.requests import Request
-from authlib.integrations.starlette_client import OAuth
+
 from ninjamagic.config import settings
+from ninjamagic.db import Repository
 from ninjamagic.util import ACCOUNT
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
+class Provider(StrEnum):
+    GOOGLE = "google"
+    DISCORD = "discord"
+
+class Account(BaseModel):
+    provider: Provider
+    subject: str
+    email: str
 
 google = oauth.register(
-    name="google",
+    name=Provider.GOOGLE,
     client_id=settings.google.client,
     client_secret=settings.google.secret,
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
@@ -18,7 +31,7 @@ google = oauth.register(
 )
 
 discord = oauth.register(
-    name='discord',
+    name=Provider.DISCORD,
     client_id=settings.discord.client,
     client_secret=settings.discord.secret,
     access_token_url='https://discord.com/api/oauth2/token',
@@ -30,7 +43,7 @@ discord = oauth.register(
 
 
 @router.get("/", include_in_schema=False)
-async def login(req: Request):
+async def login():
     return HTMLResponse(
         """<!doctype html>
 <html lang="en">
@@ -53,7 +66,6 @@ async def login(req: Request):
     .hdr { display:flex; align-items:center; gap:8px; }
     .door { width:16px; height:16px; color:var(--mono); flex:0 0 auto; }
 
-    /* smaller, centered grid of buttons */
     .grid {
       display:grid; grid-template-columns: repeat(2, 1fr);
       gap:10px; width:100%; max-width:260px; margin:4px auto 0;
@@ -70,7 +82,6 @@ async def login(req: Request):
     .btn:active { transform: translateY(1px); }
     .btn:focus-visible { box-shadow: 0 0 0 3px rgba(24,119,242,.25); }
 
-    /* true monochrome via mask-image */
     .ico {
       width:24px; height:24px; display:block;
       background-color: var(--mono);
@@ -80,7 +91,6 @@ async def login(req: Request):
     .ico.google  { -webkit-mask-image:url("/static/icons/google.svg");  mask-image:url("/static/icons/google.svg"); }
     .ico.discord { -webkit-mask-image:url("/static/icons/discord.svg"); mask-image:url("/static/icons/discord.svg"); }
 
-    /* two horizontal stripes with slight space beneath */
     .stripes {
       display:grid; grid-template-columns: 1fr 1fr;
       gap:10px; width:100%; max-width:260px;
@@ -103,7 +113,6 @@ async def login(req: Request):
 <body>
   <div class="wrap">
     <div class="card">
-      <!-- small door icon header, top-left -->
       <div class="hdr" aria-hidden="true">
         <svg class="door" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="12" height="18" rx="1.6"></rect>
@@ -112,7 +121,6 @@ async def login(req: Request):
         </svg>
       </div>
 
-      <!-- 2×1 grid of smaller monochrome buttons -->
       <div class="grid">
         <a class="btn" id="btn-google" href="/auth/google/login" aria-label="Continue with Google" title="Continue with Google">
           <span class="ico google" role="img" aria-label="Google"></span>
@@ -122,7 +130,6 @@ async def login(req: Request):
         </a>
       </div>
 
-      <!-- two stripes beneath, horizontally aligned -->
       <div class="stripes" aria-hidden="true">
         <div class="stripe"></div>
         <div class="stripe"></div>
@@ -136,51 +143,48 @@ async def login(req: Request):
 """
     )
 
+
 @router.get("/google/login")
 async def login_via_google(req: Request):
     redirect_uri = req.url_for('auth_via_google')
     return await google.authorize_redirect(req, redirect_uri)
 
+
 @router.get("/google")
-async def auth_via_google(req: Request):
+async def auth_via_google(req: Request,  q: Repository):
     token = await google.authorize_access_token(req)
-    user_info = token['userinfo']
+    usr = token['userinfo']
+    account = Account(
+        provider=Provider.GOOGLE,
+        subject=usr.get("sub"),
+        email=usr.get("email")
+    ).model_dump()
 
-    if not user_info:
-        raise RuntimeError("Failed to retrieve user info from Google")
-    if not (sub := user_info.get("sub", None)):
-        raise RuntimeError("Google sub not found in user info")
-    if not (email := user_info.get("email", None)):
-        raise RuntimeError("Google email not found in user info")
+    req.session[ACCOUNT] = account
+    await q.upsert_account(**account)
 
-    req.session[ACCOUNT] = {
-        "provider": "google",
-        "id": sub,
-        "email": email,
-    }
     return RedirectResponse(url="/", status_code=303)
+
 
 @router.get("/discord/login")
 async def login_via_discord(req: Request):
     return await discord.authorize_redirect(req, req.url_for("auth_via_discord"))
 
+
 @router.get("/discord")
-async def auth_via_discord(req: Request):
+async def auth_via_discord(req: Request, q: Repository):
     token = await discord.authorize_access_token(req)
     client = httpx.AsyncClient()
     resp = await client.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token["access_token"]}'})
-    user_info = resp.json()
 
-    if not user_info:
-        raise RuntimeError("Failed to retrieve user info from Discord")
-    if not (id := user_info.get("id", None)):
-        raise RuntimeError("Discord id not found in user info")
-    if not (email := user_info.get("email", None)):
-        raise RuntimeError("Email not found in user info")
+    usr = resp.json()
+    account = Account(
+        provider=Provider.DISCORD,
+        subject=usr.get("id"),
+        email=usr.get("email")
+    ).model_dump()
 
-    req.session[ACCOUNT] = {
-        "provider": "discord",
-        "id": id,
-        "email": email,
-    }
+    await q.upsert_account(**account)
+    req.session[ACCOUNT] = account
+
     return RedirectResponse(url="/", status_code=303)

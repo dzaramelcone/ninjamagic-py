@@ -5,7 +5,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from ninjamagic import bus
-from ninjamagic.util import ACCOUNT, Account, Email
+from ninjamagic.util import ACCOUNT, Subject
 from ninjamagic.state import State
 from ninjamagic.auth import router as auth_router
 from fastapi.staticfiles import StaticFiles
@@ -98,7 +98,7 @@ async def ws(client: WebSocket) -> None:
     await client.accept()
     try:
         user_id = esper.create_entity()
-        esper.add_component(account, Account)
+        esper.add_component(user_id, account.get("subject"), Subject)
         bus.fire(bus.Connected(source=user_id, client=client))
         while True:
             text = await client.receive_text()

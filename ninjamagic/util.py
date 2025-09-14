@@ -31,5 +31,4 @@ class Cardinal(StrEnum):
                 return None
 ACCOUNT = "user"
 Client = WebSocket
-Email = str
-Account = dict
+Subject = str
