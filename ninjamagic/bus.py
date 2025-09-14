@@ -1,4 +1,5 @@
-from dataclasses import dataclass as signal
+from dataclasses import dataclass as signal, field
+import itertools
 from fastapi import WebSocket
 
 from ninjamagic.util import Cardinal
@@ -34,6 +35,15 @@ class Outbound(Signal):
 class MoveCardinal(Signal):
     mob: int
     direction: Cardinal
+
+counter = itertools.count(1)
+@signal
+class Event(Signal):
+    source: int
+    start: float
+    end: float
+    on_execute: Signal
+    id: int = field(default_factory=lambda: next(counter))
 
 connected: list[Connected] = []
 disconnected: list[Disconnected] = []
