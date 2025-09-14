@@ -4,7 +4,7 @@ import logging
 
 import esper
 from ninjamagic import bus
-from ninjamagic.util import Client, Account
+from ninjamagic.util import Client, Subject
 
 log = logging.getLogger("uvicorn.access")
 def flush():
@@ -13,8 +13,8 @@ def flush():
 
     # Collate the packets.
     packets = defaultdict(list)
-    sig = esper.try_component(eid, Account) or {"id":"none"}
     for signal in bus.outbound:
+        sig = esper.try_component(signal.to, Subject) or "none"
         packets[signal.to].append({"m": signal.text, "sig": sig})
     
     # Send the packets to their recipients.
