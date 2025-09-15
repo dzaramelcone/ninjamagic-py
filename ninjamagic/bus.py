@@ -46,7 +46,7 @@ class Move(Signal):
 
 @signal
 class Act(Signal):
-    """An entity act that will raise `next` at `end`."""
+    """An entity act that will pulse `next` at `end`."""
 
     source: int
     start: float
