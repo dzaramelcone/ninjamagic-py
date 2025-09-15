@@ -115,7 +115,7 @@ class State(BaseState):
 
         while True:
             frame_start_ns = time.perf_counter_ns()
-            dt = (frame_start_ns - prev_ns) * 1e-9
+            _ = (frame_start_ns - prev_ns) * 1e-9 # dt
             prev_ns = frame_start_ns
 
             # invoke systems        #
