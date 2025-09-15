@@ -1,4 +1,5 @@
 from enum import StrEnum
+import itertools
 
 from fastapi import WebSocket
 
@@ -31,6 +32,16 @@ class Cardinal(StrEnum):
                 return None
 
 
-ACCOUNT = "user"
+OWNER = "user"
 Connection = WebSocket
-AccountId = int
+OwnerId = int
+
+counter = itertools.count(1)
+
+
+def serial() -> int:
+    return next(counter)
+
+
+INDEX_HTML = open("ninjamagic/static/index.html", "r").read()
+LOGIN_HTML = open("ninjamagic/static/login.html", "r").read()
