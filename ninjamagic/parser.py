@@ -10,19 +10,21 @@ def process():
         parse(event)
 
 
-def parse(event: bus.Inbound):
-    inp = event.text
-    if not inp:
+def parse(sig: bus.Inbound):
+    inb = sig.text
+    if not inb:
         return
 
-    if inp[0] == "'":
-        inp = f"say {inp[1:]}"
+    if inb[0] == "'":
+        sig.text = inb = f"say {sig.text[1:]}"
 
-    first, _, _ = inp.partition(" ")
+    first, _, _ = inb.partition(" ")
 
     for cmd in commands:
         if cmd.text.startswith(first):
-            cmd.trigger(event)
+            ok, err = cmd.trigger(sig)
+            if not ok:
+                bus.pulse(bus.Outbound(to=sig.source, source=sig.source, text=err))
             return
 
-    bus.fire(bus.Outbound(to=event.source, source=event.source, text="Huh?"))
+    bus.pulse(bus.Outbound(to=sig.source, source=sig.source, text="Huh?"))

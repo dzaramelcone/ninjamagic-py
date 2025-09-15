@@ -4,7 +4,7 @@ import itertools
 from fastapi import WebSocket
 
 
-class Cardinal(StrEnum):
+class Compass(StrEnum):
     NORTH = "north"
     NORTHEAST = "northeast"
     EAST = "east"
@@ -14,6 +14,7 @@ class Cardinal(StrEnum):
     WEST = "west"
     NORTHWEST = "northwest"
 
+    @classmethod
     def _missing_(cls, value):
         value = value.lower()
         match value:

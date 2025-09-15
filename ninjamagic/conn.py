@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 def process():
     for c in bus.connected:
-        log.info("%s:%s connected.", c.source, c.client)
+        log.info("%s:%s connected.", c.client, c.source)
         esper.add_component(
             entity=c.source, component_instance=c.client, type_alias=Connection
         )

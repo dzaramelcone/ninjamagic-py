@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from ninjamagic.config import settings
 from ninjamagic.gen.models import OauthProvider
 from ninjamagic.db import Repository
-from ninjamagic.util import ACCOUNT
+from ninjamagic.util import OWNER, LOGIN_HTML
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
@@ -30,19 +30,17 @@ discord = oauth.register(
     client_kwargs={"scope": "identify email"},
 )
 
-login_html = open("ninjamagic/static/login.html", "r").read()
-
 
 @router.get("/", include_in_schema=False)
 async def login(req: Request):
-    if req.session.get(ACCOUNT, None):
+    if req.session.get(OWNER, None):
         return RedirectResponse(url="/", status_code=303)
-    return HTMLResponse(login_html)
+    return HTMLResponse(LOGIN_HTML)
 
 
 @router.get("/google/login")
 async def login_via_google(req: Request):
-    if req.session.get(ACCOUNT, None):
+    if req.session.get(OWNER, None):
         return RedirectResponse(url="/", status_code=303)
 
     return await google.authorize_redirect(
@@ -64,13 +62,13 @@ async def auth_via_google(req: Request, q: Repository):
         subject=usr.get("sub"),
         email=usr.get("email"),
     )
-    req.session[ACCOUNT] = account
+    req.session[OWNER] = account
     return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/discord/login")
 async def login_via_discord(req: Request):
-    if req.session.get(ACCOUNT, None):
+    if req.session.get(OWNER, None):
         return RedirectResponse(url="/", status_code=303)
     return await discord.authorize_redirect(
         req,
@@ -101,5 +99,5 @@ async def auth_via_discord(req: Request, q: Repository):
         subject=usr.get("id"),
         email=usr.get("email"),
     )
-    req.session[ACCOUNT] = account
+    req.session[OWNER] = account
     return RedirectResponse(url="/", status_code=303)
