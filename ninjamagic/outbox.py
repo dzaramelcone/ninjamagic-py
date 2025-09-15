@@ -10,12 +10,9 @@ log = logging.getLogger("uvicorn.access")
 
 
 def flush():
-    if not bus.outbound:
-        return
-
     # Collate the packets.
     packets = defaultdict(list)
-    for signal in bus.outbound:
+    for signal in bus.iter(bus.Outbound):
         packets[signal.to].append({"m": signal.text})
 
     for rcp, packet in packets.items():
