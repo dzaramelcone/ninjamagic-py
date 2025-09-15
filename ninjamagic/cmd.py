@@ -6,19 +6,24 @@ log = logging.getLogger("uvicorn.access")
 
 
 class Command(Protocol):
-    def trigger(self, root: bus.Inbound): ...
+    @property
+    def text(self) -> str: ...
 
-    def is_match(self, text: str) -> bool: ...
+    def trigger(self, root: bus.Inbound): ...
 
 
 class Look(Command):
-    def is_match(self, text: str) -> bool:
-        return "look".startswith(text)
+    @property
+    def text(self) -> str:
+        return "look"
 
     def trigger(self, root: bus.Inbound):
-        log.info("Triggered look.")
         bus.fire(
-            bus.Outbound(to=root.source, source=root.source, text="You see nothing.")
+            bus.Outbound(
+                to=root.source,
+                source=root.source,
+                text="You see nothing.",
+            )
         )
 
 

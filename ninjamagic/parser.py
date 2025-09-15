@@ -21,7 +21,7 @@ def parse(event: bus.Inbound):
     first, _, _ = inp.partition(" ")
 
     for cmd in commands:
-        if cmd.is_match(first):
+        if cmd.text.startswith(first):
             cmd.trigger(event)
             return
 
