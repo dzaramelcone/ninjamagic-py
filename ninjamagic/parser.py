@@ -4,16 +4,18 @@ from ninjamagic import bus
 
 log = logging.getLogger("uvicorn.access")
 
+
 def process():
     for event in bus.inbound:
         parse(event)
+
 
 def parse(event: bus.Inbound):
     inp = event.text
     if not inp:
         return
 
-    if inp[0] == '\'':
+    if inp[0] == "'":
         inp = f"say {inp[1:]}"
 
     first, _, _ = inp.partition(" ")

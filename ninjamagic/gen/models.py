@@ -2,24 +2,36 @@
 # versions:
 #   sqlc v1.30.0
 import datetime
+import enum
 import pydantic
+from typing import Optional
+
+
+class OauthProvider(enum.StrEnum):
+    GOOGLE = "google"
+    DISCORD = "discord"
 
 
 class Account(pydantic.BaseModel):
     id: int
-    provider: str
+    owner_id: int
+    provider: OauthProvider
     subject: str
     email: str
     created_at: datetime.datetime
+    last_login_at: Optional[datetime.datetime]
 
 
 class Character(pydantic.BaseModel):
     id: int
-    account_id: int
-    slot: int
+    owner_id: int
     name: str
     created_at: datetime.datetime
 
 
-class Slot(pydantic.BaseModel):
-    slot: int
+class Skill(pydantic.BaseModel):
+    id: int
+    char_id: int
+    name: str
+    experience: int
+    pending: int

@@ -1,26 +1,38 @@
+CREATE TYPE oauth_provider AS ENUM ('google', 'discord');
+CREATE EXTENSION IF NOT EXISTS citext;
+
 CREATE TABLE IF NOT EXISTS accounts (
-    id          BIGSERIAL PRIMARY KEY,
-    provider    TEXT        NOT NULL CHECK (provider IN ('google','discord')),
-    subject     TEXT        NOT NULL,
-    email       TEXT        NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id              BIGSERIAL             PRIMARY KEY,
+    owner_id        BIGSERIAL             NOT NULL,
+    provider        oauth_provider        NOT NULL,
+    subject         TEXT                  NOT NULL,
+    email           CITEXT                NOT NULL,
+    created_at      TIMESTAMPTZ           NOT NULL DEFAULT now(),
+    last_login_at   TIMESTAMPTZ,
+
     UNIQUE (provider, subject)
 );
 
-CREATE TABLE IF NOT EXISTS slots (
-    slot SMALLINT PRIMARY KEY
-);
-
-INSERT INTO slots(slot) VALUES (0) ON CONFLICT DO NOTHING;
-INSERT INTO slots(slot) VALUES (1) ON CONFLICT DO NOTHING;
-
 CREATE TABLE IF NOT EXISTS characters (
     id          BIGSERIAL PRIMARY KEY,
-    account_id  BIGINT      NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    slot        SMALLINT    NOT NULL REFERENCES slots(slot),
-    name        TEXT        NOT NULL,
+    owner_id    BIGINT      NOT NULL,
+    name        CITEXT      NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (account_id, slot)
+
+    UNIQUE (name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_characters_account ON characters(account_id);
+CREATE TABLE IF NOT EXISTS skills (
+    id          BIGSERIAL PRIMARY KEY,
+    char_id     BIGINT    NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    name        CITEXT    NOT NULL,
+    experience  BIGINT    NOT NULL DEFAULT 0,
+    pending     BIGINT    NOT NULL DEFAULT 0,
+
+    UNIQUE (char_id, name),
+    CHECK (experience >= 0 AND pending >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters(owner_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_id);
+CREATE INDEX IF NOT EXISTS idx_skills_char ON skills(char_id)

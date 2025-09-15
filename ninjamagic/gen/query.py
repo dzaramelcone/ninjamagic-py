@@ -2,7 +2,7 @@
 # versions:
 #   sqlc v1.30.0
 # source: query.sql
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, List, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -10,68 +10,52 @@ import sqlalchemy.ext.asyncio
 from ninjamagic.gen import models
 
 
-COUNT_CHARACTERS_FOR_ACCOUNT = """-- name: count_characters_for_account \\:one
-SELECT COUNT(*)\\:\\:bigint AS count
-FROM characters
-WHERE account_id = :p1
-"""
-
-
 CREATE_CHARACTER = """-- name: create_character \\:one
-
-INSERT INTO characters (account_id, slot, name)
-VALUES (:p1, :p2, :p3)
-RETURNING id, account_id, slot, name, created_at
+INSERT INTO characters (owner_id, name) VALUES (:p1, :p2) RETURNING id, owner_id, name, created_at
 """
 
 
-DELETE_CHARACTER_BY_ACCOUNT_SLOT = """-- name: delete_character_by_account_slot \\:exec
-DELETE FROM characters
-WHERE account_id = :p1 AND slot = :p2
+DELETE_CHARACTER = """-- name: delete_character \\:exec
+DELETE FROM characters WHERE id = :p1
 """
 
 
-GET_ACCOUNT_BY_ID = """-- name: get_account_by_id \\:one
-SELECT id, provider, subject, email, created_at
-FROM accounts
-WHERE id = :p1
-LIMIT 1
+GET_CHARACTERS = """-- name: get_characters \\:many
+
+SELECT id, owner_id, name, created_at FROM characters WHERE owner_id = :p1 ORDER BY created_at DESC
 """
 
 
-GET_ACCOUNT_BY_PROVIDER_SUBJECT = """-- name: get_account_by_provider_subject \\:one
-SELECT id, provider, subject, email, created_at
-FROM accounts
-WHERE provider = :p1 AND subject = :p2
-LIMIT 1
+GET_SKILLS_BY_CHARACTER = """-- name: get_skills_by_character \\:many
+
+SELECT id, char_id, name, experience, pending FROM skills WHERE char_id = :p1
 """
 
 
-GET_CHARACTERS_BY_ACCOUNT = """-- name: get_characters_by_account \\:many
-SELECT id, account_id, slot, name, created_at
-FROM characters
-WHERE account_id = :p1
-ORDER BY slot
-"""
+UPSERT_IDENTITY = """-- name: upsert_identity \\:one
 
-
-GET_OPEN_SLOTS_FOR_ACCOUNT = """-- name: get_open_slots_for_account \\:many
-SELECT s.slot
-FROM slots AS s
-LEFT JOIN characters AS c
-  ON c.account_id = :p1 AND c.slot = s.slot
-WHERE c.id IS NULL
-ORDER BY 1
-"""
-
-
-UPSERT_ACCOUNT = """-- name: upsert_account \\:one
-
-INSERT INTO accounts (provider, subject, email)
-VALUES (:p1, :p2, :p3)
+INSERT INTO accounts (owner_id, provider, subject, email, created_at, last_login_at)
+VALUES (DEFAULT, :p1, :p2, :p3, now(), now())
 ON CONFLICT (provider, subject) DO UPDATE
-  SET email = EXCLUDED.email
-RETURNING id, provider, subject, email, created_at
+  SET email = EXCLUDED.email,
+      last_login_at = EXCLUDED.last_login_at
+RETURNING owner_id
+"""
+
+
+UPSERT_SKILLS = """-- name: upsert_skills \\:exec
+INSERT INTO skills (char_id, name, experience, pending)
+SELECT
+  :p1\\:\\:bigint,
+  n.name,
+  e.experience,
+  p.pending
+FROM unnest(:p2\\:\\:citext[])  WITH ORDINALITY AS n(name, i)
+JOIN unnest(:p3\\:\\:bigint[])  WITH ORDINALITY AS e(experience, i) USING (i)
+JOIN unnest(:p4\\:\\:bigint[])  WITH ORDINALITY AS p(pending, i)    USING (i)
+ON CONFLICT (char_id, name) DO UPDATE
+SET experience = EXCLUDED.experience,
+    pending    = EXCLUDED.pending
 """
 
 
@@ -79,75 +63,51 @@ class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def count_characters_for_account(self, *, account_id: int) -> Optional[int]:
-        row = (await self._conn.execute(sqlalchemy.text(COUNT_CHARACTERS_FOR_ACCOUNT), {"p1": account_id})).first()
-        if row is None:
-            return None
-        return row[0]
-
-    async def create_character(self, *, account_id: int, slot: int, name: str) -> Optional[models.Character]:
-        row = (await self._conn.execute(sqlalchemy.text(CREATE_CHARACTER), {"p1": account_id, "p2": slot, "p3": name})).first()
+    async def create_character(self, *, owner_id: int, name: str) -> Optional[models.Character]:
+        row = (await self._conn.execute(sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name})).first()
         if row is None:
             return None
         return models.Character(
             id=row[0],
-            account_id=row[1],
-            slot=row[2],
-            name=row[3],
-            created_at=row[4],
+            owner_id=row[1],
+            name=row[2],
+            created_at=row[3],
         )
 
-    async def delete_character_by_account_slot(self, *, account_id: int, slot: int) -> None:
-        await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER_BY_ACCOUNT_SLOT), {"p1": account_id, "p2": slot})
+    async def delete_character(self, *, id: int) -> None:
+        await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
 
-    async def get_account_by_id(self, *, id: int) -> Optional[models.Account]:
-        row = (await self._conn.execute(sqlalchemy.text(GET_ACCOUNT_BY_ID), {"p1": id})).first()
-        if row is None:
-            return None
-        return models.Account(
-            id=row[0],
-            provider=row[1],
-            subject=row[2],
-            email=row[3],
-            created_at=row[4],
-        )
-
-    async def get_account_by_provider_subject(self, *, provider: str, subject: str) -> Optional[models.Account]:
-        row = (await self._conn.execute(sqlalchemy.text(GET_ACCOUNT_BY_PROVIDER_SUBJECT), {"p1": provider, "p2": subject})).first()
-        if row is None:
-            return None
-        return models.Account(
-            id=row[0],
-            provider=row[1],
-            subject=row[2],
-            email=row[3],
-            created_at=row[4],
-        )
-
-    async def get_characters_by_account(self, *, account_id: int) -> AsyncIterator[models.Character]:
-        result = await self._conn.stream(sqlalchemy.text(GET_CHARACTERS_BY_ACCOUNT), {"p1": account_id})
+    async def get_characters(self, *, owner_id: int) -> AsyncIterator[models.Character]:
+        result = await self._conn.stream(sqlalchemy.text(GET_CHARACTERS), {"p1": owner_id})
         async for row in result:
             yield models.Character(
                 id=row[0],
-                account_id=row[1],
-                slot=row[2],
-                name=row[3],
-                created_at=row[4],
+                owner_id=row[1],
+                name=row[2],
+                created_at=row[3],
             )
 
-    async def get_open_slots_for_account(self, *, account_id: int) -> AsyncIterator[int]:
-        result = await self._conn.stream(sqlalchemy.text(GET_OPEN_SLOTS_FOR_ACCOUNT), {"p1": account_id})
+    async def get_skills_by_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
+        result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_BY_CHARACTER), {"p1": char_id})
         async for row in result:
-            yield row[0]
+            yield models.Skill(
+                id=row[0],
+                char_id=row[1],
+                name=row[2],
+                experience=row[3],
+                pending=row[4],
+            )
 
-    async def upsert_account(self, *, provider: str, subject: str, email: str) -> Optional[models.Account]:
-        row = (await self._conn.execute(sqlalchemy.text(UPSERT_ACCOUNT), {"p1": provider, "p2": subject, "p3": email})).first()
+    async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
+        row = (await self._conn.execute(sqlalchemy.text(UPSERT_IDENTITY), {"p1": provider, "p2": subject, "p3": email})).first()
         if row is None:
             return None
-        return models.Account(
-            id=row[0],
-            provider=row[1],
-            subject=row[2],
-            email=row[3],
-            created_at=row[4],
-        )
+        return row[0]
+
+    async def upsert_skills(self, *, dollar_1: int, dollar_2: List[str], dollar_3: List[int], dollar_4: List[int]) -> None:
+        await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
+            "p1": dollar_1,
+            "p2": dollar_2,
+            "p3": dollar_3,
+            "p4": dollar_4,
+        })

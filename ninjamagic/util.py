@@ -2,7 +2,6 @@ from enum import StrEnum
 
 from fastapi import WebSocket
 
-ACCOUNT = "user"
 
 class Cardinal(StrEnum):
     NORTH = "north"
@@ -31,5 +30,7 @@ class Cardinal(StrEnum):
                         return member
                 return None
 
+
+ACCOUNT = "user"
 Connection = WebSocket
-Subject = str
+AccountId = int

@@ -4,9 +4,11 @@ import logging
 
 import esper
 from ninjamagic import bus
-from ninjamagic.util import Connection, Subject
+from ninjamagic.util import Connection, AccountId
 
 log = logging.getLogger("uvicorn.access")
+
+
 def flush():
     if not bus.outbound:
         return
@@ -17,9 +19,9 @@ def flush():
         packets[signal.to].append({"m": signal.text})
 
     for rcp, packet in packets.items():
-        sig = esper.try_component(rcp, Subject) or "none"
+        sig = esper.try_component(rcp, AccountId) or "none"
         packet.append({"sig": sig})
-    
+
     # Send the packets to their recipients.
     loop = asyncio.get_running_loop()
     for eid, packet in packets.items():

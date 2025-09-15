@@ -1,50 +1,40 @@
 -- Accounts
 
--- name: UpsertAccount :one
-INSERT INTO accounts (provider, subject, email)
-VALUES ($1, $2, $3)
+-- name: UpsertIdentity :one
+INSERT INTO accounts (owner_id, provider, subject, email, created_at, last_login_at)
+VALUES (DEFAULT, $1, $2, $3, now(), now())
 ON CONFLICT (provider, subject) DO UPDATE
-  SET email = EXCLUDED.email
-RETURNING id, provider, subject, email, created_at;
-
--- name: GetAccountByProviderSubject :one
-SELECT id, provider, subject, email, created_at
-FROM accounts
-WHERE provider = $1 AND subject = $2
-LIMIT 1;
-
--- name: GetAccountByID :one
-SELECT id, provider, subject, email, created_at
-FROM accounts
-WHERE id = $1
-LIMIT 1;
+  SET email = EXCLUDED.email,
+      last_login_at = EXCLUDED.last_login_at
+RETURNING owner_id;
 
 -- Characters
 
+-- name: GetCharacters :many
+SELECT * FROM characters WHERE owner_id = $1 ORDER BY created_at DESC;
+
 -- name: CreateCharacter :one
-INSERT INTO characters (account_id, slot, name)
-VALUES ($1, $2, $3)
-RETURNING id, account_id, slot, name, created_at;
+INSERT INTO characters (owner_id, name) VALUES ($1, $2) RETURNING *;
 
--- name: GetCharactersByAccount :many
-SELECT id, account_id, slot, name, created_at
-FROM characters
-WHERE account_id = $1
-ORDER BY slot;
+-- name: DeleteCharacter :exec
+DELETE FROM characters WHERE id = $1;
 
--- name: DeleteCharacterByAccountSlot :exec
-DELETE FROM characters
-WHERE account_id = $1 AND slot = $2;
 
--- name: CountCharactersForAccount :one
-SELECT COUNT(*)::bigint AS count
-FROM characters
-WHERE account_id = $1;
+-- Skills
 
--- name: GetOpenSlotsForAccount :many
-SELECT s.slot
-FROM slots AS s
-LEFT JOIN characters AS c
-  ON c.account_id = $1 AND c.slot = s.slot
-WHERE c.id IS NULL
-ORDER BY 1;
+-- name: GetSkillsByCharacter :many
+SELECT * FROM skills WHERE char_id = $1;
+
+-- name: UpsertSkills :exec
+INSERT INTO skills (char_id, name, experience, pending)
+SELECT
+  $1::bigint,
+  n.name,
+  e.experience,
+  p.pending
+FROM unnest($2::citext[])  WITH ORDINALITY AS n(name, i)
+JOIN unnest($3::bigint[])  WITH ORDINALITY AS e(experience, i) USING (i)
+JOIN unnest($4::bigint[])  WITH ORDINALITY AS p(pending, i)    USING (i)
+ON CONFLICT (char_id, name) DO UPDATE
+SET experience = EXCLUDED.experience,
+    pending    = EXCLUDED.pending;
