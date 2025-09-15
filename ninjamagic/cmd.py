@@ -20,12 +20,7 @@ class Look(Command):
     text: str = "look"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        bus.pulse(
-            bus.Outbound(
-                to=root.source,
-                text="You see nothing.",
-            ),
-        )
+        bus.pulse(bus.Outbound(to=root.source, text="You see nothing."))
         return OK
 
 
@@ -52,7 +47,7 @@ class Say(Command):
 
 commands: list[Command] = [
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
-    *[Move(str(d)) for d in list(Compass)],
+    *[Move(str(dir)) for dir in list(Compass)],
     Look(),
     Say(),
 ]
