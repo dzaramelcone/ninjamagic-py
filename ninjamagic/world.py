@@ -3,7 +3,8 @@ from enum import Enum, auto
 import heapq
 import numpy as np
 
-CHUNK_SZ = (13,13)
+CHUNK_SZ = (13, 13)
+
 
 @dataclass(slots=True)
 class Rect:
@@ -140,7 +141,7 @@ def dijkstra_fill(cost_map: np.ndarray, start: tuple[int, int]) -> np.ndarray:
     """Perform Dijkstra flood fill on a 2D grid.
     cost_map[y,x] = movement cost (>0). Use np.inf for walls.
     start = (y, x).
-    
+
     Returns array of shortest distances from start.
     """
     h, w = cost_map.shape

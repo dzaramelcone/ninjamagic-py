@@ -63,8 +63,14 @@ class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def create_character(self, *, owner_id: int, name: str) -> Optional[models.Character]:
-        row = (await self._conn.execute(sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name})).first()
+    async def create_character(
+        self, *, owner_id: int, name: str
+    ) -> Optional[models.Character]:
+        row = (
+            await self._conn.execute(
+                sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name}
+            )
+        ).first()
         if row is None:
             return None
         return models.Character(
@@ -78,7 +84,9 @@ class AsyncQuerier:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
 
     async def get_characters(self, *, owner_id: int) -> AsyncIterator[models.Character]:
-        result = await self._conn.stream(sqlalchemy.text(GET_CHARACTERS), {"p1": owner_id})
+        result = await self._conn.stream(
+            sqlalchemy.text(GET_CHARACTERS), {"p1": owner_id}
+        )
         async for row in result:
             yield models.Character(
                 id=row[0],
@@ -87,8 +95,12 @@ class AsyncQuerier:
                 created_at=row[3],
             )
 
-    async def get_skills_by_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
-        result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_BY_CHARACTER), {"p1": char_id})
+    async def get_skills_by_character(
+        self, *, char_id: int
+    ) -> AsyncIterator[models.Skill]:
+        result = await self._conn.stream(
+            sqlalchemy.text(GET_SKILLS_BY_CHARACTER), {"p1": char_id}
+        )
         async for row in result:
             yield models.Skill(
                 id=row[0],
@@ -98,16 +110,33 @@ class AsyncQuerier:
                 pending=row[4],
             )
 
-    async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
-        row = (await self._conn.execute(sqlalchemy.text(UPSERT_IDENTITY), {"p1": provider, "p2": subject, "p3": email})).first()
+    async def upsert_identity(
+        self, *, provider: models.OauthProvider, subject: str, email: str
+    ) -> Optional[int]:
+        row = (
+            await self._conn.execute(
+                sqlalchemy.text(UPSERT_IDENTITY),
+                {"p1": provider, "p2": subject, "p3": email},
+            )
+        ).first()
         if row is None:
             return None
         return row[0]
 
-    async def upsert_skills(self, *, dollar_1: int, dollar_2: List[str], dollar_3: List[int], dollar_4: List[int]) -> None:
-        await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
-            "p1": dollar_1,
-            "p2": dollar_2,
-            "p3": dollar_3,
-            "p4": dollar_4,
-        })
+    async def upsert_skills(
+        self,
+        *,
+        dollar_1: int,
+        dollar_2: List[str],
+        dollar_3: List[int],
+        dollar_4: List[int],
+    ) -> None:
+        await self._conn.execute(
+            sqlalchemy.text(UPSERT_SKILLS),
+            {
+                "p1": dollar_1,
+                "p2": dollar_2,
+                "p3": dollar_3,
+                "p4": dollar_4,
+            },
+        )
