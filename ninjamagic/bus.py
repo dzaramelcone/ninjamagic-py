@@ -1,8 +1,7 @@
 from dataclasses import dataclass as signal, field
-import itertools
 from fastapi import WebSocket
 
-from ninjamagic.util import Cardinal
+from ninjamagic.util import Cardinal, serial
 
 
 class Signal:
@@ -44,16 +43,16 @@ class MoveCardinal(Signal):
     direction: Cardinal
 
 
-counter = itertools.count(1)
-
-
 @signal
-class Event(Signal):
+class Act(Signal):
     source: int
     start: float
     end: float
-    on_execute: Signal
-    id: int = field(default_factory=lambda: next(counter))
+    next: Signal
+    id: int = field(default_factory=serial)
+
+    def __lt__(self, other):
+        return self.end < other.end
 
 
 connected: list[Connected] = []

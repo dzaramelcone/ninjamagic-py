@@ -2,13 +2,18 @@ import heapq
 from ninjamagic import bus
 
 
-pq: list[bus.Event] = []
+pq: list[bus.Act] = []
+acts: dict[int, int] = {}
 
 
-def start_action(event: bus.Event) -> None:
-    heapq.heappush(pq, (event.end, event))
+def start_act(act: bus.Act) -> None:
+    acts[act.source] = act.id
+    heapq.heappush(pq, act)
 
 
 def process(now: float) -> None:
     while pq and pq[0].end < now:
-        bus.fire(heapq.heappop(pq).on_execute)
+        act = heapq.heappop(pq)
+        if acts.get(act.source) == act.id:
+            del acts[act.source]
+            bus.fire(act.next)
