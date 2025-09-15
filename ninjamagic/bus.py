@@ -1,5 +1,7 @@
-from dataclasses import dataclass as signal, field
+from dataclasses import dataclass as signal
+from dataclasses import field
 from typing import Iterator, TypeVar, cast
+
 from fastapi import WebSocket
 
 from ninjamagic.util import Compass, serial

@@ -1,8 +1,9 @@
 import logging
+
 import esper
+
 from ninjamagic import bus
 from ninjamagic.util import Connection
-
 
 log = logging.getLogger(__name__)
 

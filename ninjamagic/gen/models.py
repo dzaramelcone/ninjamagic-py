@@ -3,8 +3,9 @@
 #   sqlc v1.30.0
 import datetime
 import enum
-import pydantic
 from typing import Optional
+
+import pydantic
 
 
 class OauthProvider(enum.StrEnum):

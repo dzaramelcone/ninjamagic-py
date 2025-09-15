@@ -1,6 +1,6 @@
 import heapq
-from ninjamagic import bus
 
+from ninjamagic import bus
 
 pq: list[bus.Act] = []
 acts: dict[int, int] = {}

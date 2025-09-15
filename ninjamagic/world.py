@@ -1,6 +1,7 @@
+import heapq
 from dataclasses import dataclass
 from enum import Enum, auto
-import heapq
+
 import numpy as np
 
 from ninjamagic.util import ColorHSV, Rect

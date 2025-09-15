@@ -1,7 +1,7 @@
 import colorsys
+import itertools
 from dataclasses import dataclass
 from enum import StrEnum
-import itertools
 
 from fastapi import WebSocket
 

@@ -1,13 +1,12 @@
 import httpx
-
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ninjamagic.config import settings
-from ninjamagic.gen.models import OauthProvider
 from ninjamagic.db import Repository
-from ninjamagic.util import OWNER, LOGIN_HTML
+from ninjamagic.gen.models import OauthProvider
+from ninjamagic.util import LOGIN_HTML, OWNER
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")

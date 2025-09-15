@@ -1,7 +1,7 @@
 from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 from ninjamagic.config import settings
 from ninjamagic.gen.query import AsyncQuerier

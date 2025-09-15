@@ -9,7 +9,6 @@ import sqlalchemy.ext.asyncio
 
 from ninjamagic.gen import models
 
-
 CREATE_CHARACTER = """-- name: create_character \\:one
 INSERT INTO characters (owner_id, name) VALUES (:p1, :p2) RETURNING id, owner_id, name, created_at
 """

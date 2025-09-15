@@ -1,14 +1,13 @@
+import asyncio
 import logging
 import time
-from typing import Protocol, TypeVar, overload
-import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from functools import cached_property
-from typing import runtime_checkable
+from typing import Protocol, TypeVar, overload, runtime_checkable
 
 import ninjamagic.bus as bus
-from ninjamagic import conn, parser, outbox, act
+from ninjamagic import act, conn, outbox, parser
 
 TPS = 1000
 STEP = 1.0 / TPS
@@ -115,7 +114,7 @@ class State(BaseState):
 
         while True:
             frame_start_ns = time.perf_counter_ns()
-            _ = (frame_start_ns - prev_ns) * 1e-9 # dt
+            _ = (frame_start_ns - prev_ns) * 1e-9  # dt
             prev_ns = frame_start_ns
 
             # invoke systems        #

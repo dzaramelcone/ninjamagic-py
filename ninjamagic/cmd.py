@@ -1,5 +1,6 @@
 import logging
 from typing import Protocol
+
 from ninjamagic import bus
 from ninjamagic.util import Compass
 

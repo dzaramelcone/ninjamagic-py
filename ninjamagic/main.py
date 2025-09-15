@@ -1,15 +1,16 @@
 import logging
 from uuid import uuid4
-import esper
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from starlette.middleware.sessions import SessionMiddleware
-from ninjamagic import bus
-from ninjamagic.util import OWNER, INDEX_HTML, OwnerId
-from ninjamagic.state import State
-from ninjamagic.auth import router as auth_router
-from fastapi.staticfiles import StaticFiles
 
+import esper
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+
+from ninjamagic import bus
+from ninjamagic.auth import router as auth_router
+from ninjamagic.state import State
+from ninjamagic.util import INDEX_HTML, OWNER, OwnerId
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("uvicorn.access")

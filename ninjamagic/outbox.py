@@ -1,8 +1,9 @@
 import asyncio
-from collections import defaultdict
 import logging
+from collections import defaultdict
 
 import esper
+
 from ninjamagic import bus
 from ninjamagic.util import Connection, OwnerId
 

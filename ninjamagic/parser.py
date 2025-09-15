@@ -1,6 +1,7 @@
 import logging
-from ninjamagic.cmd import commands
+
 from ninjamagic import bus
+from ninjamagic.cmd import commands
 
 log = logging.getLogger("uvicorn.access")
 
