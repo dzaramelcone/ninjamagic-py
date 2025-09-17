@@ -7,11 +7,11 @@ from functools import cached_property
 from typing import Protocol, TypeVar, overload, runtime_checkable
 
 import ninjamagic.bus as bus
-from ninjamagic import act, conn, outbox, parser
+from ninjamagic import act, conn, emit, lag, outbox, parser
 
 TPS = 1000
 STEP = 1.0 / TPS
-MAX_LAG_RESET = 0.25
+MAX_LATE_RESET = 0.25
 
 # for exponential moving average:
 HALF_LIFE_SECONDS = 30
@@ -119,9 +119,11 @@ class State(BaseState):
 
             # invoke systems        #
             conn.process()
+            lag.process(loop.time())
             parser.process()
             act.process(loop.time())
-            outbox.flush()
+            emit.process()
+            outbox.process()
             bus.clear()
             #                       #
 
@@ -138,8 +140,8 @@ class State(BaseState):
                     await asyncio.sleep(0)
             else:
                 # We're late.
-                lag = -delay
-                if lag > MAX_LAG_RESET:
+                late = -delay
+                if late > MAX_LATE_RESET:
                     deadline = loop.time()
 
             now = loop.time()

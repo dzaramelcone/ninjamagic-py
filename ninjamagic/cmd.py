@@ -2,7 +2,7 @@ import logging
 from typing import Protocol
 
 from ninjamagic import bus
-from ninjamagic.util import Compass
+from ninjamagic.util import Compass, Reach
 
 log = logging.getLogger("uvicorn.access")
 Err = str
@@ -40,8 +40,14 @@ class Say(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         _, _, rest = root.text.partition(" ")
-        msg = f'You say, "{rest}"' if rest else "You open your mouth, as if to speak."
-        bus.pulse(bus.Outbound(to=root.source, text=msg))
+        if not rest:
+            return False, "You open your mouth, as if to speak."
+
+        first = f'You say, "{rest}"'
+        bus.pulse(bus.Outbound(to=root.source, text=first))
+
+        second = f"They say, {rest}"
+        bus.pulse(bus.Emit(source=root.source, reach=Reach.visible, text=second))
         return OK
 
 

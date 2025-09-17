@@ -1,9 +1,14 @@
 import colorsys
 import itertools
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import IntEnum, StrEnum, auto
 
-from fastapi import WebSocket
+VIEWSPAN = 7
+
+
+class Reach(IntEnum):
+    adjacent = auto()  # symmetric, transitive, reflexive
+    visible = auto()  # symmetric, intransitive, reflexive
 
 
 @dataclass(slots=True, frozen=True)
@@ -111,9 +116,6 @@ class Compass(StrEnum):
 
 
 OWNER = "user"
-Connection = WebSocket
-OwnerId = int
-
 counter = itertools.count(1)
 
 
@@ -123,3 +125,4 @@ def serial() -> int:
 
 INDEX_HTML = open("ninjamagic/static/index.html", "r").read()
 LOGIN_HTML = open("ninjamagic/static/login.html", "r").read()
+Walltime = float

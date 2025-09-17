@@ -1,10 +1,12 @@
+from collections import defaultdict
 from dataclasses import dataclass as signal
 from dataclasses import field
 from typing import Iterator, TypeVar, cast
 
 from fastapi import WebSocket
 
-from ninjamagic.util import Compass, serial
+from ninjamagic.component import ActionId, EntityId
+from ninjamagic.util import Compass, Reach, Walltime, serial
 from ninjamagic.world import Legend, Span
 
 
@@ -12,115 +14,115 @@ class Signal:
     pass
 
 
-@signal
+T = TypeVar("T", bound=Signal)
+
+qs: dict[type[Signal], list[Signal]] = defaultdict(list)
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Connected(Signal):
     """A client connected."""
 
-    source: int
+    source: EntityId
     client: WebSocket
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
 class Disconnected(Signal):
     """A client disconnected."""
 
-    source: int
+    source: EntityId
     client: WebSocket
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
 class Inbound(Signal):
     """An inbound message."""
 
-    source: int
+    source: EntityId
     text: str
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
+class Parse(Signal):
+    """Parse an inbound message."""
+
+    source: EntityId
+    text: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Move(Signal):
     """An entity move in a `Compass` direction."""
 
-    source: int
+    source: EntityId
     dir: Compass
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
 class Act(Signal):
     """An entity act that will pulse `next` at `end`."""
 
-    source: int
-    start: float
-    end: float
+    source: EntityId
+    start: Walltime
+    end: Walltime
     next: Signal
-    id: int = field(default_factory=serial)
+    id: ActionId = field(default_factory=serial)
 
     def __lt__(self, other):
         return self.end < other.end
 
 
-@signal
-class Outbound(Signal):
-    """An outbound message."""
+@signal(frozen=True, slots=True, kw_only=True)
+class Emit(Signal):
+    """An entity sends messages to others."""
 
-    to: int
+    source: EntityId
+    reach: Reach
     text: str
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
+class Outbound(Signal):
+    """An outbound message."""
+
+    to: EntityId
+    text: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class OutboundSpan(Signal):
     """An outbound span of tiles."""
 
-    to: int
+    to: EntityId
     span: Span
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
 class OutboundLegend(Signal):
     """An outbound map legend."""
 
-    to: int
+    to: EntityId
     span: Legend
 
 
-@signal
+@signal(frozen=True, slots=True, kw_only=True)
 class OutboundMove(Signal):
     """An outbound entity movement."""
 
-    to: int
-
-
-T = TypeVar("T", bound=Signal)
-
-qs: dict[type[Signal], list[Signal]] = {
-    Connected: list[Connected](),
-    Disconnected: list[Disconnected](),
-    Act: list[Act](),
-    Inbound: list[Inbound](),
-    Move: list[Move](),
-    Outbound: list[Outbound](),
-    OutboundSpan: list[OutboundSpan](),
-    OutboundLegend: list[OutboundLegend](),
-    OutboundMove: list[OutboundMove](),
-}
-
-
-def _get_queue(cls: type[T]) -> list[T]:
-    try:
-        return cast(list[T], qs[cls])
-    except KeyError as e:
-        raise KeyError(f"No queue for {cls.__name__}") from e
+    to: EntityId
 
 
 def iter(cls: type[T]) -> Iterator[T]:
     """Get signals of type T."""
-    for sig in qs[cls]:
+    for sig in cast(list[T], qs[cls]):
         yield sig
 
 
 def pulse(*sigs: tuple[Signal, ...]) -> None:
     """Route signals into their queues."""
     for sig in sigs:
-        _get_queue(type(sig)).append(sig)
+        qs[type(sig)].append(sig)
 
 
 def clear() -> None:

@@ -5,12 +5,13 @@ from collections import defaultdict
 import esper
 
 from ninjamagic import bus
-from ninjamagic.util import Connection, OwnerId
+from ninjamagic.component import Connection
+from ninjamagic.component import OwnerId
 
 log = logging.getLogger("uvicorn.access")
 
 
-def flush():
+def process():
     # Collate the packets.
     packets = defaultdict(list)
     for signal in bus.iter(bus.Outbound):

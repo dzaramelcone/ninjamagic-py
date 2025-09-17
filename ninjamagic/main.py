@@ -9,8 +9,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus
 from ninjamagic.auth import router as auth_router
+from ninjamagic.component import OwnerId
 from ninjamagic.state import State
-from ninjamagic.util import INDEX_HTML, OWNER, OwnerId
+from ninjamagic.util import INDEX_HTML, OWNER
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("uvicorn.access")
@@ -44,6 +45,9 @@ async def ws(client: WebSocket) -> None:
         bus.pulse(bus.Connected(source=user_id, client=client))
         while True:
             text = await client.receive_text()
+            # TODO: preprocessor
+            if text[0] == "'":
+                text = f"say {text[1:]}"
             bus.pulse(bus.Inbound(source=user_id, text=text))
     except WebSocketDisconnect:
         pass
