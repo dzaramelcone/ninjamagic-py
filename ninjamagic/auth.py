@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 import httpx
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ninjamagic.config import settings
@@ -33,16 +33,40 @@ discord = oauth.register(
 )
 
 
+def get_account_owner(request: Request) -> str:
+    return request.session.get(OWNER, "")
+
+
+OwnerDep = Annotated[str, Depends(get_account_owner)]
+
+
+def owner_challenge(user: OwnerDep) -> str:
+    if not user:
+        raise HTTPException(status_code=303, headers={"location": "/auth/"})
+    return user
+
+
+ChallengeDep = Annotated[str, Depends(owner_challenge)]
+
+
+def admin_owner_challenge(req: Request, user: ChallengeDep) -> str:
+    if user != 1:
+        log.warning("User %s failed an admin challenge.", user)
+        req.session.clear()
+        raise HTTPException(status_code=303, headers={"location": "/auth/"})
+    return user
+
+
 @router.get("/", include_in_schema=False)
-async def login(req: Request):
-    if req.session.get(OWNER, None):
+async def login(req: Request, owner: OwnerDep):
+    if owner:
         return RedirectResponse(url="/", status_code=303)
     return HTMLResponse(LOGIN_HTML)
 
 
 @router.get("/google/login")
-async def login_via_google(req: Request):
-    if req.session.get(OWNER, None):
+async def login_via_google(req: Request, owner: OwnerDep):
+    if owner:
         return RedirectResponse(url="/", status_code=303)
 
     return await google.authorize_redirect(
@@ -69,8 +93,8 @@ async def auth_via_google(req: Request, q: Repository):
 
 
 @router.get("/discord/login")
-async def login_via_discord(req: Request):
-    if req.session.get(OWNER, None):
+async def login_via_discord(req: Request, owner: OwnerDep):
+    if owner:
         return RedirectResponse(url="/", status_code=303)
     return await discord.authorize_redirect(
         req,
