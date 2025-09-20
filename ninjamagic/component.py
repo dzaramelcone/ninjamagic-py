@@ -1,5 +1,6 @@
 from fastapi import WebSocket
 
+
 EntityId = int
 ActionId = int
 Connection = WebSocket

@@ -1,6 +1,8 @@
+import logging
+from typing import Annotated
 import httpx
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ninjamagic.config import settings
@@ -10,6 +12,7 @@ from ninjamagic.util import LOGIN_HTML, OWNER
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
+log = logging.getLogger(__name__)
 
 google = oauth.register(
     name=OauthProvider.GOOGLE,
@@ -100,3 +103,22 @@ async def auth_via_discord(req: Request, q: Repository):
     )
     req.session[OWNER] = account
     return RedirectResponse(url="/", status_code=303)
+
+
+if settings.allow_local_auth:
+    log.warning("Using local auth. Do not use this in production.")
+
+    @router.get("/local")
+    async def auth_via_local(
+        req: Request,
+        q: Repository,
+        subj: Annotated[str, Query()],
+        email: Annotated[str, Query()],
+    ):
+        account = await q.upsert_identity(
+            provider=OauthProvider.DISCORD,
+            subject=subj,
+            email=email,
+        )
+        req.session[OWNER] = account
+        return RedirectResponse(url="/", status_code=303)

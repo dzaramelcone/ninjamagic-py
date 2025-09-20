@@ -20,6 +20,9 @@ in_range = {Reach.adjacent: adjacent, Reach.visible: visible}
 
 
 def process():
+    if bus.empty(bus.Emit):
+        return
+
     clients = esper.get_components(Connection, Position)
     for sig in bus.iter(bus.Emit):
         origin = esper.try_component(sig.source, Position)
@@ -27,7 +30,8 @@ def process():
             continue
 
         pred = in_range[sig.reach]
-        for eid, _, pos in clients:
+        for eid, comps in clients:
+            _, pos = comps
             if sig.source == eid:
                 continue
 

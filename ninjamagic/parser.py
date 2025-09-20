@@ -1,7 +1,7 @@
 import logging
 
 from ninjamagic import bus
-from ninjamagic.cmd import commands
+from ninjamagic.commands import commands
 
 log = logging.getLogger("uvicorn.access")
 
@@ -16,6 +16,7 @@ def process():
         match = next((x for x in commands if x.text.startswith(cmd)), None)
         if not match:
             bus.pulse(bus.Outbound(to=sig.source, text="Huh?"))
+            continue
 
         ok, err = match.trigger(sig)
         if not ok:

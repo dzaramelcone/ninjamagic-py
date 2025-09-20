@@ -43,11 +43,11 @@ class Say(Command):
         if not rest:
             return False, "You open your mouth, as if to speak."
 
-        first = f'You say, "{rest}"'
+        first = f"You say, '{rest}'"
         bus.pulse(bus.Outbound(to=root.source, text=first))
 
-        second = f"They say, {rest}"
-        bus.pulse(bus.Emit(source=root.source, reach=Reach.visible, text=second))
+        second = f"They say, '{rest}'"
+        bus.pulse(bus.Emit(source=root.source, reach=Reach.adjacent, text=second))
         return OK
 
 

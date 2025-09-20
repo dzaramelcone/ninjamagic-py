@@ -113,6 +113,10 @@ class OutboundMove(Signal):
     to: EntityId
 
 
+def empty(cls: type[T]) -> bool:
+    return not bool(qs[cls])
+
+
 def iter(cls: type[T]) -> Iterator[T]:
     """Get signals of type T."""
     for sig in cast(list[T], qs[cls]):

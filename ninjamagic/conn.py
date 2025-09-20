@@ -3,7 +3,7 @@ import logging
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Connection
+from ninjamagic.component import Connection, Position
 
 log = logging.getLogger(__name__)
 
@@ -15,9 +15,10 @@ def process():
         # TODO: Create an entity.
 
         esper.add_component(
-            entity=c.source,
-            component_instance=c.client,
-            type_alias=Connection,
+            entity=c.source, component_instance=c.client, type_alias=Connection
+        )
+        esper.add_component(
+            entity=c.source, component_instance=(1, 1, 1), type_alias=Position
         )
 
         # TODO: Send location data.

@@ -45,7 +45,7 @@ async def ws(client: WebSocket) -> None:
         bus.pulse(bus.Connected(source=user_id, client=client))
         while True:
             text = await client.receive_text()
-            # TODO: preprocessor
+            # TODO: preprocessor for user-defined aliases
             if text[0] == "'":
                 text = f"say {text[1:]}"
             bus.pulse(bus.Inbound(source=user_id, text=text))
