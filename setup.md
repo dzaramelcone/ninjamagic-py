@@ -16,6 +16,24 @@ TODO: We will need https. Once we have domain and a cert from a CA, setup nginx 
 ghdeploy ALL=(root) NOPASSWD: /usr/bin/touch /var/lib/ninjamagic/deploy.trigger
 ninjamagic ALL=(root) NOPASSWD: /bin/systemctl restart ninjamagic.service
 
+# ufw 
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw allow 8000/tcp
+
+Remove the last one once nginx is up and force https.
+
+# Enable the firewall
+sudo ufw enable
+
+# sshd
+sudo nano /etc/ssh/sshd_config
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AllowUsers dzara ghdeploy
+
 ## postgresql
 
 sudo -u postgres psql
@@ -37,7 +55,7 @@ After=network.target postgresql.service
 User=ninjamagic
 Group=ninjamagic
 WorkingDirectory=/srv/ninjamagic-py
-ExecStart=/snap/bin/uv run uvicorn ninjamagic.main:app --host=0.0.0.0 --ws-max-size=1024 --timeout-keep-alive=10>
+ExecStart=/snap/bin/uv run uvicorn ninjamagic.main:app --host=0.0.0.0 --ws-max-size=1024 --timeout-keep-alive=10 --h11-max-incomplete-event-size=4096
 Restart=always
 RestartSec=2
 StandardOutput=journal
@@ -87,7 +105,6 @@ command="sudo /usr/bin/touch /var/lib/ninjamagic/deploy.trigger",no-port-forward
 set -euo pipefail
 
 APP_DIR="/srv/ninjamagic-py"
-SERVICE="ninjamagic"
 LOCK="/var/lock/ninjamagic-update.lock"
 
 exec 9> "$LOCK"
@@ -106,33 +123,24 @@ echo "[update] $LOCAL -> $REMOTE"
 git merge --ff-only origin/main
 uv sync
 
-systemctl restart "$SERVICE"
+sudo /bin/systemctl restart ninjamagic.service
 ```
 sudo chown ninjamagic:ninjamagic /usr/local/bin/ninjamagic-update.sh
 sudo chmod 550 /usr/local/bin/ninjamagic-update.sh
 
-## nano /etc/polkit-1/rules.d/10-ninjamagic-restart.rules
-```
-polkit.addRule(function(action, subject) {
-    if (action.id == "org.freedesktop.systemd1.manage-units") {
-        if (action.lookup("unit") == "ninjamagic.service") {
-            var verb = action.lookup("verb");
-            if (verb == "restart" || verb == "start" || verb == "stop") {
-                return polkit.Result.YES;
-            }
-        }
-    }
-});
-```
 
 # Useful commands
 journalctl -u ninjamagic -f
 systemctl status ninjamagic
 systemctl status postgresql
 systemctl status fail2ban
+
 ## Check deploy trigger is working
 sudo journalctl -u ninjamagic-deploy --no-pager
 
+## Check auth logs
+Make sure noone is brute forcing you.
+
 # Fail2ban
 `sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local`
-Then enable ssh and incremental
+Then enable ssh and incremental ban timers
