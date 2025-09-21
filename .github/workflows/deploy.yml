@@ -18,4 +18,4 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Trigger Deployment
         run: |
-          ssh ghdeploy@${{ secrets.SERVER_IP }}
+          ssh ghdeploy@${{ secrets.SERVER }}
