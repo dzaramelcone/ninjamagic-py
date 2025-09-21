@@ -8,7 +8,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus
-from ninjamagic.admin import router as admin_router
 from ninjamagic.auth import ChallengeDep, router as auth_router
 from ninjamagic.component import OwnerId
 from ninjamagic.state import State
@@ -19,7 +18,6 @@ log = logging.getLogger("uvicorn.access")
 
 
 app = FastAPI(lifespan=State())
-app.include_router(router=admin_router)
 app.include_router(router=auth_router)
 app.add_middleware(SessionMiddleware, secret_key=str(uuid4()))
 app.mount("/static", StaticFiles(directory="ninjamagic/static"), name="static")
