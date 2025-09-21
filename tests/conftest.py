@@ -46,28 +46,19 @@ def golden(
         if isinstance(data, str):
             data = json.loads(data)
             assert data, "Did not receive valid json data!"
-            nonlocal ctr
-            g_path = base_dir / f"{request.node.name}-{ctr}.json"
-            ctr += 1
-            if golden_update or not g_path.exists():
-                g_path.parent.mkdir(parents=True, exist_ok=True)
-                g_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
-                return
-
-            expected = json.loads(g_path.read_text())
-            assert data == expected
-
+            data = json.dumps(data, indent=2, sort_keys=True) + "\n"
         elif isinstance(data, bytes):
             data = data.hex()
-            g_path = base_dir / f"{request.node.name}-{ctr}.bin"
-            ctr += 1
-            if golden_update or not g_path.exists():
-                g_path.parent.mkdir(parents=True, exist_ok=True)
-                g_path.write_text(data)
-                return
+        nonlocal ctr
+        g_path = base_dir / f"{request.node.name}-{ctr}.out"
+        ctr += 1
+        if golden_update or not g_path.exists():
+            g_path.parent.mkdir(parents=True, exist_ok=True)
+            g_path.write_text(data)
+            return
 
-            expected_bytes = g_path.read_text()
-            assert data == expected_bytes
+        expected = g_path.read_text()
+        assert data == expected
 
     return _golden
 
