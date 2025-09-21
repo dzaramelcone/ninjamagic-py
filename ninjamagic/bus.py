@@ -7,7 +7,7 @@ from fastapi import WebSocket
 
 from ninjamagic.component import ActionId, EntityId
 from ninjamagic.util import Compass, Reach, Walltime, serial
-from ninjamagic.world import Legend, Span
+from ninjamagic.world import Legend
 
 
 class Signal:
@@ -91,11 +91,11 @@ class Outbound(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class OutboundSpan(Signal):
-    """An outbound span of tiles."""
+class OutboundTile(Signal):
+    """An outbound chip tile."""
 
     to: EntityId
-    span: Span
+    data: bytes
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -103,7 +103,7 @@ class OutboundLegend(Signal):
     """An outbound map legend."""
 
     to: EntityId
-    span: Legend
+    legend: Legend
 
 
 @signal(frozen=True, slots=True, kw_only=True)

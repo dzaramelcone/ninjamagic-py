@@ -14,7 +14,7 @@ from ninjamagic.state import State
 from ninjamagic.util import INDEX_HTML, OWNER
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("uvicorn.access")
+log = logging.getLogger(__name__)
 
 
 app = FastAPI(lifespan=State())

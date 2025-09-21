@@ -4,9 +4,8 @@ from typing import Protocol
 from ninjamagic import bus
 from ninjamagic.util import Compass, Reach
 
-log = logging.getLogger("uvicorn.access")
-Err = str
-Out = tuple[bool, Err]
+log = logging.getLogger(__name__)
+Out = tuple[bool, str]
 OK = (True, "")
 
 

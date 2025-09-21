@@ -3,66 +3,15 @@ import itertools
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum, auto
 
-VIEWSPAN = 7
-
 
 class Reach(IntEnum):
     adjacent = auto()  # symmetric, transitive, reflexive
     visible = auto()  # symmetric, intransitive, reflexive
 
 
-@dataclass(slots=True, frozen=True)
-class Rect:
-    """Axis-aligned rectangle."""
-
-    left: int
-    top: int
-    right: int
-    bottom: int
-
-    @property
-    def width(self) -> int:
-        return self.right - self.left
-
-    @property
-    def height(self) -> int:
-        return self.bottom - self.top
-
-    def is_empty(self) -> bool:
-        return self.width <= 0 or self.height <= 0
-
-    def clamp(self, width: int, height: int) -> "Rect":
-        """Return a rect clamped to [0,width), [0,height)."""
-        return Rect(
-            left=max(0, min(width, self.left)),
-            top=max(0, min(height, self.top)),
-            right=max(0, min(width, self.right)),
-            bottom=max(0, min(height, self.bottom)),
-        )
-
-    def intersect(self, other: "Rect") -> "Rect":
-        """Return the intersection of this rect and another."""
-        return Rect(
-            left=max(self.left, other.left),
-            top=max(self.top, other.top),
-            right=min(self.right, other.right),
-            bottom=min(self.bottom, other.bottom),
-        )
-
-    def to_slices(self) -> tuple[slice, slice]:
-        """Return (yslice, xslice) for NumPy slicing."""
-        return slice(self.top, self.bottom), slice(self.left, self.right)
-
-    @staticmethod
-    def from_size(left: int, top: int, width: int, height: int) -> "Rect":
-        """Build a rect from top-left corner and size."""
-        return Rect(left, top, left + width, top + height)
-
-    @staticmethod
-    def from_center(cx: int, cy: int, width: int, height: int) -> "Rect":
-        """Build a rect centered on (cx, cy)."""
-        half_w, half_h = width // 2, height // 2
-        return Rect(cx - half_w, cy - half_h, cx - half_w + width, cy - half_h + height)
+class Packets(StrEnum):
+    Message = "m"
+    Legend = "l"
 
 
 @dataclass(frozen=True)
@@ -115,12 +64,25 @@ class Compass(StrEnum):
                 return None
 
 
-OWNER = "user"
-counter = itertools.count(1)
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Size:
+    width: int
+    height: int
 
 
-def serial() -> int:
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Glyph:
+    char: str
+    color: ColorHSV
+
+
+def serial(counter=itertools.count(1)) -> int:
     return next(counter)
+
+
+OWNER = "user"
+TILE_STRIDE = Size(width=13, height=13)
+VIEW_STRIDE = Size(width=TILE_STRIDE.width // 2, height=TILE_STRIDE.height // 2)
 
 
 INDEX_HTML = open("ninjamagic/static/index.html", "r").read()

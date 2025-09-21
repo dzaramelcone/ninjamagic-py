@@ -1,5 +1,22 @@
 [
   {
-    "m": "You open your mouth, as if to speak."
+    "l": {
+      "0": {
+        "char": ".",
+        "color": {
+          "h": 1,
+          "s": 1,
+          "v": 1
+        }
+      },
+      "1": {
+        "char": "#",
+        "color": {
+          "h": 1,
+          "s": 1,
+          "v": 1
+        }
+      }
+    }
   }
 ]
