@@ -130,7 +130,8 @@ journalctl -u ninjamagic -f
 systemctl status ninjamagic
 systemctl status postgresql
 systemctl status fail2ban
-
+## Check deploy trigger is working
+sudo journalctl -u ninjamagic-deploy --no-pager
 
 # Fail2ban
 `sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local`
