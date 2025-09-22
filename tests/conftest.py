@@ -42,18 +42,22 @@ def golden(
     base_dir = pathlib.Path(__file__).parent / "goldens"
     ctr = 0
 
-    def _golden(data: str) -> None:
-        data = json.loads(data)
-        assert data, "Did not receive valid json data!"
+    def _golden(data: str | bytes) -> None:
+        if isinstance(data, str):
+            data = json.loads(data)
+            assert data, "Did not receive valid json data!"
+            data = json.dumps(data, indent=2, sort_keys=True) + "\n"
+        elif isinstance(data, bytes):
+            data = data.hex()
         nonlocal ctr
-        g_path = base_dir / f"{request.node.name}-{ctr}.json"
+        g_path = base_dir / f"{request.node.name}-{ctr}.out"
         ctr += 1
         if golden_update or not g_path.exists():
             g_path.parent.mkdir(parents=True, exist_ok=True)
-            g_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+            g_path.write_text(data)
             return
 
-        expected = json.loads(g_path.read_text())
+        expected = g_path.read_text()
         assert data == expected
 
     return _golden

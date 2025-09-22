@@ -2,7 +2,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import Connection, Position
-from ninjamagic.util import VIEWSPAN, Reach
+from ninjamagic.util import VIEW_STRIDE, Reach
 
 
 def adjacent(this: Position, that: Position) -> bool:
@@ -10,10 +10,10 @@ def adjacent(this: Position, that: Position) -> bool:
 
 
 def visible(this: Position, that: Position) -> bool:
-    dx = abs(this.x - that.x)
-    dy = abs(this.y - that.y)
-    dz = abs(this.z - that.z)
-    return max(dx, dy, dz) <= VIEWSPAN
+    return (
+        abs(this.x - that.x) <= VIEW_STRIDE.width
+        and abs(this.y - that.y) <= VIEW_STRIDE.height
+    )
 
 
 in_range = {Reach.adjacent: adjacent, Reach.visible: visible}

@@ -3,6 +3,7 @@ import logging
 import esper
 
 from ninjamagic import bus
+from ninjamagic.world import demo_map, demo_legend, get_tile
 from ninjamagic.component import Connection, Position
 
 log = logging.getLogger(__name__)
@@ -11,26 +12,25 @@ log = logging.getLogger(__name__)
 def process():
     for c in bus.iter(bus.Connected):
         log.info("%s:%s connected.", c.client, c.source)
-
-        # TODO: Create an entity.
-
         esper.add_component(
             entity=c.source, component_instance=c.client, type_alias=Connection
         )
+        pos = Position(mid=demo_map, x=1, y=1)
         esper.add_component(
-            entity=c.source, component_instance=(1, 1, 1), type_alias=Position
+            entity=c.source, component_instance=pos, type_alias=Position
         )
 
-        # TODO: Send location data.
-        # bus.pulse(
-        #     bus.OutboundLegend(
-        #         to=c.source,
-        #         span=
-        #     ),
-        #     bus.OutboundSpan(
-        #         to=c.source,
-        #     ),
-        # )
+        bus.pulse(
+            bus.OutboundLegend(to=c.source, legend=demo_legend),
+            bus.OutboundTile(
+                to=c.source,
+                data=get_tile(
+                    map_id=pos.mid,
+                    top=pos.y,
+                    left=pos.x,
+                ),
+            ),
+        )
 
     for d in bus.iter(bus.Disconnected):
         log.info("%s:%s disconnected.", d.client, d.source)

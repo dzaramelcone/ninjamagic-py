@@ -119,9 +119,9 @@ class State(BaseState):
 
             # invoke systems        #
             conn.process()
-            lag.process(loop.time())
+            lag.process(now=loop.time())
             parser.process()
-            act.process(loop.time())
+            act.process(now=loop.time())
             emit.process()
             outbox.process()
             bus.clear()

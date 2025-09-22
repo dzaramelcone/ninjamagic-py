@@ -3,7 +3,7 @@ import logging
 from ninjamagic import bus
 from ninjamagic.commands import commands
 
-log = logging.getLogger("uvicorn.access")
+log = logging.getLogger(__name__)
 
 
 def process():

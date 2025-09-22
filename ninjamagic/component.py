@@ -1,3 +1,4 @@
+from dataclasses import dataclass as component
 from fastapi import WebSocket
 
 
@@ -6,4 +7,10 @@ ActionId = int
 Connection = WebSocket
 Lag = float
 OwnerId = int
-Position = tuple[int, int, int]
+
+
+@component(slots=True, kw_only=True)
+class Position:
+    mid: EntityId
+    x: int
+    y: int

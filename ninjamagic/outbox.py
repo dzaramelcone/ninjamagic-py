@@ -6,21 +6,30 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import Connection
+from ninjamagic.util import Packets
 
-log = logging.getLogger("uvicorn.access")
+log = logging.getLogger(__name__)
 
 
 def process():
-    if bus.empty(bus.Outbound):
+    # Send tiles as bytes.
+    loop = asyncio.get_running_loop()
+    for signal in bus.iter(bus.OutboundTile):
+        if ws := esper.try_component(signal.to, Connection):
+            loop.create_task(ws.send_bytes(signal.data))
+
+    if bus.empty(bus.Outbound) and bus.empty(bus.OutboundLegend):
         return
 
-    # Collate the packets.
+    # Collate packets.
     packets = defaultdict(list)
     for signal in bus.iter(bus.Outbound):
-        packets[signal.to].append({"m": signal.text})
+        packets[signal.to].append({Packets.Message: signal.text})
+
+    for signal in bus.iter(bus.OutboundLegend):
+        packets[signal.to].append({Packets.Legend: signal.legend})
 
     # Send the packets to their recipients.
-    loop = asyncio.get_running_loop()
     for eid, packet in packets.items():
         if ws := esper.try_component(eid, Connection):
             loop.create_task(ws.send_json(packet))
