@@ -1,97 +1,61 @@
+from dataclasses import asdict
 import heapq
-from dataclasses import dataclass
-from enum import Enum, auto
-
+from enum import Enum
+import struct
+import esper
 import numpy as np
 
-from ninjamagic.util import ColorHSV, Rect
+from ninjamagic.component import EntityId
+from ninjamagic.util import TILE_STRIDE, ColorHSV, Glyph, Size
 
-CHUNK_SZ = (13, 13)
-Glyph = str
+
+Legend = dict[int, dict]
+Chips = np.ndarray[tuple[int, int], np.dtype[np.unsignedinteger]]
 
 
 class Layer(Enum):
-    TERRAIN = auto()
-    OBJECTS = auto()
-    LIGHT = auto()
-    LOS = auto()
-
-    @property
-    def idx(self) -> int:
-        return self.value - 1
+    TERRAIN = 0
 
 
-Z = len(Layer)
+demo_map = esper.create_entity()
+demo_size = Size(width=TILE_STRIDE.width * 3, height=TILE_STRIDE.height * 3)
+demo_chips = np.zeros(shape=(demo_size.height, demo_size.width), dtype=np.uint8)
+for x, y in [(8, 8), (23, 8), (8, 23), (23, 23)]:
+    demo_chips[y, x] = 1
+demo_legend = {
+    0: asdict(Glyph(char=".", color=ColorHSV(1, 1, 1))),
+    1: asdict(Glyph(char="#", color=ColorHSV(1, 1, 1))),
+}
+
+esper.add_component(entity=demo_map, component_instance=demo_size)
+esper.add_component(entity=demo_map, component_instance=demo_chips, type_alias=Chips)
+esper.add_component(entity=demo_map, component_instance=demo_legend, type_alias=Legend)
 
 
-@dataclass(slots=True)
-class Span:
-    """A span of terrain cells."""
-
-    left: int
-    top: int
-    width: int
-    height: int
-    layers: list[np.ndarray]
-
-    def __dict__(self) -> dict:
-        return {
-            "left": self.left,
-            "top": self.top,
-            "width": self.width,
-            "height": self.height,
-            "layers": [arr.tolist() for arr in self.layers],
-        }
-
-    def layer(self, z: Layer) -> np.ndarray:
-        return self.layers[z.idx]
+tile_cache: dict[tuple[int, int, int], bytes] = {}
 
 
-class Legend(dict[int, tuple[Glyph, ColorHSV]]):
-    """A map legend with the glyph and color of each terrain type."""
+def get_tile(*, map_id: EntityId, top: int, left: int) -> bytes:
+    """
+    Get a 13x13 tile from a map, starting from (top, left).
 
+    Left and top are floored to an increment of TILE_STRIDE.
+    """
 
-@dataclass
-class Floor:
-    width: int
-    height: int
-    legend: Legend
+    chips = esper.component_for_entity(map_id, Chips)
+    size = esper.component_for_entity(map_id, Size)
 
-    def __post_init__(self):
-        self.tiles = np.zeros((self.height, self.width, Z), dtype=np.uint8)
+    top = (top % size.height) // TILE_STRIDE.height * TILE_STRIDE.height
+    left = (left % size.width) // TILE_STRIDE.width * TILE_STRIDE.width
+    right = left + TILE_STRIDE.width
+    bot = top + TILE_STRIDE.height
+    key = (map_id, left, top)
+    if cached_tile := tile_cache.get(key, None):
+        return cached_tile
 
-    def get(self, x: int, y: int, z: Layer) -> int:
-        return int(self.tiles[y, x, z.idx])
-
-    def set(self, x: int, y: int, z: Layer, v: int) -> None:
-        self.tiles[y, x, z.idx] = v
-
-    def get_span(self, rect: Rect) -> Span:
-        r = rect.clamp(self.width, self.height)
-        ysl, xsl = r.to_slices()
-
-        out = [None] * Z
-        for z in list(Layer):
-            out[z.idx] = self.tiles[ysl, xsl, z.idx].copy()
-
-        return Span(r.left, r.top, r.width, r.height, out)
-
-
-def make_demo_map() -> Floor:
-    m = Floor(32, 32, {0: (".", ColorHSV(1, 1, 1)), 1: ("#", ColorHSV(1, 1, 1))})
-    z = Layer.TERRAIN.idx
-
-    m.tiles[0, :, z] = 1
-    m.tiles[-1, :, z] = 1
-    m.tiles[:, 0, z] = 1
-    m.tiles[:, -1, z] = 1
-    for x, y in [(8, 8), (23, 8), (8, 23), (23, 23)]:
-        m.set(x, y, Layer.TERRAIN, 1)
-
-    return m
-
-
-demo_map = make_demo_map()
+    data = struct.pack(">Hii", map_id, top, left) + chips[top:bot, left:right].tobytes()
+    tile_cache[key] = data
+    return data
 
 
 def dijkstra_fill(cost_map: np.ndarray, start: tuple[int, int]) -> np.ndarray:
@@ -104,13 +68,14 @@ def dijkstra_fill(cost_map: np.ndarray, start: tuple[int, int]) -> np.ndarray:
     h, w = cost_map.shape
     dist = np.full((h, w), np.inf, dtype=float)
     dist[start] = 0.0
+    dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
     pq = [(0.0, start)]
     while pq:
         d, (y, x) = heapq.heappop(pq)
         if d != dist[y, x]:
             continue
-        for dy, dx in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+        for dy, dx in dirs:
             ny, nx = y + dy, x + dx
             if 0 <= ny < h and 0 <= nx < w:
                 nd = d + cost_map[ny, nx]
