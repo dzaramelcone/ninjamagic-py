@@ -3,12 +3,10 @@
 <meta charset="utf-8" />
 <title>Beat Rail - Box Gate (Updated Visual)</title>
 <style>
-  /* Fixed-width mono to keep geometry stable */
   :root {
     --rail-h: 2.8em;
     --rail-gap: 12px;
     --gate-w: 12ch;
-    /* visual box width */
   }
 
   body {
@@ -50,10 +48,22 @@
     display: inline-block;
   }
 
+  .match-progress {
+    opacity: .65;
+  }
+
+  .ident-progress {
+    opacity: .5;
+    text-decoration: underline dotted currentColor;
+    text-underline-offset: .15em;
+  }
+
   .switch-hint {
-    outline: 2px solid rgba(42, 169, 255, 0.85);
-    outline-offset: 2px;
-    border-radius: 4px;
+    color: cornflowerblue;
+  }
+
+  .space {
+    opacity: .35;
   }
 
   .ghost {
