@@ -1,4 +1,5 @@
 // rail.ts — Multi-rail beat typing (stable soft/hard switches, pristine restore, safe mirroring)
+// Styling lives in rail.css. TS only toggles classes and sets numeric geometry (left/transform) & CSS variables.
 
 type Grade = "perfect" | "great" | "good" | "poor" | "miss";
 
@@ -184,6 +185,17 @@ function measureCH(sampleEl: HTMLElement) {
   CH = probe.getBoundingClientRect().width || 12;
   probe.remove();
 }
+
+function applyCssVars() {
+  const root = document.documentElement.style;
+  root.setProperty("--word-gap", `${WORD_GAP_CH}ch`);
+  root.setProperty("--gate-w-px", `${GATE_W_CH * CH}px`);
+  // --gate-h-px set in ensureGateSize() after measuring a rail row
+  if (!root.getPropertyValue("--gate-left")) {
+    root.setProperty("--gate-left", "50%");
+  }
+}
+
 function setFeedback(s: string) {
   feedbackEl.textContent = s;
   if (s) setTimeout(() => (feedbackEl.textContent = ""), 160);
@@ -209,6 +221,7 @@ function playTone(grade: Grade) {
   o.start(t);
   o.stop(t + cfg.d + 0.03);
 }
+
 function visualBoxBounds() {
   const t = trackEl.getBoundingClientRect(),
     g = gateBoxEl.getBoundingClientRect();
@@ -256,6 +269,8 @@ type WordDom = {
 };
 
 class Rail {
+  railIndex: number;
+
   railRoot: HTMLDivElement;
   lineEl: HTMLDivElement;
   flyEl: HTMLDivElement;
@@ -281,33 +296,24 @@ class Rail {
 
   ghostedEl: HTMLElement | null = null;
 
-  constructor(public railIndex: number) {
+  constructor(railIndex: number) {
+    this.railIndex = railIndex;
+
     this.railRoot = document.createElement("div");
     this.railRoot.className = "rail-row";
-    this.railRoot.style.position = "relative";
-    this.railRoot.style.overflow = "hidden";
 
     this.lineEl = document.createElement("div");
     this.lineEl.className = "line";
-    this.lineEl.style.position = "relative";
-    this.lineEl.style.display = "inline-flex";
-    this.lineEl.style.alignItems = "center";
-    this.lineEl.style.gap = `${WORD_GAP_CH}ch`;
-    this.lineEl.style.willChange = "transform";
 
     this.flyEl = document.createElement("div");
     this.flyEl.className = "fly";
-    this.flyEl.style.position = "absolute";
-    this.flyEl.style.top = "50%";
-    this.flyEl.style.transform = "translateY(-50%)";
-    this.flyEl.style.willChange = "left";
-    this.flyEl.style.pointerEvents = "none";
 
     this.railRoot.appendChild(this.lineEl);
     this.railRoot.appendChild(this.flyEl);
     railsEl.appendChild(this.railRoot);
 
     measureCH(this.lineEl);
+    applyCssVars();
     this.buildInitialLine();
     this.relayoutAndAlign();
 
@@ -371,7 +377,6 @@ class Rail {
     for (let i = 0; i < letters.length; i++) {
       const el = letters[i];
       if (!el) continue;
-      // keep leading space hidden; unhide all other glyphs
       if (!el.classList.contains("space")) el.classList.remove("hidden");
       el.classList.remove(
         "ghost",
@@ -379,11 +384,6 @@ class Rail {
         "match-progress",
         "ident-progress"
       );
-      el.style.fontStyle = "";
-      el.style.fontWeight = "";
-      el.style.textDecoration = "";
-      el.style.textUnderlineOffset = "";
-      el.style.textDecorationThickness = "";
     }
     const base = this.firstWordGlyphIndex();
     this.charIndexInWord = base;
@@ -434,11 +434,6 @@ class Rail {
     if (!w) return;
     for (const el of w.letters) {
       el.classList.remove("switch-hint", "match-progress", "ident-progress");
-      el.style.fontStyle = "";
-      el.style.fontWeight = "";
-      el.style.textDecoration = "";
-      el.style.textUnderlineOffset = "";
-      el.style.textDecorationThickness = "";
     }
   }
   applyMatchProgress(n: number, kind: "soft" | "ident") {
@@ -455,11 +450,6 @@ class Rail {
     const el = this.spanAtWordGlyph(idx);
     if (!el) return;
     el.classList.add("switch-hint");
-    el.style.fontStyle = "italic";
-    el.style.fontWeight = "700";
-    el.style.textDecoration = "underline";
-    el.style.textUnderlineOffset = "0.15em";
-    el.style.textDecorationThickness = "2px";
   }
 
   /* ---------- Geometry / preview ---------- */
@@ -488,6 +478,7 @@ class Rail {
   }
   relayoutAndAlign() {
     measureCH(this.lineEl);
+    applyCssVars();
     this.captureBaseLeft();
     this.updatePreviewPositionOnce();
   }
@@ -613,9 +604,9 @@ class Rail {
 
     if (syncToNow) {
       const tMs = Math.max(0, performance.now() - this.windowStartMs);
-      this.flyEl.style.left = `${this.flyXAt(tMs)}px`;
+      (this.flyEl as HTMLElement).style.left = `${this.flyXAt(tMs)}px`;
     } else {
-      this.flyEl.style.left = `${this.startX}px`;
+      (this.flyEl as HTMLElement).style.left = `${this.startX}px`;
     }
   }
 
@@ -672,7 +663,7 @@ class Rail {
     if (this.windowStartMs == null) return;
     const tMs = now - this.windowStartMs;
     const x = this.flyXAt(tMs);
-    this.flyEl.style.left = `${x}px`;
+    (this.flyEl as HTMLElement).style.left = `${x}px`;
 
     if (!this.atLeftStopThisWindow && tMs >= this.tStopMs) {
       this.atLeftStopThisWindow = true;
@@ -713,13 +704,14 @@ class Rail {
     const normKey = key === " " ? " " : key.toLowerCase();
     const tMs = performance.now() - (this.windowStartMs || 0);
 
+    // While a hard-switch is armed, only allow keys that decide the rail (manager handles)
     if (manager.switchArmed && normKey !== expected) return false;
 
     if (normKey === expected) {
       if (tMs < DWELL_MS) {
         const xNow = this.flyXAt(tMs);
         this.bufferedGrade = spatialGradeAtX(xNow);
-        this.earlyLatchActive = true;
+        this.earlyLatchActive = true; // buffer until perfect moment
         this.inputLocked = true;
         return true;
       }
@@ -730,14 +722,17 @@ class Rail {
       this.advanceChar(isSpaceMarker);
       return true;
     } else {
+      // try soft switch if miss can continue a candidate
       if (manager.trySoftSwitchFromMiss(this, normKey)) return true;
 
       if (tMs < DWELL_MS) {
+        // early wrong: buffer a MISS at perfect, do not consume now
         this.missLatchActive = true;
         this.inputLocked = true;
         this.hadMissThisWord = true;
         return true;
       }
+      // late wrong: immediate miss & consume
       setFeedback("miss");
       playTone("miss");
       this.hadMissThisWord = true;
@@ -793,10 +788,12 @@ class RailManager {
     const row0 = this.rails[0]?.railRoot;
     if (!row0) return;
     const rowH = row0.offsetHeight;
-    gateBoxEl.style.width = `${GATE_W_CH * CH}px`;
-    gateBoxEl.style.height = `${rowH}px`;
-    gateBoxEl.style.position = "absolute";
-    gateBoxEl.style.left = gateBoxEl.style.left || "50%";
+    const root = document.documentElement.style;
+    root.setProperty("--gate-w-px", `${GATE_W_CH * CH}px`);
+    root.setProperty("--gate-h-px", `${rowH}px`);
+    if (!root.getPropertyValue("--gate-left")) {
+      root.setProperty("--gate-left", "50%");
+    }
   }
   moveGateToActive(animate: boolean) {
     this.ensureGateSize();
@@ -811,7 +808,7 @@ class RailManager {
     this.rails.forEach((r) => r.clearAllHints());
 
     if (this.switchArmed) {
-      // hard-switch hints: underline first glyph of all rails
+      // hard-switch hints: underline/mark first glyph of all rails
       this.rails.forEach((r) => r.setNextGlyphHintAt(0));
       return;
     }
@@ -1001,16 +998,9 @@ window.addEventListener("resize", () => {
       r.ensureFirstWordSpaceHidden();
       r.relayoutAndAlign();
     });
+    measureCH(railsEl);
+    applyCssVars();
     manager.ensureGateSize();
     manager.moveGateToActive(false);
   }) as unknown as number;
 });
-
-/* -------------------- Optional CSS helpers --------------------
-.match-progress { opacity:.65; }
-.ident-progress { opacity:.5; text-decoration: underline dotted currentColor; text-underline-offset:.15em; }
-.switch-hint { font-style:italic; font-weight:700; text-decoration:underline; text-underline-offset:.15em; text-decoration-thickness:2px; }
-.space { opacity:.35; }
-.hidden { visibility:hidden; }
-.ghost { opacity:.3; }
----------------------------------------------------------------- */
