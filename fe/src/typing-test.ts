@@ -1,3 +1,29 @@
+import { LitElement, html, css, type PropertyValues, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import gsap from "gsap";
+import { CSSPlugin } from "gsap/CSSPlugin";
+
+gsap.registerPlugin(CSSPlugin);
+
+// --- Type Definitions ---
+type GlyphStatus = "pending" | "correct" | "incorrect" | "dissolved";
+type DissolveType = "fade" | "wave" | "scatter" | "shatter";
+
+interface Glyph {
+  char: string;
+  status: GlyphStatus;
+  wordIndex: number;
+  glyphIndex: number;
+  isExtra?: boolean;
+}
+
+interface Word {
+  word: Glyph[];
+  isComplete: boolean;
+  isCorrect: boolean;
+  isLocked: boolean;
+}
+
 /**
  * A highly interactive and animated typing test web component.
  *
@@ -8,7 +34,7 @@
  * @customElement typing-test
  *
  * @property {string} phrase - The text phrase for the user to type.
- * @property {number} spawnStagger - The delay (in seconds) between each character appearing in the intro animation.
+ * @property {number} spawnDuration - The total duration (in seconds) for the entire phrase to complete its spawn animation.
  * @property {DissolveType} correctDissolveType - The dissolve animation to play for correctly completed words ('fade' or 'wave').
  * @property {DissolveType} errorDissolveType - The dissolve animation for incorrect words (Note: this is overridden by the shatter effect for locked-in words).
  * @property {string} keySoundUrl - An optional URL for a sound to play on correct key presses.
@@ -24,9 +50,9 @@
  *
  * --- FEATURES ---
  *
- * - **Animated Introduction:** Glyphs gracefully slide in from the right with a staggered effect upon loading.
+ * - **Animated Introduction:** Glyphs gracefully slide in from the right. The total animation time is configurable.
  *
- * - **Realistic Typing Flow:** The cursor advances even on incorrect input, allowing the user to continue typing and fix mistakes with the backspace key, mimicking a real text editor.
+ * - **Realistic Typing Flow:** The cursor advances even on incorrect input. Incorrect characters typed at the end of a word are appended (up to a max of 7), requiring the user to backspace them.
  *
  * - **Advanced Word Completion Logic:**
  * - Correctly typed words play a "dissolve" animation and disappear.
@@ -44,37 +70,12 @@
  * - The component is focusable and ready for input immediately, even during the intro animation.
  * - Focus is subtly indicated by the presence of the blinking cursor, with no distracting outlines or box shadows.
  */
-
-import { LitElement, html, css, type PropertyValues, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import gsap from "gsap";
-import { CSSPlugin } from "gsap/CSSPlugin";
-
-gsap.registerPlugin(CSSPlugin);
-
-// --- Type Definitions ---
-type GlyphStatus = "pending" | "correct" | "incorrect" | "dissolved";
-type DissolveType = "fade" | "wave" | "scatter" | "shatter";
-
-interface Glyph {
-  char: string;
-  status: GlyphStatus;
-  wordIndex: number;
-  glyphIndex: number;
-}
-
-interface Word {
-  word: Glyph[];
-  isComplete: boolean;
-  isCorrect: boolean;
-  isLocked: boolean; // FIX: New state to prevent race conditions
-}
-
 @customElement("typing-test")
 export class TypingTest extends LitElement {
   // --- Reactive Properties ---
   @property({ type: String }) phrase: string;
-  @property({ type: Number, attribute: "spawn-stagger" }) spawnStagger: number;
+  @property({ type: Number, attribute: "spawn-duration" })
+  spawnDuration: number;
   @property({ type: String, attribute: "correct-dissolve-type" })
   correctDissolveType: DissolveType;
   @property({ type: String, attribute: "error-dissolve-type" })
@@ -102,7 +103,7 @@ export class TypingTest extends LitElement {
   constructor() {
     super();
     this.phrase = "The quick brown fox jumps over the lazy dog.";
-    this.spawnStagger = 0.05;
+    this.spawnDuration = 1.5;
     this.correctDissolveType = "fade";
     this.errorDissolveType = "scatter";
     this.keySoundUrl = "";
@@ -142,13 +143,22 @@ export class TypingTest extends LitElement {
     this.focus();
     this._updateActiveGlyphPosition(true);
 
-    if (container) container.style.overflowX = "hidden";
+    if (!container || glyphs.length === 0) return;
+
+    const individualGlyphAnimDuration = 1.0;
+    const staggerAmount =
+      glyphs.length > 1
+        ? (this.spawnDuration - individualGlyphAnimDuration) /
+          (glyphs.length - 1)
+        : 0;
+
+    container.style.overflowX = "hidden";
     gsap.from(glyphs, {
-      duration: 1,
+      duration: individualGlyphAnimDuration,
       x: 300,
       opacity: 0,
       ease: "power4.out",
-      stagger: this.spawnStagger,
+      stagger: staggerAmount,
       onComplete: () => {
         if (container) container.style.overflowX = "visible";
       },
@@ -174,6 +184,7 @@ export class TypingTest extends LitElement {
         status: "pending" as GlyphStatus,
         wordIndex: wIndex,
         glyphIndex: gIndex,
+        isExtra: false,
       }));
 
       if (wIndex < wordStrings.length - 1) {
@@ -182,6 +193,7 @@ export class TypingTest extends LitElement {
           status: "pending" as GlyphStatus,
           wordIndex: wIndex,
           glyphIndex: glyphs.length,
+          isExtra: false,
         });
       }
 
@@ -190,7 +202,7 @@ export class TypingTest extends LitElement {
         isComplete: false,
         isCorrect: true,
         isLocked: false,
-      }; // FIX: Initialize isLocked state
+      };
     });
 
     this._words = words;
@@ -225,28 +237,79 @@ export class TypingTest extends LitElement {
     }
     event.preventDefault();
 
+    if (event.key === "Backspace") {
+      this._handleBackspace();
+    } else if (event.key.length === 1) {
+      this._handleCharacterInput(event.key);
+    }
+
+    this.requestUpdate();
+  };
+
+  private _handleCharacterInput(key: string): void {
     const activeWord = this._words[this._activeWordIndex];
     if (!activeWord) return;
 
-    const isAtEndOfWord = this._activeGlyphIndex >= activeWord.word.length;
-    if (isAtEndOfWord && event.key !== "Backspace") {
+    const expectedGlyph = activeWord.word[this._activeGlyphIndex];
+
+    // If there is no expected glyph, we're at the end of the final word
+    if (!expectedGlyph) {
+      if (this._activeWordIndex === this._words.length - 1) {
+        this._addIncorrectGlyph(activeWord, key);
+      }
       return;
     }
 
-    const expectedGlyph = activeWord.word[this._activeGlyphIndex];
-    if (expectedGlyph && event.key.length === 1) {
-      if (event.key === " " && expectedGlyph.char === " ") {
-        this._handleWordTransition(activeWord);
-      } else if (event.key === expectedGlyph.char) {
-        this._handleCorrectInput(activeWord, expectedGlyph);
-      } else {
-        this._handleIncorrectInput(activeWord, expectedGlyph);
-      }
-    } else if (event.key === "Backspace") {
-      this._handleBackspace();
+    // Correctly typed space to transition to the next word
+    if (expectedGlyph.char === " " && key === " ") {
+      this._handleWordTransition(activeWord);
+      return;
     }
-    this.requestUpdate();
-  };
+
+    // Incorrect character typed where a space was expected
+    if (expectedGlyph.char === " " && key !== " ") {
+      this._addIncorrectGlyph(activeWord, key);
+      return;
+    }
+
+    // Standard character comparison
+    if (key === expectedGlyph.char) {
+      this._handleCorrectInput(activeWord, expectedGlyph);
+    } else {
+      this._handleIncorrectInput(activeWord, expectedGlyph);
+    }
+  }
+
+  private _addIncorrectGlyph(word: Word, char: string): void {
+    const extraCharsCount = word.word.filter((g) => g.isExtra).length;
+
+    // FIX: Only allow 7 extra characters to be added.
+    if (extraCharsCount >= 7) {
+      this._playSound(this._errorSound);
+      return;
+    }
+
+    this._playSound(this._errorSound);
+    word.isCorrect = false;
+
+    const newGlyph: Glyph = {
+      char: char,
+      status: "incorrect",
+      wordIndex: this._activeWordIndex,
+      glyphIndex: this._activeGlyphIndex,
+      isExtra: true,
+    };
+
+    // Insert the new glyph at the current cursor position
+    word.word.splice(this._activeGlyphIndex, 0, newGlyph);
+
+    // Re-index subsequent glyphs
+    for (let i = this._activeGlyphIndex + 1; i < word.word.length; i++) {
+      word.word[i].glyphIndex = i;
+    }
+
+    this._activeGlyphIndex++;
+  }
 
   private _handleCorrectInput(activeWord: Word, expectedGlyph: Glyph): void {
     this._playSound(this._keySound);
@@ -257,6 +320,7 @@ export class TypingTest extends LitElement {
       this._activeGlyphIndex === activeWord.word.length - 1;
 
     if (isLastGlyphOfPhrase) {
+      activeWord.isCorrect = true; // Final word is now correct
       this._handleTestCompletion();
     } else {
       this._activeGlyphIndex++;
@@ -264,12 +328,10 @@ export class TypingTest extends LitElement {
   }
 
   private _handleIncorrectInput(activeWord: Word, expectedGlyph: Glyph): void {
-    if (expectedGlyph.status === "pending") {
-      this._playSound(this._errorSound);
-      activeWord.isCorrect = false;
-      expectedGlyph.status = "incorrect";
-      this._activeGlyphIndex++;
-    }
+    this._playSound(this._errorSound);
+    activeWord.isCorrect = false;
+    expectedGlyph.status = "incorrect";
+    this._activeGlyphIndex++;
   }
 
   private _handleBackspace(): void {
@@ -277,28 +339,39 @@ export class TypingTest extends LitElement {
 
     if (this._activeGlyphIndex > 0) {
       this._activeGlyphIndex--;
-    } else if (this._activeWordIndex > 0) {
-      const prevWord = this._words[this._activeWordIndex - 1];
+      const activeWord = this._words[this._activeWordIndex];
+      const glyph = activeWord.word[this._activeGlyphIndex];
 
-      // FIX: Check the isLocked property. This is now set instantly and prevents the race condition.
-      if (prevWord.isLocked) {
-        return;
+      if (glyph?.isExtra) {
+        // If it's an extra character, remove it completely
+        activeWord.word.splice(this._activeGlyphIndex, 1);
+        // Re-index subsequent glyphs
+        for (let i = this._activeGlyphIndex; i < activeWord.word.length; i++) {
+          activeWord.word[i].glyphIndex = i;
+        }
+      } else if (glyph) {
+        // Otherwise, it's an original character; just reset its status
+        glyph.status = "pending";
       }
-
+    } else if (this._activeWordIndex > 0) {
+      // Move to the previous word
+      const prevWord = this._words[this._activeWordIndex - 1];
+      if (prevWord.isLocked) return;
       this._activeWordIndex--;
       this._activeGlyphIndex = prevWord.word.length - 1;
       prevWord.isComplete = false;
     }
 
-    const glyphToReset =
-      this._words[this._activeWordIndex].word[this._activeGlyphIndex];
-    if (glyphToReset?.status !== "dissolved") {
-      glyphToReset.status = "pending";
-    }
-
+    // After any change, re-evaluate if the current word is correct
     const currentWord = this._words[this._activeWordIndex];
-    currentWord.isCorrect = currentWord.word.every(
-      (g) => g.status === "pending" || g.status === "correct"
+    if (currentWord) {
+      this._revalidateWord(currentWord);
+    }
+  }
+
+  private _revalidateWord(word: Word): void {
+    word.isCorrect = word.word.every(
+      (g) => !g.isExtra && (g.status === "correct" || g.status === "pending")
     );
   }
 
@@ -309,6 +382,7 @@ export class TypingTest extends LitElement {
     }
 
     this._playSound(this._keySound);
+    this._revalidateWord(currentWord);
     this._handleWordCompletion(currentWord.isCorrect, this._activeWordIndex);
 
     if (this._activeWordIndex < this._words.length - 1) {
@@ -337,6 +411,33 @@ export class TypingTest extends LitElement {
       activeGlyphSelector
     ) as HTMLElement;
 
+    // If target glyph doesn't exist (e.g., at the end of a word), target the last known glyph and offset
+    if (!targetGlyph && this._activeGlyphIndex > 0) {
+      const prevGlyphSelector = `.glyph[data-word-index="${
+        this._activeWordIndex
+      }"][data-glyph-index="${this._activeGlyphIndex - 1}"]`;
+      const prevGlyph = this.renderRoot.querySelector(
+        prevGlyphSelector
+      ) as HTMLElement;
+      if (prevGlyph) {
+        const containerRect = (
+          this.renderRoot.querySelector(".typing-container") as HTMLElement
+        ).getBoundingClientRect();
+        const glyphRect = prevGlyph.getBoundingClientRect();
+        const targetX = glyphRect.right - containerRect.left; // Position cursor after the last char
+        const targetY = glyphRect.top - containerRect.top;
+        gsap.to(this._cursorElement, {
+          duration: 0.15,
+          x: targetX,
+          y: targetY,
+          height: glyphRect.height,
+          force3D: true,
+          ease: "power2.out",
+        });
+        return;
+      }
+    }
+
     if (!targetGlyph) return;
 
     const containerRect = (
@@ -357,14 +458,12 @@ export class TypingTest extends LitElement {
       ease: "power2.out",
     });
   }
-  // New helper method to handle the shatter effect
   private _triggerShatterOnWord(wordIndex: number): void {
     const wordElement = this.renderRoot.querySelector(
       `.word-container[data-word-index="${wordIndex}"]`
     ) as HTMLElement;
     if (!wordElement) return;
 
-    // Immediately remove the underline before the animation starts
     wordElement.style.textDecoration = "none";
 
     const glyphs = Array.from(
@@ -372,29 +471,23 @@ export class TypingTest extends LitElement {
     ) as HTMLElement[];
     if (glyphs.length === 0) return;
 
-    // Play the animation and hide the word container when it's done
     this._animateShatter(glyphs).eventCallback("onComplete", () => {
       wordElement.style.visibility = "hidden";
     });
   }
 
-  // Updated method to trigger the shatter effect
   private _handleWordCompletion(wasCorrect: boolean, wordIndex: number): void {
     const word = this._words[wordIndex];
     if (!word) return;
 
     if (wasCorrect) {
-      // Lock the current correct word instantly.
       word.isLocked = true;
 
-      // NEW: Look backwards for any incorrect words that are now permanently wrong.
       for (let i = wordIndex - 1; i >= 0; i--) {
         const prevWord = this._words[i];
 
-        // If we hit a word that was already locked, we can stop.
         if (prevWord.isLocked) break;
 
-        // If we find an incorrect word, lock it and shatter it.
         if (!prevWord.isCorrect) {
           prevWord.isLocked = true;
           this._triggerShatterOnWord(i);
@@ -402,14 +495,12 @@ export class TypingTest extends LitElement {
       }
     }
 
-    // This handles the visual state of the *current* word.
     if (!wasCorrect) {
       word.isComplete = true;
       this.requestUpdate();
       return;
     }
 
-    // This is the original animation logic for the *current* correct word.
     const glyphs = Array.from(
       this.renderRoot.querySelectorAll(`.glyph[data-word-index="${wordIndex}"]`)
     ) as HTMLElement[];
@@ -481,14 +572,12 @@ export class TypingTest extends LitElement {
       marginBottom: 0,
       ease: "power2.in",
       onComplete: () => {
-        // After the animation is done, set the state to trigger final removal
         this._isReadyForRemoval = true;
       },
     });
   }
 
   private _getWordContainerClass(word: Word): string {
-    // Visual completion is still tied to `isComplete`
     if (!word.isComplete) return "";
     return word.isCorrect ? "completed-correct" : "completed-incorrect";
   }
@@ -512,7 +601,7 @@ export class TypingTest extends LitElement {
                   data-status="${glyph.status}"
                   data-word-index="${glyph.wordIndex}"
                   data-glyph-index="${glyph.glyphIndex}"
-                  >${glyph.char === " " ? html`&nbsp;` : glyph.char}</span
+                  >${glyph.char}</span
                 >`
               )}
             </span>`
@@ -539,10 +628,12 @@ export class TypingTest extends LitElement {
       min-height: 100px;
       outline: none;
     }
+    .phrase-output {
+      display: flex;
+      flex-wrap: wrap;
+    }
     .word-container {
-      display: inline-block;
-      white-space: nowrap;
-      font-size: 0;
+      display: inline-flex;
     }
     .word-container.completed-correct {
       visibility: hidden;
@@ -556,6 +647,7 @@ export class TypingTest extends LitElement {
       font-size: 24px;
       transition: color 0.1s ease;
       color: var(--typing-color-pending, #888);
+      width: 1ch;
     }
     .glyph[data-status="correct"] {
       color: var(--typing-color-correct, #333);
