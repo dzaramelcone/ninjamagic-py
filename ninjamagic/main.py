@@ -1,5 +1,4 @@
 import logging
-from uuid import uuid4
 
 import esper
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -9,44 +8,49 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus
 from ninjamagic.auth import ChallengeDep, router as auth_router
+from ninjamagic.config import settings
 from ninjamagic.component import OwnerId
 from ninjamagic.state import State
-from ninjamagic.util import INDEX_HTML, OWNER
+from ninjamagic.util import VITE_HTML, OWNER_SESSION_KEY
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=settings.log_level)
 log = logging.getLogger(__name__)
 
 
 app = FastAPI(lifespan=State())
 app.include_router(router=auth_router)
-app.add_middleware(SessionMiddleware, secret_key=str(uuid4()))
-app.mount("/static", StaticFiles(directory="ninjamagic/static"), name="static")
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+app.mount("/static", StaticFiles(directory="ninjamagic/static/"), name="static")
 
 
 @app.get("/")
 async def index(_: ChallengeDep):
-    return HTMLResponse(INDEX_HTML)
+    return HTMLResponse(VITE_HTML)
 
 
 @app.websocket("/ws")
-async def ws(client: WebSocket) -> None:
-    if not (owner_id := client.session.get(OWNER, None)):
-        await client.close(code=4401, reason="Unauthorized")
+async def ws_main(ws: WebSocket) -> None:
+    if not (owner_id := ws.session.get(OWNER_SESSION_KEY, None)):
+        await ws.close(code=4401, reason="Unauthorized")
         return
 
-    await client.accept()
+    await ws.accept()
 
     try:
+        host, port = ws.client.host, ws.client.port
         user_id = esper.create_entity()
         esper.add_component(user_id, owner_id, OwnerId)
-        bus.pulse(bus.Connected(source=user_id, client=client))
+        log.info("%s:%s - [%s] WS/LOGIN", host, port, owner_id)
+        bus.pulse(bus.Connected(source=user_id, client=ws))
         while True:
-            text = await client.receive_text()
-            # TODO: preprocessor for user-defined aliases
+            text = await ws.receive_text()
+            log.info("%s:%s - [%s] WS/RECV: %s", host, port, owner_id, text)
+            # TODO: preprocessor for input cleanup and user-defined aliases
             if text[0] == "'":
                 text = f"say {text[1:]}"
             bus.pulse(bus.Inbound(source=user_id, text=text))
     except WebSocketDisconnect:
         pass
     finally:
-        bus.pulse(bus.Disconnected(source=user_id, client=client))
+        log.info("%s:%s - WS/LOGOUT [%s]", host, port, owner_id)
+        bus.pulse(bus.Disconnected(source=user_id, client=ws))
