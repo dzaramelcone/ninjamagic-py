@@ -1,6 +1,10 @@
-ninjamagic.env
 .DS_Store
 __pycache__/
+
 notes/
+dist/
+
+ninjamagic.env
 droplet.ninjamagic.env
+
 etc/systemd

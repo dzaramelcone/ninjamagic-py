@@ -6,8 +6,10 @@ from dataclasses import asdict, dataclass
 from functools import cached_property
 from typing import Protocol, TypeVar, overload, runtime_checkable
 
+import esper
+
 import ninjamagic.bus as bus
-from ninjamagic import act, conn, emit, lag, outbox, parser
+from ninjamagic import act, combat, conn, emit, lag, move, outbox, parser, visibility
 
 TPS = 1000
 STEP = 1.0 / TPS
@@ -122,9 +124,13 @@ class State(BaseState):
             lag.process(now=loop.time())
             parser.process()
             act.process(now=loop.time())
+            combat.process()
+            move.process()
+            visibility.process()
             emit.process()
             outbox.process()
             bus.clear()
+            esper.process()
             #                       #
 
             deadline += STEP

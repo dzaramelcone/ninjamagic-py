@@ -6,8 +6,9 @@ from typing import Iterator, TypeVar, cast
 from fastapi import WebSocket
 
 from ninjamagic.component import ActionId, EntityId
-from ninjamagic.util import Compass, Reach, Walltime, serial
-from ninjamagic.world import Legend
+from ninjamagic.visibility import Reach
+from ninjamagic.util import Compass, Walltime, get_walltime, serial
+from ninjamagic.world import ChipSet
 
 
 class Signal:
@@ -52,22 +53,47 @@ class Parse(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class Move(Signal):
-    """An entity move in a `Compass` direction."""
+class MoveCompass(Signal):
+    "An entity move in a `Compass` direction."
 
     source: EntityId
     dir: Compass
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class Act(Signal):
-    """An entity act that will pulse `next` at `end`."""
+class PositionChanged(Signal):
+    "An entity's position changed."
 
     source: EntityId
-    start: Walltime
-    end: Walltime
-    next: Signal
+    from_map_id: EntityId
+    from_x: int
+    from_y: int
+    to_map_id: EntityId
+    to_x: int
+    to_y: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Melee(Signal):
+    "One entity attacking another in melee."
+
+    source: EntityId
+    target: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Act(Signal):
+    "An entity act that will pulse `then` at `end`."
+
+    source: EntityId
+    delay: float
+    then: Signal
+    start: Walltime = field(default_factory=get_walltime)
     id: ActionId = field(default_factory=serial)
+
+    @property
+    def end(self) -> float:
+        return self.start + self.delay
 
     def __lt__(self, other):
         return self.end < other.end
@@ -75,11 +101,15 @@ class Act(Signal):
 
 @signal(frozen=True, slots=True, kw_only=True)
 class Emit(Signal):
-    """An entity sends messages to others."""
+    """Send a message from an entity to others within `reach`.
+
+    If `target` and `target_text`, send `target_text` to `target` instead."""
 
     source: EntityId
     reach: Reach
     text: str
+    target: EntityId | None = None
+    target_text: str = ""
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -92,18 +122,20 @@ class Outbound(Signal):
 
 @signal(frozen=True, slots=True, kw_only=True)
 class OutboundTile(Signal):
-    """An outbound chip tile."""
+    """An outbound map tile."""
 
     to: EntityId
-    data: bytes
+    map_id: EntityId
+    top: int
+    left: int
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class OutboundLegend(Signal):
-    """An outbound map legend."""
+class OutboundChipSet(Signal):
+    """An outbound map chip set."""
 
     to: EntityId
-    legend: Legend
+    chipset: ChipSet
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -111,6 +143,10 @@ class OutboundMove(Signal):
     """An outbound entity movement."""
 
     to: EntityId
+    source: EntityId
+    map_id: EntityId
+    x: int
+    y: int
 
 
 def empty(cls: type[T]) -> bool:
