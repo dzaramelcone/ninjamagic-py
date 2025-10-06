@@ -11,7 +11,7 @@ def process(now: float) -> None:
         act = heapq.heappop(pq)
         if acts.get(act.source) == act.id:
             del acts[act.source]
-            bus.pulse(act.next)
+            bus.pulse(act.then)
 
     for act in bus.iter(bus.Act):
         acts[act.source] = act.id
