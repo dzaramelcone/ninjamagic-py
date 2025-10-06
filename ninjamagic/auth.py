@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
 from ninjamagic.gen.models import OauthProvider
-from ninjamagic.util import LOGIN_HTML, OWNER
+from ninjamagic.util import LOGIN_HTML, OWNER_SESSION_KEY
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
@@ -34,7 +34,7 @@ discord = oauth.register(
 
 
 def get_account_owner(request: Request) -> str:
-    return request.session.get(OWNER, "")
+    return request.session.get(OWNER_SESSION_KEY, "")
 
 
 OwnerDep = Annotated[str, Depends(get_account_owner)]
@@ -88,7 +88,7 @@ async def auth_via_google(req: Request, q: Repository):
         subject=usr.get("sub"),
         email=usr.get("email"),
     )
-    req.session[OWNER] = account
+    req.session[OWNER_SESSION_KEY] = account
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -125,7 +125,7 @@ async def auth_via_discord(req: Request, q: Repository):
         subject=usr.get("id"),
         email=usr.get("email"),
     )
-    req.session[OWNER] = account
+    req.session[OWNER_SESSION_KEY] = account
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -144,5 +144,5 @@ if settings.allow_local_auth:
             subject=subj,
             email=email,
         )
-        req.session[OWNER] = account
+        req.session[OWNER_SESSION_KEY] = account
         return RedirectResponse(url="/", status_code=303)

@@ -1,48 +1,57 @@
-from dataclasses import asdict
 import heapq
-from enum import Enum
-import struct
 import esper
 import numpy as np
 
 from ninjamagic.component import EntityId
-from ninjamagic.util import TILE_STRIDE, ColorHSV, Glyph, Size
+from ninjamagic.util import TILE_STRIDE, Size
 
-
-Legend = dict[int, dict]
-Chips = np.ndarray[tuple[int, int], np.dtype[np.unsignedinteger]]
-
-
-class Layer(Enum):
-    TERRAIN = 0
-
+ChipGrid = np.ndarray[tuple[int, int], np.dtype[np.unsignedinteger]]
+Chip = tuple[int, int, int, float, float, float]
+ChipSet = list[Chip]
+NOWHERE = esper.create_entity()
+nowhere_size = Size(width=TILE_STRIDE.width * 2, height=TILE_STRIDE.height * 2)
+nowhere_chips = np.ones(shape=(nowhere_size.height, nowhere_size.width), dtype=np.uint8)
+nowhere_chipset = [(0, NOWHERE, ord(" "), 1.0, 1.0, 1.0, 1.0)]
+esper.add_component(NOWHERE, nowhere_size)
+esper.add_component(NOWHERE, nowhere_chips, ChipGrid)
+esper.add_component(NOWHERE, nowhere_chipset, ChipSet)
 
 demo_map = esper.create_entity()
+# note to self when factories land; assert multiple of TILE_STRIDE in the ctor
 demo_size = Size(width=TILE_STRIDE.width * 3, height=TILE_STRIDE.height * 3)
-demo_chips = np.zeros(shape=(demo_size.height, demo_size.width), dtype=np.uint8)
+demo_chips = np.ones(shape=(demo_size.height, demo_size.width), dtype=np.uint8)
 for x, y in [(8, 8), (23, 8), (8, 23), (23, 23)]:
-    demo_chips[y, x] = 1
-demo_legend = {
-    0: asdict(Glyph(char=".", color=ColorHSV(1, 1, 1))),
-    1: asdict(Glyph(char="#", color=ColorHSV(1, 1, 1))),
-}
+    demo_chips[y, x] = 2
 
-esper.add_component(entity=demo_map, component_instance=demo_size)
-esper.add_component(entity=demo_map, component_instance=demo_chips, type_alias=Chips)
-esper.add_component(entity=demo_map, component_instance=demo_legend, type_alias=Legend)
+demo_chipset = [
+    # map id, tile id, glyph, h, s, v, a
+    (0, demo_map, ord(" "), 1.0, 1.0, 1.0, 1.0),
+    (1, demo_map, ord("."), 0.52777, 0.5, 0.9, 1.0),
+    (2, demo_map, ord("#"), 0.73888, 0.34, 1.0, 1.0),
+]
+
+esper.add_component(demo_map, demo_size)
+esper.add_component(demo_map, demo_chips, ChipGrid)
+esper.add_component(demo_map, demo_chipset, ChipSet)
+
+
+def get_chipset(*, map_id: EntityId) -> ChipSet:
+    out = esper.try_component(map_id, ChipSet)
+    if not out:
+        raise KeyError(f"Missing ChipSet: {map_id}")
+    return out
 
 
 tile_cache: dict[tuple[int, int, int], bytes] = {}
 
 
-def get_tile(*, map_id: EntityId, top: int, left: int) -> bytes:
-    """
-    Get a 13x13 tile from a map, starting from (top, left).
+def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytes]:
+    """Get a 16x16 tile from a map, starting from (top, left).
 
-    Left and top are floored to an increment of TILE_STRIDE.
+    Left and top are wrapped toroidally, then floored to an increment of TILE_STRIDE.
     """
 
-    chips = esper.component_for_entity(map_id, Chips)
+    chip_grid = esper.component_for_entity(map_id, ChipGrid)
     size = esper.component_for_entity(map_id, Size)
 
     top = (top % size.height) // TILE_STRIDE.height * TILE_STRIDE.height
@@ -51,11 +60,11 @@ def get_tile(*, map_id: EntityId, top: int, left: int) -> bytes:
     bot = top + TILE_STRIDE.height
     key = (map_id, left, top)
     if cached_tile := tile_cache.get(key, None):
-        return cached_tile
+        return top, left, cached_tile
 
-    data = struct.pack(">Hii", map_id, top, left) + chips[top:bot, left:right].tobytes()
+    data = chip_grid[top:bot, left:right].tobytes()
     tile_cache[key] = data
-    return data
+    return top, left, data
 
 
 def dijkstra_fill(cost_map: np.ndarray, start: tuple[int, int]) -> np.ndarray:

@@ -14,7 +14,8 @@
   <script src="/static/xterm.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-webgl@0.18.0/lib/addon-webgl.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
-
+  <script src="/static/world-map.js"></script>
+  <script src="/static/colors.js"></script>
   <style>
     :root {
       /* ─── Material-3 palette ───────────────────────── */
@@ -140,192 +141,91 @@
     <div id="prompt"><input id="cmd" autocomplete="off"></div>
   </div>
   <script>
-    /*--------------------------------------------------
-      1.  Color helpers.
-    --------------------------------------------------*/
-    const pack = (r, g, b) => (r << 16) | (g << 8) | b;
-    const unpack = rgb => [(rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255];
-    const hex2int = hex => pack(...hex2rgb(hex));
-    function int2hex(rgbInt) {
-      const [r, g, b] = unpack(rgbInt);
-      return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
-    }
-    const hex2rgb = hex => hex.match(/\w\w/g).map(h => parseInt(h, 16));
 
-    function rgb2hsv(r, g, b) {          // r-g-b 0-255 → h 0-1, s/v 0-1
-      r /= 255; g /= 255; b /= 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      const d = max - min;
-      const v = max;
-      const s = max === 0 ? 0 : d / max;
-      let h = 0;
+  const css = getComputedStyle(document.documentElement);
+  const cssVar = (name) => css.getPropertyValue(name).trim();
+  const ansi = (n) => cssVar(`--ansi-${n}`);
+  const SURFACE_RGB = hex2rgb(cssVar("--surface"));
+  const theme = {
+    background: cssVar("--surface"),
+    foreground: cssVar("--on-surface"),
+    cursor: cssVar("--primary"),
 
-      if (d !== 0) {
-        switch (max) {
-          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-          case g: h = (b - r) / d + 2; break;
-          case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-      }
-      return [h, s, v];
-    }
+    black: ansi("black"),
+    red: ansi("red"),
+    green: ansi("green"),
+    yellow: ansi("yellow"),
+    blue: ansi("blue"),
+    magenta: ansi("magenta"),
+    cyan: ansi("cyan"),
+    white: ansi("white"),
+    brightBlack: ansi("bright-black"),
+    brightRed: ansi("bright-red"),
+    brightGreen: ansi("bright-green"),
+    brightYellow: ansi("bright-yellow"),
+    brightBlue: ansi("bright-blue"),
+    brightMagenta: ansi("bright-magenta"),
+    brightCyan: ansi("bright-cyan"),
+    brightWhite: ansi("bright-white"),
+  };
 
-    function hsv2rgb(h, s, v) {          // h 0-1, s/v 0-1 → r-g-b 0-255
-      const i = Math.floor(h * 6);
-      const f = h * 6 - i;
-      const p = v * (1 - s);
-      const q = v * (1 - f * s);
-      const t = v * (1 - (1 - f) * s);
-      let r, g, b;
-      switch (i % 6) {
-        case 0: r = v; g = t; b = p; break;
-        case 1: r = q; g = v; b = p; break;
-        case 2: r = p; g = v; b = t; break;
-        case 3: r = p; g = q; b = v; break;
-        case 4: r = t; g = p; b = v; break;
-        case 5: r = v; g = p; b = q; break;
-      }
-      return [r * 255 | 0, g * 255 | 0, b * 255 | 0];
-    }
-
-    function lerpHSV(aRgb, bRgb, t) {
-      const [ar, ag, ab] = unpack(aRgb);
-      const [br, bg, bb] = unpack(bRgb);
-      let [h1, s1, v1] = rgb2hsv(ar, ag, ab);
-      let [h2, s2, v2] = rgb2hsv(br, bg, bb);
-
-      /* wrap hue through shortest arc */
-      let dh = h2 - h1;
-      if (dh > 0.5) dh -= 1;
-      if (dh < -0.5) dh += 1;
-      const h = (h1 + dh * t + 1) % 1;
-      const s = s1 + (s2 - s1) * t;
-      const v = v1 + (v2 - v1) * t;
-
-      const [r, g, b] = hsv2rgb(h, s, v);
-      return pack(r, g, b);
-    }
-
-    function lerpHSV_rgb(a, b, t){
-      const [h1,s1,v1] = rgb2hsv(a[0], a[1], a[2]);
-      const [h2,s2,v2] = rgb2hsv(b[0], b[1], b[2]);
-      let dh = h2 - h1; if (dh > 0.5) dh -= 1; if (dh < -0.5) dh += 1;
-      const h = (h1 + dh * t + 1) % 1;
-      const s = s1 + (s2 - s1) * t;
-      const v = v1 + (v2 - v1) * t;
-      return hsv2rgb(h, s, v);  // returns [r,g,b]
-    }
-
-    const css = getComputedStyle(document.documentElement);
-    const cssVar = name => css.getPropertyValue(name).trim();
-    const ansi = n => cssVar(`--ansi-${n}`);
-    const SURFACE_RGB = hex2rgb(cssVar('--surface'));
-    const theme = {
-      background: cssVar('--surface'),
-      foreground: cssVar('--on-surface'),
-      cursor: cssVar('--primary'),
-
-      black: ansi('black'),
-      red: ansi('red'),
-      green: ansi('green'),
-      yellow: ansi('yellow'),
-      blue: ansi('blue'),
-      magenta: ansi('magenta'),
-      cyan: ansi('cyan'),
-      white: ansi('white'),
-      brightBlack: ansi('bright-black'),
-      brightRed: ansi('bright-red'),
-      brightGreen: ansi('bright-green'),
-      brightYellow: ansi('bright-yellow'),
-      brightBlue: ansi('bright-blue'),
-      brightMagenta: ansi('bright-magenta'),
-      brightCyan: ansi('bright-cyan'),
-      brightWhite: ansi('bright-white')
-    };
 
     /*--------------------------------------------------
     2. Layer buffers
     --------------------------------------------------*/
-    const Player = { x: 10, y: 10 };
-    const TerrainLegend = { glyph: [' '], color: [[40,40,40]] };
-    const LAYERS = 4;    // TERRAIN, OBJECTS, LIGHT, LOS
-    const WORLD_W = 256; // >= map max (TODO set from server)
-    const WORLD_H = 256;
+    const worldMaps = new WorldMaps();
     const COLS = 13, ROWS = 13;
-    const World = {
-      w: WORLD_W,
-      h: WORLD_H,
-      L: LAYERS,
-      // one flat plane per layer: Uint8Array[h*w]
-      planes: Array.from({ length: LAYERS }, () => new Uint8Array(WORLD_W * WORLD_H)),
-      idx(x, y) { return y * this.w + x; },
+    const Player = { map_id: 1, x: 1, y: 1 };
+
+    const GameState = {
+        CONNECTING: 'CONNECTING',
+        LOADING_MAP: 'LOADING_MAP',
+        READY: 'READY',
+        DISCONNECTED: 'DISCONNECTED',
     };
-
-    const keyframes = [
-      { t: 0.00, pal: { bg: '#1B1E26', surface: '#1C1F27', primary: '#7DD3FC', onSurface: '#ECE6F0' } }, // true midnight
-      { t: 0.50, pal: { bg: '#2A2E37', surface: '#333745', primary: '#7DD3FC', onSurface: '#ECE6F0' } }, // your “dimly-lit” look
-      { t: 1.00, pal: { bg: '#1B1E26', surface: '#1C1F27', primary: '#7DD3FC', onSurface: '#ECE6F0' } }  // back to midnight
-    ];
-
-    function paletteAt(t) {
-      for (let i = 1; i < keyframes.length; i++) {
-        if (t <= keyframes[i].t) {
-          const a = keyframes[i - 1], b = keyframes[i];
-          const span = (t - a.t) / (b.t - a.t);
-          const hex2int = hex => pack(...hex2rgb(hex));
-          return {
-            bg: lerpHSV(hex2int(a.pal.bg), hex2int(b.pal.bg), span),
-            surface: lerpHSV(hex2int(a.pal.surface), hex2int(b.pal.surface), span),
-            primary: lerpHSV(hex2int(a.pal.primary), hex2int(b.pal.primary), span),
-            onSurface: lerpHSV(hex2int(a.pal.onSurface), hex2int(b.pal.onSurface), span)
-          };
-        }
-      }
-    }
+    let currentGameState = GameState.CONNECTING;
     function viewOriginFromPlayer() {
-      // center-ish camera; clamp to world bounds
-      let left = Player.x - Math.floor(COLS / 2);
-      let top = Player.y - Math.floor(ROWS / 2);
-      if (left < 0) left = 0;
-      if (top < 0) top = 0;
-      if (left + COLS > World.w) left = World.w - COLS;
-      if (top + ROWS > World.h) top = World.h - ROWS;
+      // Center the camera on the player's position.
+      // The rendering loop will handle toroidal wrapping, so no clamping is needed.
+      const left = Player.x - Math.floor(COLS / 2);
+      const top = Player.y - Math.floor(ROWS / 2);
       return { left, top };
-    }
-
-    function applyWorldUpdate(left, top, width, height, layers2D) {
-      const terrain = layers2D[0]; // layer 0 only for now
-      for (let dy = 0; dy < height; dy++) {
-        const row = terrain[dy];
-        const y = top + dy;
-        let base = World.idx(left, y);
-        for (let dx = 0; dx < width; dx++) {
-          World.planes[0][base + dx] = row[dx];
-        }
-      }
     }
     /*--------------------------------------------------
       5. Per-cell composition
     --------------------------------------------------*/
     function composeFrame(term) {
+      // Determine the top-left corner of the camera viewport
       const { left: camLeft, top: camTop } = viewOriginFromPlayer();
-      let out = '\x1b[H';
+      let out = '\x1b[H'; // ANSI escape code to move cursor to home (top-left)
+
+      // Loop through each cell of the terminal screen (view port)
       for (let vy = 0; vy < ROWS; vy++) {
-        const wy = camTop + vy;
-        for (let vx = 0; vx < COLS; vx++) {
-          const wx = camLeft + vx;
+          const worldY = camTop + vy;
+          for (let vx = 0; vx < COLS; vx++) {
+              const worldX = camLeft + vx;
+              const tileId = worldMaps.getTileAt(Player.map_id, worldX, worldY);
+              if (tileId === null || tileId === undefined) {
+                  out += ' ';
+                  continue;
+              }
+              
+              const legendEntry = worldMaps.getLegendEntry(Player.map_id, tileId);
+              if (!legendEntry) {
+                  out += '?'; 
+                  continue;
+              }
 
-          const tid = World.planes[0][World.idx(wx, wy)];
-          const glyph = TerrainLegend.glyph[tid];
-          const base = TerrainLegend.color[tid];
+              const glyph = legendEntry.char;
+              const hsvColor = legendEntry.color;
+              const baseRgb = hsv2rgb(hsvColor.h, hsvColor.s, hsvColor.v);
 
-          // const k = vignette[vy * COLS + vx];
-          const [r, g, b] = lerpHSV_rgb(base, SURFACE_RGB, 0);
-
-          out += `\x1b[38;2;${r};${g};${b}m${glyph}`;
-        }
-        if (vy < ROWS - 1) out += '\r\n';
+              // apply lighting/effects
+              // 0 returns the base color
+              const [r, g, b] = lerpHSV_rgb(baseRgb, SURFACE_RGB, 0);
+              out += `\x1b[38;2;${r};${g};${b}m${glyph}`;
+          }
+          if (vy < ROWS - 1) out += '\r\n';
       }
       term.write(out + '\x1b[0m');
     }
@@ -359,7 +259,23 @@
       document.documentElement.style.setProperty('--surface', int2hex(surface));
       document.documentElement.style.setProperty('--on-surface', int2hex(onSurface));
       document.documentElement.style.setProperty('--primary', int2hex(primary));
-      composeFrame(term);
+      switch (currentGameState) {
+          case GameState.READY:
+              composeFrame(term);
+              break;
+
+          case GameState.CONNECTING:
+              term.write("\x1b[H\x1b[2JConnecting...");
+              break;
+
+          case GameState.LOADING_MAP:
+              term.write("\x1b[H\x1b[2JLoading map data...");
+              break;
+          
+          case GameState.DISCONNECTED:
+              term.write("\x1b[H\x1b[2JConnection lost. Please refresh.");
+              return;
+      }
       requestAnimationFrame(tick);
     }
     tick();
@@ -387,33 +303,45 @@
     const url = new URL("/ws", location.href);
     url.protocol = url.protocol.replace("http", "ws");
     const ws = new WebSocket(url.toString());
-    const handlers = {
+    const jsonHandlers = {
       m: (payload) => postLine(payload),
-      w: (payload) => applyWorldUpdate(
-        payload.left, payload.top, payload.width, payload.height, payload.layers
-      ),
-      t: (payload) => {
-        TerrainLegend.glyph = payload.map(t => t.g);
-        TerrainLegend.color = payload.map(t => hex2rgb(t.fg));
-        TerrainLegend.ready = true;
-      },
-      p: ([x, y]) => { Player.x = x; Player.y = y; },
+      l: (payload) => worldMaps.handleLegend(payload),
+      p: ([map_id, x, y]) => { Player.map_id = map_id, Player.x = x; Player.y = y; },
     };
 
     ws.addEventListener("open", () => {
       postLine("*** connected ***");
+      currentGameState = GameState.LOADING_MAP; 
+
     });
     ws.addEventListener("message", ev => {
-      for (const item of JSON.parse(ev.data)) {
-        for (const key in item) {
-          const handler = handlers[key];
-          if (handler) handler(item[key]);
+      if (ev.data instanceof Blob) {
+        ev.data.arrayBuffer().then(buffer => {
+          worldMaps.handleTile(buffer);
+          if (currentGameState === GameState.LOADING_MAP) {
+            currentGameState = GameState.READY;
+          }
+        }).catch(error => console.error("Error reading Blob data:", error));
+      }
+      else
+      {
+        for (const item of JSON.parse(ev.data)) {
+          for (const key in item) {
+            const handler = jsonHandlers[key];
+            if (handler) {
+              handler(item[key]);
+            }
+            else {
+              console.warn("No handler for message key: ${key}");
+            }
+          }
         }
       }
     });
 
     ws.addEventListener("close", ev => {
       postLine("*** disconnected (" + ev.code + ") ***");
+      currentGameState = GameState.DISCONNECTED;
     });
 
     ws.addEventListener("error", () => {

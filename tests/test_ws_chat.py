@@ -1,17 +1,12 @@
 import asyncio
 import pytest
 
-from tests.conftest import ClientFactory, GoldenChecker
-
 
 @pytest.mark.asyncio
-async def test_solo_client(
-    golden: GoldenChecker, client_factory: ClientFactory
-) -> None:
+async def test_solo_client(golden, client_factory) -> None:
     alice = await client_factory(subj="alice", email="alice@x.test")
     async with asyncio.timeout(1):
-        for _ in range(2):
-            golden(await alice.recv())
+        golden(await alice.recv())
 
         await alice.send("asdok")
         golden(await alice.recv())
@@ -28,9 +23,8 @@ async def test_chat(golden, client_factory):
     alice = await client_factory(subj="alice", email="alice@x.test")
     bob = await client_factory(subj="bob", email="bob@x.test")
     async with asyncio.timeout(1):
-        for _ in range(2):
-            golden(await alice.recv())
-            golden(await bob.recv())
+        golden(await alice.recv())
+        golden(await bob.recv())
 
         await alice.send("say hi")
         golden(await alice.recv())

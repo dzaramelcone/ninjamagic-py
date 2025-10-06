@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <meta charset="utf-8" />
+  <title>Beat Typing - Tempo-Locked Minimal</title>
+  <style>
+    body { font: 24px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 24px; }
+    #word { display: block; }
+    .line { display: inline-flex; gap: 0.45ch; }
+    .ch { position: relative; display: inline-block; width: 1ch; text-align: center; }
+    .word { opacity: 0.45; }
+    .word.active { opacity: 0.9; }
+    .ch.active { opacity: 1; }
+    .cursor { position: absolute; top: 0; left: 0; width: 2px; height: 1em; background: #4aa3ff; transform: translateX(-50%); pointer-events: none; }
+    #feedback { height: 1.3em; margin-top: .4em; }
+  </style>
+
+  <div id="word" aria-live="polite"></div>
+  <div id="feedback"></div>
+
+  <script type="module" src="src/beat.ts"></script>
+</html>

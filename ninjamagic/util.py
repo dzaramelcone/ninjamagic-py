@@ -1,48 +1,44 @@
-import colorsys
+import asyncio
 import itertools
 from dataclasses import dataclass
-from enum import IntEnum, StrEnum, auto
+from enum import StrEnum
+from typing import Sized
 
 
-class Reach(IntEnum):
-    adjacent = auto()  # symmetric, transitive, reflexive
-    visible = auto()  # symmetric, intransitive, reflexive
+def clamp(x: float, lo: float, hi: float) -> float:
+    return max(min(x, hi), lo)
 
 
-class Packets(StrEnum):
-    Message = "m"
-    Legend = "l"
+def clamp01(x: float) -> float:
+    return clamp(x, 0.0, 1.0)
 
 
-@dataclass(frozen=True)
-class ColorHSV:
-    h: float  # Hue in [0, 360)
-    s: float  # Saturation in [0, 1]
-    v: float  # Value (brightness) in [0, 1]
+def float_to_idx(obj: Sized, weight: float):
+    n = len(obj)
+    return min(n - 1, int(weight * n))
 
-    @classmethod
-    def from_rgb(cls, r: float, g: float, b: float) -> "ColorHSV":
-        """Create from RGB values in [0, 1]."""
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        return cls(h * 360.0, s, v)
 
-    def to_rgb(self) -> tuple[float, float, float]:
-        """Convert to RGB values in [0, 1]."""
-        r, g, b = colorsys.hsv_to_rgb(self.h / 360.0, self.s, self.v)
-        return r, g, b
-
-    def __str__(self) -> str:
-        return f"HSV({self.h:.1f}, {self.s:.2f}, {self.v:.2f})"
+def remap(
+    value: float,
+    in_min: float,
+    in_max: float,
+    out_min: float = 0.0,
+    out_max: float = 1.0,
+) -> float:
+    if in_max == in_min:
+        raise ValueError("in_min and in_max must not be equal")
+    t = (value - in_min) / (in_max - in_min)
+    return out_min + t * (out_max - out_min)
 
 
 class Compass(StrEnum):
     NORTH = "north"
-    NORTHEAST = "northeast"
     EAST = "east"
-    SOUTHEAST = "southeast"
     SOUTH = "south"
-    SOUTHWEST = "southwest"
     WEST = "west"
+    NORTHEAST = "northeast"
+    SOUTHEAST = "southeast"
+    SOUTHWEST = "southwest"
     NORTHWEST = "northwest"
 
     @classmethod
@@ -63,6 +59,26 @@ class Compass(StrEnum):
                         return member
                 return None
 
+    def to_vector(self) -> tuple[int, int]:
+        "Create a (y, x) tuple."
+        match self:
+            case Compass.NORTH:
+                return (-1, 0)
+            case Compass.NORTHEAST:
+                return (-1, 1)
+            case Compass.EAST:
+                return (0, 1)
+            case Compass.SOUTHEAST:
+                return (1, 1)
+            case Compass.SOUTH:
+                return (1, 0)
+            case Compass.SOUTHWEST:
+                return (1, -1)
+            case Compass.WEST:
+                return (0, -1)
+            case Compass.NORTHWEST:
+                return (-1, -1)
+
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Size:
@@ -70,21 +86,25 @@ class Size:
     height: int
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Glyph:
-    char: str
-    color: ColorHSV
-
-
 def serial(counter=itertools.count(1)) -> int:
     return next(counter)
 
 
-OWNER = "user"
-TILE_STRIDE = Size(width=13, height=13)
-VIEW_STRIDE = Size(width=TILE_STRIDE.width // 2, height=TILE_STRIDE.height // 2)
+OWNER_SESSION_KEY = "user"
+TILE_STRIDE = Size(width=16, height=16)
+VIEW_STRIDE = Size(width=6, height=6)
 
-
-INDEX_HTML = open("ninjamagic/static/index.html", "r").read()
+VITE_HTML = open("ninjamagic/static/vite/index.html", "r").read()
+BUILD_HTML = open("ninjamagic/static/gen/index.html", "r").read()
 LOGIN_HTML = open("ninjamagic/static/login.html", "r").read()
+MELEE_DELAY: float = 2.0
+
 Walltime = float
+
+
+def get_walltime() -> Walltime:
+    return asyncio.get_running_loop().time()
+
+
+def get_melee_delay() -> float:
+    return MELEE_DELAY
