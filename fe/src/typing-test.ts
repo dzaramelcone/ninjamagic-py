@@ -539,17 +539,17 @@ export class TypingTest extends LitElement {
       stagger: 0.02,
       ease: "power2.inOut",
     });
-  private _animateScatter = (targets: HTMLElement[]) =>
-    gsap.timeline().to(targets, {
-      duration: 0.6,
-      x: () => gsap.utils.random(-150, 150),
-      y: () => gsap.utils.random(-80, 80),
-      rotation: () => gsap.utils.random(-90, 90),
-      opacity: 0,
-      stagger: 0.01,
-      ease: "power3.out",
-      force3D: true,
-    });
+  // private _animateScatter = (targets: HTMLElement[]) =>
+  //   gsap.timeline().to(targets, {
+  //     duration: 0.6,
+  //     x: () => gsap.utils.random(-150, 150),
+  //     y: () => gsap.utils.random(-80, 80),
+  //     rotation: () => gsap.utils.random(-90, 90),
+  //     opacity: 0,
+  //     stagger: 0.01,
+  //     ease: "power3.out",
+  //     force3D: true,
+  //   });
   private _animateShatter = (targets: HTMLElement[]) =>
     gsap.timeline().to(targets, {
       duration: 0.2,
