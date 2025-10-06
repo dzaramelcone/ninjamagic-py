@@ -11,7 +11,7 @@ from ninjamagic.auth import ChallengeDep, router as auth_router
 from ninjamagic.config import settings
 from ninjamagic.component import OwnerId
 from ninjamagic.state import State
-from ninjamagic.util import VITE_HTML, OWNER_SESSION_KEY
+from ninjamagic.util import BUILD_HTML, VITE_HTML, OWNER_SESSION_KEY
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger(__name__)
@@ -25,7 +25,9 @@ app.mount("/static", StaticFiles(directory="ninjamagic/static/"), name="static")
 
 @app.get("/")
 async def index(_: ChallengeDep):
-    return HTMLResponse(VITE_HTML)
+    if settings.use_vite_proxy:
+        return HTMLResponse(VITE_HTML)
+    return HTMLResponse(BUILD_HTML)
 
 
 @app.websocket("/ws")

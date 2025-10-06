@@ -47,8 +47,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        rail: resolve(__dirname, "rail.html"),
-        typing_test: resolve(__dirname, "typing-test.html"),
+        // rail: resolve(__dirname, "rail.html"),
+        // typing_test: resolve(__dirname, "typing-test.html"),
       },
     },
   },
