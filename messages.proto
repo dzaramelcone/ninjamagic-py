@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package ninjamagic;
+
+message Msg {
+  string text = 1;
+}
+
+message Pos {
+  uint32 id = 1;
+  uint32 map_id = 2;
+  uint32 x = 3;
+  uint32 y = 4;
+}
+
+message Chip {
+  uint32 id = 1;
+  uint32 map_id = 2;
+  uint32 glyph = 3;
+  float h = 4;
+  float s = 5;
+  float v = 6;
+  float a = 7;
+}
+
+message Tile {
+  uint32 map_id = 1;
+  uint32 top = 2;
+  uint32 left = 3;
+  bytes data = 4;
+}
+
+// A wrapper that can contain any of our specific message types.
+message Kind {
+  oneof body {
+    Msg msg = 1;
+    Pos pos = 2;
+    Chip chip = 3;
+    Tile tile = 4;
+  }
+}
+
+// The root message, which is a list of individual messages.
+message Packet {
+  repeated Kind envelope = 1;
+}
