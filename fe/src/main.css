@@ -1,0 +1,108 @@
+:root {
+  /* ─── Material-3 palette ───────────────────────── */
+  --bg: #1B1E26;
+  --surface: #1C1F27;
+  --on-surface: #ECE6F0;
+  --primary: #7DD3FC;
+  --danger: #F38BA8;
+
+  /* 16-colour ANSI map */
+  --ansi-black: var(--bg);
+  --ansi-red: var(--danger);
+  --ansi-green: #8BD5A1;
+  --ansi-yellow: #F9E2AF;
+  --ansi-blue: var(--primary);
+  --ansi-magenta: #D0A8FF;
+  --ansi-cyan: #94E2D5;
+  --ansi-white: var(--on-surface);
+  --ansi-bright-black: #2A2E37;
+  --ansi-bright-red: #F6A0B8;
+  --ansi-bright-green: #A6E3B0;
+  --ansi-bright-yellow: #FAF0BF;
+  --ansi-bright-blue: #A5E4FF;
+  --ansi-bright-magenta: #E1C2FF;
+  --ansi-bright-cyan: #B0F1E4;
+  --ansi-bright-white: #FFFFFF;
+
+  --row-h: 22px;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--on-surface);
+  font-family: 'IBM Plex Mono', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ─── card ────────────────────────────────────────── */
+#card {
+  position: relative;
+  width: calc(50ch + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+#mapBox {
+  align-self: center;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+#chat {
+  width: 100%;
+  height: calc(var(--row-h) * 8);
+  flex: 0 0 calc(var(--row-h) * 8);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.msg {
+  margin: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 19px 'IBM Plex Mono', monospace;
+  font-weight: 300;
+  color: var(--primary);
+  transition: opacity .4s;
+}
+
+/* ─── prompt ──────────────────────────────────────── */
+#prompt {
+  width: 100%;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+#cmd {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0;
+  background: transparent;
+  font: 19px 'IBM Plex Mono', monospace;
+  font-weight: 300;
+  color: var(--primary);
+  caret-color: var(--primary);
+}
+
+.xterm-cursor-layer {
+  opacity: 0;
+}
+.xterm-viewport {
+  display: none;
+}
