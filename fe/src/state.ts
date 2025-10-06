@@ -2,14 +2,6 @@ import { createStore } from "zustand/vanilla";
 import { ROWS, COLS } from "./ui/map";
 const PLAYER_ID = 0;
 
-export const GameState = {
-  CONNECTING: "CONNECTING",
-  LOADING_MAP: "LOADING_MAP",
-  READY: "READY",
-  DISCONNECTED: "DISCONNECTED",
-} as const;
-
-export type GameState = (typeof GameState)[keyof typeof GameState];
 export type EntityPosition = {
   id: number;
   map_id: number;
@@ -28,7 +20,6 @@ type GameStore = {
 };
 
 export const useGameStore = createStore<GameStore>((set, get) => ({
-  gameState: "CONNECTING",
   entities: {},
   messages: [],
   getPlayer: () => {
