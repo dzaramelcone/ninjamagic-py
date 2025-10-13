@@ -1,102 +1,63 @@
-from dataclasses import dataclass
-import random
 from string import Formatter
-from typing import Literal
-import inflect
 
-INFL = inflect.engine()
-RNG = random.Random()
-
-SINGULAR = Literal[1]
-PLURAL = Literal[2]
-Num = Literal[SINGULAR, PLURAL]
+from ninjamagic import bus
+from ninjamagic.component import YOU, EntityId, client, noun
+from ninjamagic.util import RNG, auto_cap
+from ninjamagic.reach import Reach
 
 
-@dataclass(slots=True, frozen=True)
-class Pronoun:
-    they: str
-    them: str
-    their: str
-    theirs: str
-    themselves: str
-    num: Num
+FMT = Formatter()
 
 
-class Pronouns:
-    I = Pronoun("i", "me", "my", "mine", "myself", SINGULAR)  # noqa: E741
-    WE = Pronoun("we", "us", "our", "ours", "ourselves", PLURAL)
-    YOU = Pronoun("you", "you", "your", "yours", "yourself", PLURAL)
-    HE = Pronoun("he", "him", "his", "his", "himself", SINGULAR)
-    SHE = Pronoun("she", "her", "her", "hers", "herself", SINGULAR)
-    IT = Pronoun("it", "it", "its", "its", "itself", SINGULAR)
-    THEY = Pronoun("they", "them", "their", "theirs", "themselves", PLURAL)
-    THIS = Pronoun("this", "this", "its", "its", "itself", SINGULAR)
-    THAT = Pronoun("that", "that", "its", "its", "itself", SINGULAR)
-    THESE = Pronoun("these", "these", "their", "theirs", "themselves", PLURAL)
-    THOSE = Pronoun("those", "those", "their", "theirs", "themselves", PLURAL)
+def render(data: dict, start: str, *args, seed: int | None = None) -> str:
+    RNG.seed(seed)
+
+    def dfs(key: str, choices: dict) -> str:
+        val = RNG.choice(data[key])
+        for _, next_key, _, _ in FMT.parse(val):
+            if next_key and next_key in data:
+                choices[next_key] = dfs(next_key, choices)
+        return FMT.vformat(val, args, choices)
+
+    return auto_cap(dfs(start, {}))
 
 
-@dataclass
-class Entity:
-    name: str
-    pronouns: Pronoun
-    num: Num
-    weapon: "Entity | None" = None
-    hypernyms: list[str] | None = None
+def emit(story: str, reach: Reach, *args: EntityId, **kwargs):
+    has_source = len(args) > 0 and client(args[0])
+    if has_source:
+        bus.pulse(
+            bus.Outbound(
+                to=args[0],
+                text=auto_cap(
+                    FMT.vformat(
+                        story,
+                        [YOU if v is args[0] else noun(v) for v in args],
+                        kwargs,
+                    )
+                ),
+            )
+        )
 
-    def definite(self) -> str:
-        if self.name == "you":
-            return "your"
-        if self.name[0].isupper():
-            return self.name
-        return f"the {self.name}"
-
-    def __format__(self, format_spec: str) -> str:
-        if not format_spec:
-            return self.name
-        if format_spec == "def":
-            return self.definite()
-        if format_spec == "defs":
-            return possessive(self.definite())
-        if format_spec == "hyp":
-            if self.hypernyms:
-                return RNG.choice(self.hypernyms)
-            return self.name
-        if format_spec == "hyps":
-            if self.hypernyms:
-                return possessive(RNG.choice(self.hypernyms))
-            return possessive(self.name)
-        if format_spec == "hyp_def":
-            if self.hypernyms:
-                return f"the {RNG.choice(self.hypernyms)}"
-            return self.definite()
-        if format_spec == "hyp_defs":
-            if self.hypernyms:
-                return possessive(f"the {RNG.choice(self.hypernyms)}")
-            return possessive(self.definite())
-
-        if pronoun := getattr(self.pronouns, format_spec, ""):
-            return pronoun
-        return INFL.plural_verb(format_spec, self.num)
-
-
-def auto_cap(text: str) -> str:
-    out, cap = [], True
-    for ch in text:
-        if cap and ch.isalpha():
-            out.append(ch.upper())
-            cap = False
-        else:
-            out.append(ch)
-        if ch in ".!?":
-            cap = True
-    return "".join(out)
-
-
-def possessive(text: str) -> str:
-    if text == "your":
-        return text
-    return f"{text}'{"" if text[-1] == "s" else "s"}"
+    has_target = len(args) > 1 and client(args[1])
+    bus.pulse(
+        bus.Emit(
+            source=args[0],
+            reach=reach,
+            text=auto_cap(FMT.vformat(story, [noun(v) for v in args], kwargs)),
+            target=args[1] if has_target else None,
+            target_text=(
+                auto_cap(
+                    FMT.vformat(
+                        story,
+                        [YOU if v is args[1] else noun(v) for v in args],
+                        kwargs,
+                    )
+                )
+                if has_target
+                else ""
+            ),
+        ),
+    )
 
 
 STORIES: dict[str, tuple[str]] = {
@@ -228,12 +189,9 @@ STORIES: dict[str, tuple[str]] = {
     ],
     "shallow": [
         "shallow",
-        "narrow",
-        "thin",
-        "small",
+        "shoal",
         "fine",
         "delicate",
-        "surface",
     ],
     "blooms": [
         "blooms",
@@ -429,9 +387,8 @@ STORIES: dict[str, tuple[str]] = {
     "flying": [
         "flying",
         "spinning",
-        "arcing",
+        "spiraling",
         "tumbling",
-        "sailing",
         "soaring",
     ],
     "vivid": ["vivid", "stark", "bright", "raw", "wet", "shocking"],
@@ -566,8 +523,8 @@ STORIES: dict[str, tuple[str]] = {
         "a {ruin} of meat and bone",
         "a sack of failing flesh",
         "the architecture of life undone",
-        "{1:defs} body's {sudden} surrender",
-        "{1:defs} final, graceless bow",
+        "{1:s} body's {sudden} surrender",
+        "{1:s} final, graceless bow",
     ],
     "a_final_stillness": [
         "leaving only a final, {spreading} stillness",
@@ -603,67 +560,42 @@ STORIES: dict[str, tuple[str]] = {
     ],
     "half_severed_the_neck_pours_shoulders_sink_beneath_the_loss": [
         "Half-{severed}, {1:their} {ruined} {throat} {pours}! {1:their} frame {sags}, {the_body_fails}.",
-        "{1:their} head hangs {by_a_thread}! {hot}, {vivid} {blood} {runs} unchecked, pooling at {1:defs} feet!",
-        "{1:their} neck is shred to the spine! {1:defs} {ruined} {throat} {leaks} while {1:their} frame {stoops} in final defeat!",
-        "Bone grinds as the {neck} {buckles}! {1:defs} head {hangs} on a {ruin} of flesh, {the_body_fails}.",
-        "{1:their} spine is {hewn}! {1:defs} head {sags} on its {ruined} stalk as {1:their} knees {buckle}!",
-        "{1:their} {throat} is {ripped_wide}! {1:defs} chin rests on {1:their} collarbone as {hot} life {streams} onto the dust, {the_body_fails}.",
+        "{1:their} head hangs {by_a_thread}! {hot}, {vivid} {blood} {runs} unchecked, pooling at {1:s} feet!",
+        "{1:their} neck is shred to the spine! {1:s} {ruined} {throat} {leaks} while {1:their} frame {stoops} in final defeat!",
+        "Bone grinds as the {neck} {buckles}! {1:s} head {hangs} on a {ruin} of flesh, {the_body_fails}.",
+        "{1:their} spine is {hewn}! {1:s} head {sags} on its {ruined} stalk as {1:their} knees {buckle}!",
+        "{1:their} {throat} is {ripped_wide}! {1:s} chin rests on {1:their} collarbone as {hot} life {streams} onto the dust, {the_body_fails}.",
     ],
     "a_single_blow_parts_the_head_from_trunk": [
         "A single blow {parts} head from trunk! {gushing} arterial {spray}s stain the {dust} as the corpse {drops}, {a_final_stillness}.",
-        "{0:defs} {0.weapon} {cleaves} clean through {1:defs} neck! A {spray} of {hot} {blood} {bursts_open} from the stump as life {leaves} the frame!",
-        "{0:defs} {0.weapon:hyp} {parts} {1:defs} head and body! A {blood} {spray} {blooms} before the empty husk {buckles}!",
-        "{1:defs} head {tumbles} free! A thick {fountain} of {blood} marks the spot as the body {drops}!",
+        "{0:s} {0.weapon} {cleaves} clean through {1:s} neck! A {spray} of {hot} {blood} {bursts_open} from the stump as life {leaves} the frame!",
+        "{0:s} {0.weapon:hyp} {parts} {1:s} head and body! A {blood} {spray} {blooms} before {1:their} empty husk {buckles}!",
+        "{1:s} head {tumbles} free! A thick {fountain} of {blood} marks the spot as the body {drops}!",
         "Head falls one way, body another! a {spray} of {blood} {fans} the space between them! {the_body_fails}.",
-        "{0.weapon:def} cleaves clean through bone! {1:defs} head is sent {flying}! {1:their} corpse {drops}.",
+        "{0.weapon} cleaves clean through bone! {1:s} head is sent {flying}! {1:their} corpse {drops}.",
     ],
     "the_weapon": (
-        "{0.weapon:def}",
-        "{0.weapon:def} in {0:defs} hand",
+        "{0.weapon}",
+        "{0.weapon} in {0:s} hand",
         "{0:their} {swing}",
     ),
     "thigh_bite": (
-        "{the_weapon} {bites} {deeply} into {1:defs} {thigh}.",
-        "{1:defs} {thigh} is {bitten} open by {the_weapon}.",
-        "with a {clean} {swing}, {0:their} {0.weapon} {bites} into {1:defs} {thigh}, spilling {blood}.",
+        "{the_weapon} {bites} {deeply} into {1:s} {thigh}.",
+        "{1:s} {thigh} is {bitten} open by {the_weapon}.",
+        "with a {clean} {swing}, {0:their} {0.weapon} {bites} into {1:s} {thigh}, spilling {blood}.",
         "{the_weapon} lands {0.weapon:their} {edge}. the {bite} opens {muscle}.",
-        "{bone} rattles as {the_weapon} {bites} {1:defs} {thigh}.",
-        "the {bite} runs long; {blood} leaps from {1:defs} {thigh}.",
+        "{bone} rattles as {the_weapon} {bites} {1:s} {thigh}.",
+        "the {bite} runs long; {blood} leaps from {1:s} {thigh}.",
     ),
     "foot_slash": (
         "the {0.weapon} skates along the {poss_target} {foot_top}, and {blood} {leap}.",
-        "{0.weapon:def} {0.weapon:kisses} the {poss_target} {foot_top}; the {target_goblin} {stagger}.",
+        "{0.weapon} {0.weapon:kisses} the {poss_target} {foot_top}; the {target_goblin} {stagger}.",
         "a mean {swing} rakes the {poss_target} {foot_top}.",
     ),
 }
 
 
-FMT = Formatter()
-KATHY = Entity(
-    name="Kathy",
-    pronouns=Pronouns.SHE,
-    num=SINGULAR,
-    weapon=Entity(name="broadsword", pronouns=Pronouns.IT, num=SINGULAR),
-)
-YOU = Entity(name="you", pronouns=Pronouns.YOU, num=PLURAL, weapon=KATHY.weapon)
-GOBLIN = Entity(name="goblin", pronouns=Pronouns.IT, num=SINGULAR)
-FLIES = Entity(name="flies", pronouns=Pronouns.THEY, num=PLURAL)
-
-
-def render(data: dict, start: str, *args, seed: int | None = None) -> str:
-    RNG.seed(seed)
-
-    def dfs(key: str, choices: dict) -> str:
-        val = RNG.choice(data[key])
-        for _, next_key, _, _ in FMT.parse(val):
-            if next_key and next_key in data:
-                choices[next_key] = dfs(next_key, choices)
-        return FMT.vformat(val, args, choices)
-
-    return auto_cap(dfs(start, {}))
-
-
-damage = [
+DAMAGE = [
     # neck
     "a_silver_whisper_brushes_the_throat",
     "a_shallow_cut_blooms_a_blood_collar_marks_the_strike",
@@ -695,18 +627,3 @@ damage = [
     "the_leg_is_hewn_to_the_bone_it_hangs_by_a_ribbon_of_shredded_flesh",
     "one_clean_stroke_severs_the_limb_it_tumbles_to_the_ground_in_a_spray_of_gore",
 ]
-
-if __name__ == "__main__":
-    for i in range(100):
-        seed = RNG.random()
-        a = [
-            "a_silver_whisper_brushes_the_throat",
-            "a_shallow_cut_blooms_a_blood_collar_marks_the_strike",
-            "steel_drives_deep_a_fountain_of_blood_leaps_through_air",
-            "half_severed_the_neck_pours_shoulders_sink_beneath_the_loss",
-            "a_single_blow_parts_the_head_from_trunk",
-        ]
-        b = RNG.choice(a)
-        print(render(STORIES, b, YOU, GOBLIN, seed=seed))
-        print(render(STORIES, b, KATHY, YOU, seed=seed))
-        print(render(STORIES, b, KATHY, GOBLIN, seed=seed))
