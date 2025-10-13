@@ -1,13 +1,11 @@
 import logging
 import esper
-from typing import Callable, Generator
 from ninjamagic import bus
-from ninjamagic.component import Connection, EntityId, Name, Transform, transform
+from ninjamagic.component import Connection, Transform
 from ninjamagic.util import VIEW_STRIDE
 from ninjamagic.world import get_chipset
 
 log = logging.getLogger(__name__)
-Reach = Callable[[Transform, Transform], bool]
 VIEW_W, VIEW_H = VIEW_STRIDE.width, VIEW_STRIDE.height
 CORNERS = (
     (VIEW_W, VIEW_H),
@@ -15,34 +13,6 @@ CORNERS = (
     (VIEW_W, -VIEW_H),
     (-VIEW_W, -VIEW_H),
 )
-
-
-def adjacent(this: Transform, that: Transform) -> bool:
-    # symmetric, transitive, reflexive
-    return this == that
-
-
-def visible(this: Transform, that: Transform) -> bool:
-    # symmetric, intransitive, reflexive
-    return (
-        this.map_id == that.map_id
-        and abs(this.x - that.x) <= VIEW_STRIDE.width
-        and abs(this.y - that.y) <= VIEW_STRIDE.height
-    )
-
-
-def find(
-    this: EntityId, prefix: str, reach: Reach
-) -> Generator[tuple[EntityId, Name, Transform], None, None]:
-    u_tfm = transform(this)
-    for o_id, (name, o_tfm) in esper.get_component(Name, Transform):
-        if o_id == this:
-            continue
-        if not name.startswith(prefix):
-            continue
-        if not reach(o_tfm, u_tfm):
-            continue
-        yield o_id, name, o_tfm
 
 
 def process():

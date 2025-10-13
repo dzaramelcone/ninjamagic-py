@@ -6,7 +6,7 @@ from typing import Iterator, TypeVar, cast
 from fastapi import WebSocket
 
 from ninjamagic.component import ActionId, EntityId
-from ninjamagic.visibility import Reach
+from ninjamagic.reach import Reach
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
 from ninjamagic.world import ChipSet
 
