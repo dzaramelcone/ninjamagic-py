@@ -2,7 +2,66 @@ import asyncio
 import itertools
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Sized
+from typing import Literal, Sized
+import inflect
+import random
+
+RNG = random.Random()
+INFL = inflect.engine()
+SINGULAR = 1
+PLURAL = 2
+Num = Literal[1, 2]
+
+
+def auto_cap(text: str) -> str:
+    out = []
+    cap = can_cap = True
+    for ch in text:
+        if can_cap and cap and ch.isalpha():
+            out.append(ch.upper())
+            cap = False
+        else:
+            out.append(ch)
+        if can_cap and ch in ".!?":
+            cap = True
+        if ch == "'":
+            can_cap = not can_cap
+            cap = False
+    return "".join(out)
+
+
+def possessive(text: str) -> str:
+    if text == "you":
+        return "your"
+    return f"{text}'{"" if text[-1] == "s" else "s"}"
+
+
+@dataclass(slots=True, frozen=True)
+class Pronoun:
+    they: str
+    them: str
+    their: str
+    theirs: str
+    themselves: str
+    num: Num
+
+
+class Pronouns:
+    I = Pronoun("i", "me", "my", "mine", "myself", SINGULAR)  # noqa: E741
+    WE = Pronoun("we", "us", "our", "ours", "ourselves", PLURAL)
+    YOU = Pronoun("you", "you", "your", "yours", "yourself", PLURAL)
+    HE = Pronoun("he", "him", "his", "his", "himself", SINGULAR)
+    SHE = Pronoun("she", "her", "her", "hers", "herself", SINGULAR)
+    IT = Pronoun("it", "it", "its", "its", "itself", SINGULAR)
+    THEY = Pronoun("they", "them", "their", "theirs", "themselves", PLURAL)
+    THIS = Pronoun("this", "this", "its", "its", "itself", SINGULAR)
+    THAT = Pronoun("that", "that", "its", "its", "itself", SINGULAR)
+    THESE = Pronoun("these", "these", "their", "theirs", "themselves", PLURAL)
+    THOSE = Pronoun("those", "those", "their", "theirs", "themselves", PLURAL)
+
+
+def inflect():
+    pass
 
 
 def clamp(x: float, lo: float, hi: float) -> float:
