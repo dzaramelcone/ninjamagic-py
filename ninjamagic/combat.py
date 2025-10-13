@@ -1,6 +1,7 @@
 import random
 from ninjamagic import bus, visibility
-from ninjamagic.component import health, name, pain_mult, skills
+from ninjamagic.component import health, pain_mult, skills
+from ninjamagic.story import emit
 from ninjamagic.util import clamp
 
 
@@ -53,19 +54,10 @@ def process():
         skill_mult, _, _ = contest(attack, defend)
         damage = skill_mult * pain_mult(sig.source) * 10.0
         health(sig.target).cur -= damage
-
-        bus.pulse(
-            bus.Outbound(
-                source=sig.source,
-                text=f"You hit {name(sig.target)} for {damage:.1f} damage!",
-            ),
-            bus.Emit(
-                source=sig.source,
-                reach=visibility.adjacent,
-                text=f"{name(sig.source)} hits {name(sig.target)} for {damage:.1f} damage!",
-                target=sig.target,
-                target_text=f"{name(sig.source)} hits you for {damage:.1f} damage!",
-            ),
-            # TODO send mobbrief to relevant parties
-            # TODO add experience to attacker, defender
+        emit(
+            "{0} {0:hits} {1} for {damage:.1f} damage!",
+            visibility.adjacent,
+            sig.source,
+            sig.target,
+            damage=damage,
         )
