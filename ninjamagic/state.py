@@ -2,9 +2,6 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
-from functools import cached_property
-from typing import Protocol, TypeVar, overload, runtime_checkable
 
 import esper
 
@@ -24,31 +21,7 @@ ALPHA = 1 - 2 ** (-1 / TICKS_PER_HALF_LIFE)
 log = logging.getLogger(__name__)
 
 
-@runtime_checkable
-class ImplementsAsyncOpen(Protocol):
-    async def aopen(self) -> None: ...
-
-
-@runtime_checkable
-class ImplementsAsyncClose(Protocol):
-    async def aclose(self) -> None: ...
-
-
-class UnregisteredDependency(Exception):
-    pass
-
-
-T1 = TypeVar("T1")
-T2 = TypeVar("T2")
-T3 = TypeVar("T3")
-T4 = TypeVar("T4")
-
-
-class BaseState:
-    @cached_property
-    def deps(self):
-        return {type(v): v for v in asdict(self).values()}
-
+class State:
     @asynccontextmanager
     async def __call__(self, app):
         try:
@@ -61,51 +34,14 @@ class BaseState:
 
     async def aopen(self):
         log.info("Starting state.")
-        opens = [
-            svc for svc in self.deps.values() if isinstance(svc, ImplementsAsyncOpen)
-        ]
-        await asyncio.gather(*[open.aopen() for open in opens])
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())
         log.info("Started state.")
 
     async def aclose(self):
-        closes = [
-            svc for svc in self.deps.values() if isinstance(svc, ImplementsAsyncClose)
-        ]
-        await asyncio.gather(*[close.aclose() for close in closes])
         log.info("Ending state.")
+        log.info("Ended state.")
 
-    async def step(self) -> None:
-        pass
-
-    @overload
-    def get(self, t1: type[T1], /) -> T1: ...
-
-    @overload
-    def get(self, t1: type[T1], t2: type[T2], /) -> tuple[T1, T2]: ...
-
-    @overload
-    def get(self, t1: type[T1], t2: type[T2], t3: type[T3], /) -> tuple[T1, T2, T3]: ...
-
-    @overload
-    def get(
-        self, t1: type[T1], t2: type[T2], t3: type[T3], t4: type[T4], /
-    ) -> tuple[T1, T2, T3, T4]: ...
-
-    def get(self, *svc_types: type) -> object:
-        out = []
-        for svc_type in svc_types:
-            if not (dep := self.deps.get(svc_type, None)):
-                raise UnregisteredDependency()
-            out.append(dep)
-        if len(out) == 1:
-            return out[0]
-        return out
-
-
-@dataclass(slots=True, frozen=True)
-class State(BaseState):
     async def step(self) -> None:
         last_logged_sec = 0
         loop = asyncio.get_running_loop()
@@ -130,7 +66,7 @@ class State(BaseState):
             emit.process()
             outbox.process()
             bus.clear()
-            esper.process()
+            esper.clear_dead_entities()
             #                       #
 
             deadline += STEP
