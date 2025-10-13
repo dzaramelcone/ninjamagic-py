@@ -6,11 +6,16 @@ from typing import Literal, Sized
 import inflect
 import random
 
+# TODO: Clean up the RNG global
 RNG = random.Random()
-INFL = inflect.engine()
+INFLECTOR = inflect.engine()
 SINGULAR = 1
 PLURAL = 2
 Num = Literal[1, 2]
+
+
+def conjugate(word: str, num: Num):
+    return INFLECTOR.plural_verb(word, num)
 
 
 def auto_cap(text: str) -> str:
@@ -33,7 +38,7 @@ def auto_cap(text: str) -> str:
 def possessive(text: str) -> str:
     if text == "you":
         return "your"
-    return f"{text}'{"" if text[-1] == "s" else "s"}"
+    return f"{text}'{'' if text[-1] == 's' else 's'}"
 
 
 @dataclass(slots=True, frozen=True)
@@ -58,10 +63,6 @@ class Pronouns:
     THAT = Pronoun("that", "that", "its", "its", "itself", SINGULAR)
     THESE = Pronoun("these", "these", "their", "theirs", "themselves", PLURAL)
     THOSE = Pronoun("those", "those", "their", "theirs", "themselves", PLURAL)
-
-
-def inflect():
-    pass
 
 
 def clamp(x: float, lo: float, hi: float) -> float:
