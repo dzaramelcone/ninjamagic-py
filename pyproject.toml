@@ -33,3 +33,32 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "-n 0"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle (errors)
+  "W",   # pycodestyle (warnings)
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+  "N",   # pep8-naming
+  "B",   # flake8-bugbear
+  "SIM", # flake8-simplify
+  "C4",  # flake8-comprehensions
+  "ASYNC", # flake8-async
+  "PERF",  # perflint
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ninjamagic"]
+combine-as-imports = true
+force-single-line = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
