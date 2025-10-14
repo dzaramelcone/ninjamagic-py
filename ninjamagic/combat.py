@@ -1,15 +1,15 @@
 import random
-from ninjamagic import bus, visibility
+
+from ninjamagic import bus, reach, story
 from ninjamagic.component import health, pain_mult, skills
-from ninjamagic.story import emit
-from ninjamagic.util import clamp
+from ninjamagic.util import RNG, clamp
 
 
 def contest(
     attack_rank: float,
     defend_rank: float,
     *,
-    rng: random.Random,
+    rng: random.Random = RNG,
     jitter_pct: float = 0.05,
     dilute: float = 20.0,  # skill dilution to damp low-level blowouts
     flat_ranks_per_tier: float = 25.0,  # baseline ranks per tier
@@ -24,7 +24,7 @@ def contest(
         return 1.0 + rng.uniform(-jitter_pct, jitter_pct)
 
     def roll(ranks: float) -> float:
-        return float(max(0, int((ranks * jitter() + dilute) + 0.5)))
+        return float(max(0, (ranks + dilute) * jitter()))
 
     attack, defend = roll(attack_rank), roll(defend_rank)
 
@@ -49,14 +49,17 @@ def contest(
 
 def process():
     for sig in bus.iter(bus.Melee):
-        attack = skills(sig.source)["Martial Arts"]
-        defend = skills(sig.target)["Evasion"]
-        skill_mult, _, _ = contest(attack, defend)
+        attack = skills(sig.source).martial_arts
+        defend = skills(sig.target).evasion
+        skill_mult, _, _ = contest(attack.rank, defend.rank)
+
         damage = skill_mult * pain_mult(sig.source) * 10.0
-        health(sig.target).cur -= damage
-        emit(
+        target_health = health(sig.target)
+        target_health.cur -= damage
+
+        story.echo(
             "{0} {0:hits} {1} for {damage:.1f} damage!",
-            visibility.adjacent,
+            reach.adjacent,
             sig.source,
             sig.target,
             damage=damage,
