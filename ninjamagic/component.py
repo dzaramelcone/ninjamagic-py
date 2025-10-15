@@ -1,14 +1,16 @@
-from dataclasses import dataclass as component
-from typing import Literal, Type, TypeVar
+from dataclasses import dataclass as component, field
+from typing import Literal, TypeVar
+
 import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
-from ninjamagic.util import Pronoun, Pronouns, Num
+from ninjamagic.util import Num, Pronoun, Pronouns
 
 MAX_HEALTH = 100.0
-
-ActionId = int
+Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
+Conditions = Literal["normal", "unconscious", "in shock", "dead"]
+ActId = int
 Connection = WebSocket
 EntityId = int
 Stamina = float
@@ -19,16 +21,33 @@ OwnerId = int
 @component(slots=True)
 class Health:
     cur: float = 100.0
+    condition: Conditions = "normal"
+
+
+@component(slots=True)
+class Stance:
+    cur: Stances = "standing"
+
+
+@component(slots=True, kw_only=True)
+class Stats:
+    grace: int = 0
+    grit: int = 0
+    wit: int = 0
 
 
 @component(slots=True, kw_only=True)
 class Skill:
+    name: str
     rank: int = 0
     tnl: float = 0
 
 
-SkillKey = Literal["Martial Arts", "Evasion"]
-Skills = dict[SkillKey, Skill]
+@component(slots=True, kw_only=True)
+class Skills:
+    martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
+    evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
+    generation: int = 0
 
 
 @component(slots=True, kw_only=True)
@@ -36,9 +55,6 @@ class Transform:
     map_id: EntityId
     x: int
     y: int
-
-
-T = TypeVar("T")
 
 
 @component(slots=True, frozen=True)
@@ -95,9 +111,10 @@ class Noun:
 
 
 YOU = Noun(value="you", pronouns=Pronouns.YOU, num=util.PLURAL)
+T = TypeVar("T")
 
 
-def get_component(entity: EntityId, component: Type[T]) -> T:
+def get_component[T](entity: EntityId, component: type[T]) -> T:
     return esper.component_for_entity(entity, component)
 
 
@@ -114,7 +131,7 @@ def health(entity: EntityId) -> Health:
 
 
 def pain_mult(entity: EntityId) -> float:
-    return health(entity) / MAX_HEALTH
+    return max(health(entity).cur / MAX_HEALTH, 0.005)
 
 
 def client(entity: EntityId) -> Connection | None:
@@ -123,3 +140,11 @@ def client(entity: EntityId) -> Connection | None:
 
 def noun(entity: EntityId) -> Noun:
     return get_component(entity, Noun)
+
+
+def stance(entity: EntityId) -> Stance:
+    return get_component(entity, Stance)
+
+
+def stance_is(entity: EntityId, check: Stances) -> bool:
+    return stance(entity).cur == check
