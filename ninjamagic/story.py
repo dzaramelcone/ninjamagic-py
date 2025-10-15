@@ -1,10 +1,8 @@
 from string import Formatter
 
-from ninjamagic import bus
+from ninjamagic import bus, reach
 from ninjamagic.component import YOU, EntityId, client, noun
 from ninjamagic.util import RNG, auto_cap
-from ninjamagic.reach import Reach
-
 
 FMT = Formatter()
 
@@ -22,7 +20,13 @@ def render(data: dict, start: str, *args, seed: int | None = None) -> str:
     return auto_cap(dfs(start, {}))
 
 
-def emit(story: str, reach: Reach, *args: EntityId, **kwargs):
+def echo(
+    story: str,
+    *args: EntityId,
+    range: reach.Selector = reach.adjacent,
+    send_to_target: bool = True,
+    **kwargs,
+):
     has_source = len(args) > 0 and client(args[0])
     if has_source:
         bus.pulse(
@@ -38,13 +42,13 @@ def emit(story: str, reach: Reach, *args: EntityId, **kwargs):
             )
         )
 
-    has_target = len(args) > 1 and client(args[1])
+    send_to_target = send_to_target and len(args) > 1 and client(args[1])
     bus.pulse(
         bus.Emit(
             source=args[0],
-            reach=reach,
+            range=range,
             text=auto_cap(FMT.vformat(story, [noun(v) for v in args], kwargs)),
-            target=args[1] if has_target else None,
+            target=args[1] if send_to_target else None,
             target_text=(
                 auto_cap(
                     FMT.vformat(
@@ -53,7 +57,7 @@ def emit(story: str, reach: Reach, *args: EntityId, **kwargs):
                         kwargs,
                     )
                 )
-                if has_target
+                if send_to_target
                 else ""
             ),
         ),
