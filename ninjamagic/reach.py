@@ -1,10 +1,11 @@
-from typing import Callable, Generator
+from collections.abc import Callable, Generator
 
 import esper
+
 from ninjamagic.component import EntityId, Noun, Transform, transform
 from ninjamagic.util import VIEW_STRIDE
 
-Reach = Callable[[Transform, Transform], bool]
+Selector = Callable[[Transform, Transform], bool]
 
 
 def adjacent(this: Transform, that: Transform) -> bool:
@@ -22,14 +23,14 @@ def visible(this: Transform, that: Transform) -> bool:
 
 
 def find(
-    source: EntityId, prefix: str, reach: Reach
-) -> Generator[tuple[EntityId, Noun, Transform], None, None]:
+    source: EntityId, prefix: str, range: Selector
+) -> Generator[tuple[EntityId, Noun, Transform]]:
     source_transform = transform(source)
-    for other, (noun, other_transform) in esper.get_component(Noun, Transform):
+    for other, (noun, other_transform) in esper.get_components(Noun, Transform):
         if other == source:
             continue
         if not noun.startswith(prefix):
             continue
-        if not reach(other_transform, source_transform):
+        if not range(other_transform, source_transform):
             continue
         yield other, noun, other_transform
