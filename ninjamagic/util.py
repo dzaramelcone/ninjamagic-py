@@ -1,10 +1,11 @@
 import asyncio
 import itertools
+import random
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, Sized
+from typing import Literal
+
 import inflect
-import random
 
 # TODO: Clean up the RNG global
 RNG = random.Random()
@@ -154,9 +155,9 @@ OWNER_SESSION_KEY = "user"
 TILE_STRIDE = Size(width=16, height=16)
 VIEW_STRIDE = Size(width=6, height=6)
 
-VITE_HTML = open("ninjamagic/static/vite/index.html", "r").read()
-BUILD_HTML = open("ninjamagic/static/gen/index.html", "r").read()
-LOGIN_HTML = open("ninjamagic/static/login.html", "r").read()
+VITE_HTML = open("ninjamagic/static/vite/index.html").read()
+BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
+LOGIN_HTML = open("ninjamagic/static/login.html").read()
 MELEE_DELAY: float = 2.0
 
 Walltime = float
@@ -168,3 +169,48 @@ def get_walltime() -> Walltime:
 
 def get_melee_delay() -> float:
     return MELEE_DELAY
+
+
+ContestResult = tuple[float, int, int]
+
+
+def contest(
+    attack_rank: float,
+    defend_rank: float,
+    *,
+    rng: random.Random = RNG,
+    jitter_pct: float = 0.05,
+    dilute: float = 20.0,  # skill dilution to damp low-level blowouts
+    flat_ranks_per_tier: float = 25.0,  # baseline ranks per tier
+    pct_ranks_per_tier: float = 0.185,  # more ranks per tier as both sides grow
+    pct_ranks_per_tier_amplify: float = 7.0,  # amplify base ranks to slightly prefer pct
+    min_mult: float = 0.10,  # clamp: 10%
+    max_mult: float = 10.0,  # clamp: 10x
+) -> ContestResult:
+    "Contest two ranks and return mult, attack rank roll, defend rank roll."
+
+    def jitter() -> float:
+        return 1.0 + rng.uniform(-jitter_pct, jitter_pct)
+
+    def roll(ranks: float) -> float:
+        return float(max(0, (ranks + dilute) * jitter()))
+
+    attack, defend = roll(attack_rank), roll(defend_rank)
+
+    # ranks needed per tier grows with min skill level
+    ranks_per_tier = max(
+        flat_ranks_per_tier,
+        pct_ranks_per_tier * min(attack, defend) + pct_ranks_per_tier_amplify,
+    )
+    tier_delta = (attack - defend) / ranks_per_tier
+
+    # turn tier delta into multiplicative factor:
+    # 1 + |Δ|.
+    mult = 1.0 + abs(tier_delta)
+    # invert if underdog
+    if tier_delta < 0:
+        mult = 1.0 / mult
+    # clamp to bounds
+    mult = clamp(mult, min_mult, max_mult)
+
+    return mult, attack - dilute, defend - dilute
