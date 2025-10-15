@@ -1,8 +1,7 @@
 import math
 
-from ninjamagic import bus
+from ninjamagic import bus, util
 from ninjamagic.component import skills
-from ninjamagic.util import ease_in_out_expo, to_cardinal
 
 
 def get_award(
@@ -23,7 +22,7 @@ def get_award(
     a = math.log(mult, 2.0)
     denom = max(abs(math.log(mn, 2.0)), abs(math.log(mx, 2.0))) or 1.0
     t = min(1.0, abs(a) / denom)
-    w = 1.0 - ease_in_out_expo(t)
+    w = 1.0 - util.ease_in_out_expo(t)
     return lo + (hi - lo) * w
 
 
@@ -33,15 +32,16 @@ def process():
             continue
 
         skill = sig.skill
-        skill.tnl += get_award(sig.mult)
+        skill.tnl += get_award(sig.mult * util.clamp01(sig.risk))
         ranks_gained = int(skill.tnl)
         skill.tnl -= ranks_gained
         skill.rank += ranks_gained
+        ranks_gained = util.to_cardinal(ranks_gained)
 
         if ranks_gained > 0:
             bus.pulse(
                 bus.Outbound(
                     to=sig.source,
-                    text=f"You gain {to_cardinal(ranks_gained)} ranks in your {skill.name} skill.",
+                    text=f"You gain {ranks_gained} ranks in your {skill.name} skill.",
                 )
             )
