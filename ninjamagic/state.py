@@ -6,7 +6,18 @@ from contextlib import asynccontextmanager
 import esper
 
 import ninjamagic.bus as bus
-from ninjamagic import act, combat, conn, emit, lag, move, outbox, parser, visibility
+from ninjamagic import (
+    act,
+    combat,
+    conn,
+    emit,
+    experience,
+    lag,
+    move,
+    outbox,
+    parser,
+    visibility,
+)
 
 TPS = 1000
 STEP = 1.0 / TPS
@@ -63,6 +74,7 @@ class State:
             combat.process()
             move.process()
             visibility.process()
+            experience.process()
             emit.process()
             outbox.process()
             bus.clear()
