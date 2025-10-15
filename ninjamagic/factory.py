@@ -1,13 +1,26 @@
-from ninjamagic.component import EntityId, Transform, Noun, transform
-from ninjamagic import bus
-from ninjamagic.world import demo_map, NOWHERE
-
 import esper
+
+from ninjamagic import bus
+from ninjamagic.component import (
+    EntityId,
+    Health,
+    Noun,
+    Skills,
+    Stance,
+    Stats,
+    Transform,
+    transform,
+)
+from ninjamagic.world import NOWHERE, demo_map
 
 
 def create(entity: EntityId):
     esper.add_component(entity, Transform(map_id=demo_map, x=1, y=1))
     esper.add_component(entity, Noun())
+    esper.add_component(entity, Health())
+    esper.add_component(entity, Stance())
+    esper.add_component(entity, Skills())
+    esper.add_component(entity, Stats())
     bus.pulse(
         bus.PositionChanged(
             source=entity,
