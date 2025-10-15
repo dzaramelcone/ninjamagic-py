@@ -1,12 +1,13 @@
+import asyncio
 from collections import defaultdict
-from dataclasses import dataclass as signal
-from dataclasses import field
-from typing import Iterator, TypeVar, cast
+from collections.abc import Iterator
+from dataclasses import dataclass as signal, field
+from typing import TypeVar, cast
 
 from fastapi import WebSocket
 
-from ninjamagic.component import ActionId, EntityId
-from ninjamagic.visibility import Reach
+from ninjamagic import reach
+from ninjamagic.component import ActId, Conditions, EntityId, Skill, Stances
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
 from ninjamagic.world import ChipSet
 
@@ -45,6 +46,17 @@ class Inbound(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class Learn(Signal):
+    "An entity gained experience."
+
+    source: EntityId
+    skill: Skill
+    mult: float
+    risk: float
+    generation: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Parse(Signal):
     """Parse an inbound message."""
 
@@ -74,11 +86,35 @@ class PositionChanged(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class StanceChanged(Signal):
+    "An entity's stance changed."
+
+    source: EntityId
+    stance: Stances
+    echo: bool = False
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class ConditionChanged(Signal):
+    "An entity's condition changed."
+
+    source: EntityId
+    condition: Conditions
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Melee(Signal):
     "One entity attacking another in melee."
 
     source: EntityId
     target: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Die(Signal):
+    "An entity died."
+
+    source: EntityId
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -89,7 +125,7 @@ class Act(Signal):
     delay: float
     then: Signal
     start: Walltime = field(default_factory=get_walltime)
-    id: ActionId = field(default_factory=serial)
+    id: ActId = field(default_factory=serial)
 
     @property
     def end(self) -> float:
@@ -100,13 +136,20 @@ class Act(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class Interrupt(Signal):
+    "An entity act was interrupted."
+
+    source: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Emit(Signal):
     """Send a message from an entity to others within `reach`.
 
     If `target` and `target_text`, send `target_text` to `target` instead."""
 
     source: EntityId
-    reach: Reach
+    range: reach.Selector
     text: str
     target: EntityId | None = None
     target_text: str = ""
@@ -149,23 +192,27 @@ class OutboundMove(Signal):
     y: int
 
 
-def empty(cls: type[T]) -> bool:
+def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
 
-def iter(cls: type[T]) -> Iterator[T]:
-    """Get signals of type T."""
-    for sig in cast(list[T], qs[cls]):
-        yield sig
+def iter[T: Signal](cls: type[T]) -> Iterator[T]:
+    "Get signals of type T."
+    yield from cast(list[T], qs[cls])
 
 
-def pulse(*sigs: tuple[Signal, ...]) -> None:
-    """Route signals into their queues."""
+def pulse(*sigs: Signal) -> None:
+    "Route signals into their queues."
     for sig in sigs:
         qs[type(sig)].append(sig)
 
 
+def pulse_in(delay: float, *sigs: Signal) -> None:
+    "Route signals into their queues after `delay` seconds."
+    asyncio.get_running_loop().call_later(delay, pulse, *sigs)
+
+
 def clear() -> None:
-    """Clear all signal queues."""
+    "Clear all signal queues."
     for q in qs.values():
         q.clear()

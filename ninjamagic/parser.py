@@ -1,7 +1,6 @@
 import logging
 
-from ninjamagic import bus
-from ninjamagic.commands import commands
+from ninjamagic import act, bus, commands
 
 log = logging.getLogger(__name__)
 
@@ -13,9 +12,24 @@ def process():
             continue
 
         cmd, _, _ = inb.partition(" ")
-        match = next((x for x in commands if x.text.startswith(cmd)), None)
+        match = None
+        for x in commands.commands:
+            if x.text.startswith(cmd):
+                match = x
+                break
+
         if not match:
             bus.pulse(bus.Outbound(to=sig.source, text="Huh?"))
+            continue
+
+        if match.requires_healthy:
+            ok, err = commands.assert_healthy(sig.source)
+            if not ok:
+                bus.pulse(bus.Outbound(to=sig.source, text=err))
+                continue
+
+        if match.requires_not_busy and act.is_busy(sig.source):
+            bus.pulse(bus.Outbound(to=sig.source, text="You're busy!"))
             continue
 
         ok, err = match.trigger(sig)
