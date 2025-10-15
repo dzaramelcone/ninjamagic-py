@@ -5,7 +5,7 @@ from ninjamagic.component import Connection, Transform
 
 
 def process():
-    if bus.empty(bus.Emit):
+    if bus.is_empty(bus.Emit):
         return
 
     clients = esper.get_components(Connection, Transform)
@@ -22,5 +22,5 @@ def process():
                 bus.pulse(bus.Outbound(to=eid, text=sig.target_text))
                 continue
 
-            if sig.reach(origin, pos):
+            if sig.range(origin, pos):
                 bus.pulse(bus.Outbound(to=eid, text=sig.text))
