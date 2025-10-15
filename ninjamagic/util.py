@@ -15,15 +15,26 @@ PLURAL = 2
 Num = Literal[1, 2]
 
 
-def conjugate(word: str, num: Num):
+def conjugate(word: str, num: Num) -> str:
     out = INFLECTOR.plural_verb(word, num)
     if word[-3:] == "ies" and out[-1] == "y":
         return word[:-1]
     return out
 
 
-def to_cardinal(number: int):
-    return INFLECTOR.number_to_words(number)
+def to_cardinal(count: int) -> str:
+    out = INFLECTOR.number_to_words(count, andword="")
+    if out and isinstance(out, str):
+        return out
+    return out[0]
+
+
+def no(word: str, number: int) -> str:
+    return INFLECTOR.no(word, number)
+
+
+def tally(count: int, word: str) -> str:
+    return f"{to_cardinal(count)} {no(word, count)}"
 
 
 def auto_cap(text: str) -> str:
