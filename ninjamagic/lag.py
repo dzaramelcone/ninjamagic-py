@@ -1,14 +1,15 @@
 from collections import defaultdict, deque
-from ninjamagic import bus
+
 import esper
 
+from ninjamagic import bus
 from ninjamagic.component import EntityId, Lag
 
 pending: dict[EntityId, deque[bus.Inbound]] = defaultdict(deque)
 
 
 def process(now: float):
-    if bus.empty(bus.Inbound):
+    if bus.is_empty(bus.Inbound):
         return
 
     for sig in bus.iter(bus.Inbound):
