@@ -100,6 +100,13 @@ class Act(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class Interrupt(Signal):
+    "An entity act was interrupted."
+
+    source: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Emit(Signal):
     """Send a message from an entity to others within `reach`.
 

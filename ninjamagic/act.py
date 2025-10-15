@@ -1,18 +1,26 @@
 import heapq
 
 from ninjamagic import bus
+from ninjamagic.component import ActId, EntityId
 
 pq: list[bus.Act] = []
-acts: dict[int, int] = {}
+current: dict[EntityId, ActId] = {}
+
+
+def is_busy(entity: EntityId):
+    return entity in current
 
 
 def process(now: float) -> None:
+    for interrupt in bus.iter(bus.Interrupt):
+        current.pop(interrupt.source, None)
+
     while pq and pq[0].end < now:
         act = heapq.heappop(pq)
-        if acts.get(act.source) == act.id:
-            del acts[act.source]
+        if current.get(act.source) == act.id:
+            del current[act.source]
             bus.pulse(act.then)
 
     for act in bus.iter(bus.Act):
-        acts[act.source] = act.id
+        current[act.source] = act.id
         heapq.heappush(pq, act)
