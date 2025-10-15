@@ -36,12 +36,13 @@ def process():
         ranks_gained = int(skill.tnl)
         skill.tnl -= ranks_gained
         skill.rank += ranks_gained
-        ranks_gained = util.to_cardinal(ranks_gained)
 
         if ranks_gained > 0:
+            count = util.to_cardinal(ranks_gained)
+            ranks = util.INFLECTOR.no("rank", ranks_gained)
             bus.pulse(
                 bus.Outbound(
                     to=sig.source,
-                    text=f"You gain {ranks_gained} ranks in your {skill.name} skill.",
+                    text=f"You gain {count} {ranks} in your {skill.name} skill.",
                 )
             )
