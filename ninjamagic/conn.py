@@ -16,4 +16,4 @@ def process():
 
     for d in bus.iter(bus.Disconnected):
         log.info("%s:%s disconnected.", d.client, d.source)
-        factory.destroy(c.source)
+        factory.destroy(d.source)
