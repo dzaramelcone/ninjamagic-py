@@ -16,7 +16,14 @@ Num = Literal[1, 2]
 
 
 def conjugate(word: str, num: Num):
-    return INFLECTOR.plural_verb(word, num)
+    out = INFLECTOR.plural_verb(word, num)
+    if word[-3:] == "ies" and out[-1] == "y":
+        return word[:-1]
+    return out
+
+
+def to_cardinal(number: int):
+    return INFLECTOR.number_to_words(number)
 
 
 def auto_cap(text: str) -> str:
@@ -74,11 +81,6 @@ def clamp01(x: float) -> float:
     return clamp(x, 0.0, 1.0)
 
 
-def float_to_idx(obj: Sized, weight: float):
-    n = len(obj)
-    return min(n - 1, int(weight * n))
-
-
 def remap(
     value: float,
     in_min: float,
@@ -90,6 +92,22 @@ def remap(
         raise ValueError("in_min and in_max must not be equal")
     t = (value - in_min) / (in_max - in_min)
     return out_min + t * (out_max - out_min)
+
+
+def ease_in_out_expo(t: float) -> float:
+    "Exponential ease-in-out, t∈[0,1] → [0,1]."
+    if t <= 0.0:
+        return 0.0
+    if t >= 1.0:
+        return 1.0
+    return (2 ** (20 * t - 10)) / 2 if t < 0.5 else (2 - 2 ** (-20 * t + 10)) / 2
+
+
+def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
+    # shape≈4 is a common default; higher = pointier, lower = flatter
+    α = 1.0 + shape * (mode - a) / (b - a)
+    β = 1.0 + shape * (b - mode) / (b - a)
+    return a + (b - a) * RNG.betavariate(α, β)
 
 
 class Compass(StrEnum):
