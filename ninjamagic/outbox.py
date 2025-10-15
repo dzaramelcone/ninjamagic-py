@@ -3,15 +3,14 @@ import logging
 from collections import defaultdict
 from typing import Protocol
 from weakref import WeakKeyDictionary as WeakKeyDict
+
 import esper
 from fastapi.websockets import WebSocketState
 
 from ninjamagic import bus
 from ninjamagic.component import Connection, EntityId
+from ninjamagic.gen.messages_pb2 import Chip, Kind, Msg, Packet, Pos, Tile
 from ninjamagic.world import get_tile
-
-from ninjamagic.gen.messages_pb2 import Packet, Pos, Msg, Chip, Tile, Kind
-
 
 log = logging.getLogger(__name__)
 mailbag = defaultdict(list)
@@ -109,3 +108,4 @@ def try_insert(
                 )
             )
             return True
+    return False
