@@ -1,0 +1,12 @@
+# client: bob
+# len: 22 B
+0a140a120a10596f75207361792c202768656c6c6f27
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "You say, 'hello'"
+      }
+    }
+  ]
+}

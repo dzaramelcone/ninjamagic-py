@@ -1,0 +1,12 @@
+# client: bob
+# len: 18 B
+0a100a0e0a0c596f75277265206275737921
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "You're busy!"
+      }
+    }
+  ]
+}

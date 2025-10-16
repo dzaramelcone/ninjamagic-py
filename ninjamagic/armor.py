@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
 
 from ninjamagic.util import clamp01, contest, remap
 
@@ -39,8 +39,9 @@ def mitigate(
         "max_mult": max_mult,
     }
 
+    # TODO get rid of kw here and pass all explicitly
     defend_mult, defend_roll, attack_roll = contest(defend_ranks, attack_ranks, **kw)
-    item_mult, item_roll, _ = contest(armor.object_rank, attack_ranks, **kw)
+    item_mult, item_roll, _ = contest(armor.item_rank, attack_ranks, **kw)
 
     # normalize so 1.0 maps to 0 block, and max_factor maps close to 1 block
     item_block = clamp01(remap(item_mult, 1.0, min_mult, 0.0, 1.0))

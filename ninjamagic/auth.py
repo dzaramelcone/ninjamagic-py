@@ -1,14 +1,16 @@
 import logging
+from dataclasses import asdict
 from typing import Annotated
+
 import httpx
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
 from ninjamagic.gen.models import OauthProvider
-from ninjamagic.util import LOGIN_HTML, OWNER_SESSION_KEY
+from ninjamagic.util import LOGIN_HTML, OWNER_SESSION_KEY, TEST_SETUP_KEY
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
@@ -130,19 +132,22 @@ async def auth_via_discord(req: Request, q: Repository):
 
 
 if settings.allow_local_auth:
+    from tests.util import FakeUserSetup
+
     log.warning("Using local auth. Do not use this in production.")
 
-    @router.get("/local")
+    @router.post("/local")
     async def auth_via_local(
         req: Request,
         q: Repository,
-        subj: Annotated[str, Query()],
-        email: Annotated[str, Query()],
+        body: FakeUserSetup,
     ):
         account = await q.upsert_identity(
             provider=OauthProvider.DISCORD,
-            subject=subj,
-            email=email,
+            subject=body.subj,
+            email=body.email,
         )
         req.session[OWNER_SESSION_KEY] = account
+        req.session[TEST_SETUP_KEY] = asdict(body)
+
         return RedirectResponse(url="/", status_code=303)
