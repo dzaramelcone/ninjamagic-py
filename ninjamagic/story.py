@@ -20,6 +20,18 @@ def render(data: dict, start: str, *args, seed: int | None = None) -> str:
     return auto_cap(dfs(start, {}))
 
 
+def vrender(
+    story: str, args: tuple[EntityId, ...], kwargs=None, first_person: EntityId = 0
+) -> str:
+    return auto_cap(
+        FMT.vformat(
+            story,
+            [YOU if v == first_person else noun(v) for v in args],
+            kwargs or {},
+        )
+    )
+
+
 def echo(
     story: str,
     *args: EntityId,
@@ -31,35 +43,24 @@ def echo(
     if has_source:
         bus.pulse(
             bus.Outbound(
-                to=args[0],
-                text=auto_cap(
-                    FMT.vformat(
-                        story,
-                        [YOU if v is args[0] else noun(v) for v in args],
-                        kwargs,
-                    )
-                ),
+                to=args[0], text=vrender(story, args, kwargs, first_person=args[0])
             )
         )
 
-    send_to_target = send_to_target and len(args) > 1 and client(args[1])
+    target = None
+    target_text = ""
+    if send_to_target and len(args) > 1 and client(args[1]):
+        target = args[1]
+        target_text = vrender(story, args, kwargs, first_person=target)
+    # note if source and target are not adjacent, target may need to emit also.
+    # "SharedEmit" signal that returns true if c in range of a or b
     bus.pulse(
         bus.Emit(
             source=args[0],
             range=range,
-            text=auto_cap(FMT.vformat(story, [noun(v) for v in args], kwargs)),
-            target=args[1] if send_to_target else None,
-            target_text=(
-                auto_cap(
-                    FMT.vformat(
-                        story,
-                        [YOU if v is args[1] else noun(v) for v in args],
-                        kwargs,
-                    )
-                )
-                if send_to_target
-                else ""
-            ),
+            text=vrender(story, args, kwargs),
+            target=target,
+            target_text=target_text,
         ),
     )
 
