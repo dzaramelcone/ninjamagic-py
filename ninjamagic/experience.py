@@ -42,8 +42,8 @@ def process():
             ranks_gained += 1
             skill.tnl -= 1
             skill.tnl *= 0.68
-
         if ranks_gained > 0:
+            skill.rank += ranks_gained
             bus.pulse(
                 bus.Outbound(
                     to=sig.source,
