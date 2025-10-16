@@ -8,10 +8,10 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus
 from ninjamagic.auth import ChallengeDep, router as auth_router
-from ninjamagic.config import settings
 from ninjamagic.component import OwnerId
+from ninjamagic.config import settings
 from ninjamagic.state import State
-from ninjamagic.util import BUILD_HTML, VITE_HTML, OWNER_SESSION_KEY
+from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger(__name__)
