@@ -1,0 +1,12 @@
+# client: alice
+# len: 19 B
+0a110a0f0a0d596f75207361792c2027686927
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "You say, 'hi'"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# client: bob
+# len: 17 B
+0a0f0a0d0a0b416c696365206469657321
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "Alice dies!"
+      }
+    }
+  ]
+}
