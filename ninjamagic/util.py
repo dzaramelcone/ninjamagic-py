@@ -24,9 +24,9 @@ def conjugate(word: str, num: Num) -> str:
     return out
 
 
-def to_cardinal(count: int) -> str:
+def number_to_words(count: int) -> str:
     out = INFLECTOR.number_to_words(count, andword="")
-    if out and isinstance(out, str):
+    if isinstance(out, str):
         return out
     return out[0]
 
@@ -176,7 +176,7 @@ class Compass(StrEnum):
             case Compass.NORTHWEST:
                 return (-1, -1)
             case _:
-                raise ValueError()
+                raise ValueError(f"Unknown compass {self!r}")
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
