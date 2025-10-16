@@ -1,0 +1,12 @@
+# client: alice
+# len: 14 B
+0a0c0a0a0a08596f752064696521
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "You die!"
+      }
+    }
+  ]
+}
