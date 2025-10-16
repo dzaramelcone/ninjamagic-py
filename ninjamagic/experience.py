@@ -1,5 +1,7 @@
 import math
 
+import esper
+
 from ninjamagic import bus, util
 from ninjamagic.component import skills
 
@@ -23,24 +25,28 @@ def get_award(
     denom = max(abs(math.log(mn, 2.0)), abs(math.log(mx, 2.0))) or 1.0
     t = min(1.0, abs(a) / denom)
     w = 1.0 - util.ease_in_out_expo(t)
-    return lo + (hi - lo) * w
+    return (lo + (hi - lo) * w) * util.RNG.lognormvariate(mu=0.0, sigma=0.4)
 
 
 def process():
     for sig in bus.iter(bus.Learn):
+        if not esper.entity_exists(sig.source):
+            continue
         if skills(sig.source).generation != sig.generation:
             continue
 
         skill = sig.skill
         skill.tnl += get_award(sig.mult * util.clamp01(sig.risk))
-        ranks_gained = int(skill.tnl)
-        skill.tnl -= ranks_gained
-        skill.rank += ranks_gained
+        ranks_gained = 0
+        while skill.tnl >= 1.0:
+            ranks_gained += 1
+            skill.tnl -= 1
+            skill.tnl *= 0.68
 
         if ranks_gained > 0:
             bus.pulse(
                 bus.Outbound(
                     to=sig.source,
-                    text=f"You gain {util.tally(ranks_gained, "rank")} in your {skill.name} skill.",
+                    text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
                 )
             )
