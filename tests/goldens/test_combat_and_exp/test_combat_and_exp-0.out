@@ -1,0 +1,12 @@
+# client: bob
+# len: 31 B
+0a1d0a1b0a19596f752064726177206261636b20796f757220666973742e2e
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "You draw back your fist.."
+      }
+    }
+  ]
+}

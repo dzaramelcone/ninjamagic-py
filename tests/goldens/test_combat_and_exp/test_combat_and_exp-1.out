@@ -1,0 +1,12 @@
+# client: alice
+# len: 31 B
+0a1d0a1b0a19426f62206472617773206261636b2068697320666973742e2e
+{
+  "envelope": [
+    {
+      "msg": {
+        "text": "Bob draws back his fist.."
+      }
+    }
+  ]
+}
