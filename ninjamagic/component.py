@@ -29,6 +29,10 @@ class Stance:
     cur: Stances = "standing"
 
 
+class Blocking:
+    pass
+
+
 @component(slots=True, kw_only=True)
 class Stats:
     grace: int = 0
@@ -75,9 +79,6 @@ class Noun:
         return getattr(self.value, key)
 
     def __str__(self):
-        return self.value
-
-    def __repr__(self):
         return self.value
 
     def __format__(self, format_spec: str) -> str:
