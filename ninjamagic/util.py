@@ -198,13 +198,15 @@ VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
 MELEE_DELAY: float = 3.0
-LOOP = asyncio.get_running_loop()
-
+loop: asyncio.AbstractEventLoop | None = None
 Walltime = float
 
 
 def get_walltime() -> Walltime:
-    return LOOP.time()
+    global loop
+    if not loop:
+        loop = asyncio.get_running_loop()
+    return loop.time()
 
 
 def get_melee_delay() -> float:
