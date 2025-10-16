@@ -101,7 +101,8 @@ class Block(Command):
         # PARRY_DURATION = 1.2f;
         # PARRY_LAG = 2.5f;
         esper.add_component(root.source, util.get_walltime() + 3.7, Lag)
-        esper.add_component(root.source, Blocking())
+        this_block = Blocking()
+        esper.add_component(root.source, this_block)
         bus.pulse(
             bus.Interrupt(source=root.source),
             bus.Outbound(to=root.source, text=" "),
@@ -110,7 +111,8 @@ class Block(Command):
         def stop_blocking():
             if not esper.entity_exists(root.source):
                 return
-            if not esper.has_component(root.source, Blocking):
+            block = esper.try_component(root.source, Blocking)
+            if not block or block is not this_block:
                 return
             esper.remove_component(root.source, Blocking)
             bus.pulse(bus.Outbound(to=root.source, text="You block the air!"))
