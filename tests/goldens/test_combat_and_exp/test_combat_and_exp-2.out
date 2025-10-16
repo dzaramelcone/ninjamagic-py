@@ -1,16 +1,11 @@
 # client: bob
-# len: 78 B
-0a230a210a1f596f752068697420416c69636520666f722031302e31252064616d616765210a270a250a23416c6963652066616c6c7320746f207468652067726f756e6420696e2073686f636b21
+# len: 18 B
+0a100a0e0a0c596f75277265206275737921
 {
   "envelope": [
     {
       "msg": {
-        "text": "You hit Alice for 10.1% damage!"
-      }
-    },
-    {
-      "msg": {
-        "text": "Alice falls to the ground in shock!"
+        "text": "You're busy!"
       }
     }
   ]

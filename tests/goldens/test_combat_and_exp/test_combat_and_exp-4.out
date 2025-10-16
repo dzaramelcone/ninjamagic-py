@@ -1,11 +1,11 @@
-# client: alice
-# len: 22 B
-0a140a120a10596f7527726520696e2073686f636b21
+# client: bob
+# len: 33 B
+0a1f0a1d0a1b416c696365206472617773206261636b2068657220666973742e2e
 {
   "envelope": [
     {
       "msg": {
-        "text": "You're in shock!"
+        "text": "Alice draws back her fist.."
       }
     }
   ]

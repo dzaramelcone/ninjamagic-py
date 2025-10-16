@@ -22,6 +22,10 @@ def process():
             continue
         if not esper.entity_exists(sig.target):
             continue
+        if stance(sig.source).cur != "standing":
+            continue
+        if health(sig.source).condition != "normal":
+            continue
 
         if not reach.adjacent(transform(sig.source), transform(sig.target)):
             story.echo(
@@ -80,7 +84,6 @@ def process():
         )
 
         if target_health.cur <= 0 and target_health.condition == "normal":
-            esper.add_component(sig.target, util.get_walltime() + 2, Lag)
             bus.pulse(
                 bus.StanceChanged(source=sig.target, stance="lying prone"),
                 bus.ConditionChanged(source=sig.target, condition="in shock"),

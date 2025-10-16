@@ -1,11 +1,11 @@
-# client: alice
-# len: 18 B
-0a100a0e0a0c596f75277265206465616421
+# client: bob
+# len: 17 B
+0a0f0a0d0a0b416c696365206469657321
 {
   "envelope": [
     {
       "msg": {
-        "text": "You're dead!"
+        "text": "Alice dies!"
       }
     }
   ]
