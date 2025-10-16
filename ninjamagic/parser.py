@@ -28,6 +28,12 @@ def process():
                 bus.pulse(bus.Outbound(to=sig.source, text=err))
                 continue
 
+        if match.requires_standing:
+            ok, err = commands.assert_standing(sig.source)
+            if not ok:
+                bus.pulse(bus.Outbound(to=sig.source, text=err))
+                continue
+
         if match.requires_not_busy and act.is_busy(sig.source):
             bus.pulse(bus.Outbound(to=sig.source, text="You're busy!"))
             continue
