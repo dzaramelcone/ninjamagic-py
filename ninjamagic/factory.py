@@ -11,6 +11,7 @@ from ninjamagic.component import (
     Transform,
     transform,
 )
+from ninjamagic.config import settings
 from ninjamagic.world import NOWHERE, demo_map
 
 
@@ -21,6 +22,11 @@ def create(entity: EntityId):
     esper.add_component(entity, Stance())
     esper.add_component(entity, Skills())
     esper.add_component(entity, Stats())
+    if settings.allow_local_auth:
+        from tests.util import setup_test_entity
+
+        setup_test_entity(entity)
+
     bus.pulse(
         bus.PositionChanged(
             source=entity,

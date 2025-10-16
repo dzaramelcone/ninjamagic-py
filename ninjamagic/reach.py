@@ -29,8 +29,8 @@ def find(
     for other, (noun, other_transform) in esper.get_components(Noun, Transform):
         if other == source:
             continue
-        if not noun.startswith(prefix):
-            continue
         if not range(other_transform, source_transform):
+            continue
+        if not noun.lower().startswith(prefix):
             continue
         yield other, noun, other_transform

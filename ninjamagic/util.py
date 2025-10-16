@@ -7,31 +7,45 @@ from typing import Literal
 
 import inflect
 
+from ninjamagic.config import settings
+
 # TODO: Clean up the RNG global
-RNG = random.Random()
+RNG = random.Random(x=settings.random_seed)
 INFLECTOR = inflect.engine()
 SINGULAR = 1
 PLURAL = 2
 Num = Literal[1, 2]
 
 
-def conjugate(word: str, num: Num):
+def conjugate(word: str, num: Num) -> str:
     out = INFLECTOR.plural_verb(word, num)
     if word[-3:] == "ies" and out[-1] == "y":
         return word[:-1]
     return out
 
 
-def to_cardinal(number: int):
-    return INFLECTOR.number_to_words(number)
+def number_to_words(count: int) -> str:
+    out = INFLECTOR.number_to_words(count, andword="")
+    if isinstance(out, str):
+        return out
+    return out[0]
+
+
+def tally(count: int, word: str) -> str:
+    if count == 1:
+        return f"a {word}"
+    return f"{number_to_words(count)} {INFLECTOR.plural_noun(word, count)}"
 
 
 def auto_cap(text: str) -> str:
     out = []
     cap = can_cap = True
     for ch in text:
-        if can_cap and cap and ch.isalpha():
-            out.append(ch.upper())
+        if can_cap and cap and ch.isalnum():
+            if ch.isalpha():
+                out.append(ch.upper())
+            else:
+                out.append(ch)
             cap = False
         else:
             out.append(ch)
@@ -104,7 +118,11 @@ def ease_in_out_expo(t: float) -> float:
 
 
 def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
-    # shape≈4 is a common default; higher = pointier, lower = flatter
+    # shape ~4 is a common default. higher = pointier, lower = flatter
+    a, b = min(a, b), max(a, b)
+    mode = min(mode, b)
+    if a == b:
+        return a
     α = 1.0 + shape * (mode - a) / (b - a)
     β = 1.0 + shape * (b - mode) / (b - a)
     return a + (b - a) * RNG.betavariate(α, β)
@@ -157,6 +175,8 @@ class Compass(StrEnum):
                 return (0, -1)
             case Compass.NORTHWEST:
                 return (-1, -1)
+            case _:
+                raise ValueError(f"Unknown compass {self!r}")
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -170,19 +190,23 @@ def serial(counter=itertools.count(1)) -> int:
 
 
 OWNER_SESSION_KEY = "user"
+TEST_SETUP_KEY = "testsetup"
 TILE_STRIDE = Size(width=16, height=16)
 VIEW_STRIDE = Size(width=6, height=6)
 
 VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
-MELEE_DELAY: float = 2.0
-
+MELEE_DELAY: float = 3.0
+loop: asyncio.AbstractEventLoop | None = None
 Walltime = float
 
 
 def get_walltime() -> Walltime:
-    return asyncio.get_running_loop().time()
+    global loop
+    if not loop:
+        loop = asyncio.get_running_loop()
+    return loop.time()
 
 
 def get_melee_delay() -> float:

@@ -1,10 +1,11 @@
+import asyncio
 import logging
 from typing import Protocol
 
 import esper
 
-from ninjamagic import bus, reach, story
-from ninjamagic.component import EntityId, Health, stance_is
+from ninjamagic import bus, reach, story, util
+from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is
 from ninjamagic.util import Compass, get_melee_delay
 
 log = logging.getLogger(__name__)
@@ -19,10 +20,17 @@ def assert_healthy(entity: EntityId) -> Out:
     return OK
 
 
+def assert_standing(source: EntityId) -> Out:
+    if not stance_is(source, "standing"):
+        return False, "You must stand first."
+    return OK
+
+
 class Command(Protocol):
     text: str
     requires_healthy: bool = True
     requires_not_busy: bool = True
+    requires_standing: bool = False
 
     def trigger(self, root: bus.Inbound) -> Out: ...
 
@@ -37,27 +45,21 @@ class Look(Command):
 class Move(Command):
     text: str
     dir: Compass
+    requires_standing: bool = True
 
     def __init__(self, text: str):
         self.text = text
         self.dir = Compass(self.text)
 
     def trigger(self, root: bus.Inbound) -> Out:
-        ok, err = self.can_move(root.source)
-        if not ok:
-            return False, err
-
         bus.pulse(bus.MoveCompass(source=root.source, dir=self.dir))
-        return OK
-
-    def can_move(self, source: EntityId) -> Out:
-        if not stance_is(source, "standing"):
-            return False, "You must stand first."
         return OK
 
 
 class Attack(Command):
     text: str = "attack"
+    requires_standing: bool = True
+    requires_not_busy: bool = False
 
     def trigger(self, root: bus.Inbound) -> Out:
         _, _, rest = root.text.partition(" ")
@@ -76,7 +78,7 @@ class Attack(Command):
         if health and health.condition != "normal":
             return False, f"They're {health.condition}!"
 
-        story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
+        story.echo("{0} {0:draws} back {0:their} fist..", root.source, target)
         bus.pulse(
             bus.Act(
                 source=root.source,
@@ -84,6 +86,38 @@ class Attack(Command):
                 then=bus.Melee(source=root.source, target=target),
             )
         )
+        return OK
+
+
+class Block(Command):
+    text: str = "block"
+    requires_standing: bool = True
+    requires_not_busy: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        # MELEE_ATTACK_TIME = 3.0f;
+        # DODGE_DURATION = 2.0f;
+        # DODGE_LAG = 2.5f;
+        # PARRY_DURATION = 1.2f;
+        # PARRY_LAG = 2.5f;
+        esper.add_component(root.source, util.get_walltime() + 3.7, Lag)
+        this_block = Blocking()
+        esper.add_component(root.source, this_block)
+        bus.pulse(
+            bus.Interrupt(source=root.source),
+            bus.Outbound(to=root.source, text=" "),
+        )
+
+        def stop_blocking():
+            if not esper.entity_exists(root.source):
+                return
+            block = esper.try_component(root.source, Blocking)
+            if not block or block is not this_block:
+                return
+            esper.remove_component(root.source, Blocking)
+            bus.pulse(bus.Outbound(to=root.source, text="You block the air!"))
+
+        asyncio.get_running_loop().call_later(1.2, stop_blocking)
         return OK
 
 
@@ -150,4 +184,5 @@ commands: list[Command] = [
     Sit(),
     Lie(),
     Kneel(),
+    Block(),
 ]
