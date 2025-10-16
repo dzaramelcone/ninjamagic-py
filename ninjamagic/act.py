@@ -1,5 +1,7 @@
 import heapq
 
+import esper
+
 from ninjamagic import bus
 from ninjamagic.component import ActId, EntityId
 
@@ -19,7 +21,8 @@ def process(now: float) -> None:
         act = heapq.heappop(pq)
         if current.get(act.source) == act.id:
             del current[act.source]
-            bus.pulse(act.then)
+            if esper.entity_exists(act.source):
+                bus.pulse(act.then)
 
     for act in bus.iter(bus.Act):
         current[act.source] = act.id
