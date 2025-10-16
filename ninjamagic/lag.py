@@ -5,23 +5,42 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import EntityId, Lag
 
-pending: dict[EntityId, deque[bus.Inbound]] = defaultdict(deque)
+pending: defaultdict[EntityId, deque[bus.Inbound]] = defaultdict(deque)
+clean: list[EntityId] = []
+SPAM_PENALTY: float = 0.275
+DEQUE_MAXLEN = 20
 
 
 def process(now: float):
-    if bus.is_empty(bus.Inbound):
-        return
-
     for sig in bus.iter(bus.Inbound):
-        pending[sig.source].append(sig)
+        lag = esper.try_component(sig.source, Lag) or -1
+        is_lagged = now < lag
+        if is_lagged:
+            if len(pending[sig.source]) < DEQUE_MAXLEN:
+                pending[sig.source].append(sig)
+            continue
 
-    for entity, queue in list(pending.items()):
+        bus.pulse(bus.Parse(source=sig.source, text=sig.text))
+
+    for entity, queue in pending.items():
+        if not esper.entity_exists(entity):
+            clean.append(entity)
+            continue
+
         lag = esper.try_component(entity, Lag) or -1
-        if now < lag:
+        is_lagged = now < lag
+        if is_lagged:
             continue
 
         sig = queue.popleft()
         bus.pulse(bus.Parse(source=sig.source, text=sig.text))
 
         if not queue:
-            pending.pop(entity)
+            clean.append(entity)
+        else:
+            esper.add_component(entity, now + SPAM_PENALTY, Lag)
+
+    while clean:
+        entity = clean.pop()
+        pending.pop(entity, None)
+        esper.remove_component(entity, Lag)
