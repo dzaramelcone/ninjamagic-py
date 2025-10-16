@@ -34,7 +34,7 @@ def number_to_words(count: int) -> str:
 def tally(count: int, word: str) -> str:
     if count == 1:
         return f"a {word}"
-    return f"{to_cardinal(count)} {INFLECTOR.plural_noun(word, count)}"
+    return f"{number_to_words(count)} {INFLECTOR.plural_noun(word, count)}"
 
 
 def auto_cap(text: str) -> str:
