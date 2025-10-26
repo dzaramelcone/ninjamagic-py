@@ -1,9 +1,11 @@
 import logging
+
 import esper
+
 from ninjamagic import bus
 from ninjamagic.component import Connection, Transform
 from ninjamagic.util import VIEW_STRIDE
-from ninjamagic.world import get_chipset
+from ninjamagic.world.state import get_chipset
 
 log = logging.getLogger(__name__)
 VIEW_W, VIEW_H = VIEW_STRIDE.width, VIEW_STRIDE.height

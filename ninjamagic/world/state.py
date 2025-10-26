@@ -1,11 +1,12 @@
 import heapq
+
 import esper
 import numpy as np
 
 from ninjamagic.component import EntityId
 from ninjamagic.util import TILE_STRIDE, Size
 
-ChipGrid = np.ndarray[tuple[int, int], np.dtype[np.unsignedinteger]]
+ChipGrid = np.ndarray[tuple[int, int], np.dtype[np.uint8]]
 Chip = tuple[int, int, int, float, float, float]
 ChipSet = list[Chip]
 NOWHERE = esper.create_entity()
@@ -59,7 +60,7 @@ def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytes]
     right = left + TILE_STRIDE.width
     bot = top + TILE_STRIDE.height
     key = (map_id, left, top)
-    if cached_tile := tile_cache.get(key, None):
+    if cached_tile := tile_cache.get(key):
         return top, left, cached_tile
 
     data = chip_grid[top:bot, left:right].tobytes()

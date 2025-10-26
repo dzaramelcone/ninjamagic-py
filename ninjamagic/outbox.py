@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from typing import Protocol
-from weakref import WeakKeyDictionary as WeakKeyDict
+from weakref import WeakKeyDictionary
 
 import esper
 from fastapi.websockets import WebSocketState
@@ -10,13 +10,13 @@ from fastapi.websockets import WebSocketState
 from ninjamagic import bus
 from ninjamagic.component import Connection, EntityId
 from ninjamagic.gen.messages_pb2 import Chip, Kind, Msg, Packet, Pos, Tile
-from ninjamagic.world import get_tile
+from ninjamagic.world.state import get_tile
 
 log = logging.getLogger(__name__)
 mailbag = defaultdict(list)
 
 # use weak keys so cache cleans when the websocket Connection is GC'd
-sent_tiles: WeakKeyDict[Connection, set[tuple[int, int, int]]] = WeakKeyDict()
+sent_tiles = WeakKeyDictionary[Connection, set[tuple[int, int, int]]]()
 
 
 class Envelope(Protocol):

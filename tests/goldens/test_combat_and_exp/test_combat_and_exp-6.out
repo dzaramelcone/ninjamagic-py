@@ -1,16 +1,16 @@
 # client: alice
 # len: 74 B
-0a240a220a20596f752066616c6c20746f207468652067726f756e6420696e2073686f636b210a220a200a1e426f62206869747320796f7520666f722031302e31252064616d61676521
+0a220a200a1e426f62206869747320796f7520666f722031302e31252064616d616765210a240a220a20596f752066616c6c20746f207468652067726f756e6420696e2073686f636b21
 {
   "envelope": [
     {
       "msg": {
-        "text": "You fall to the ground in shock!"
+        "text": "Bob hits you for 10.1% damage!"
       }
     },
     {
       "msg": {
-        "text": "Bob hits you for 10.1% damage!"
+        "text": "You fall to the ground in shock!"
       }
     }
   ]
