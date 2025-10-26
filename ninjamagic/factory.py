@@ -12,7 +12,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.world import NOWHERE, demo_map
+from ninjamagic.world.state import NOWHERE, demo_map
 
 
 def create(entity: EntityId):

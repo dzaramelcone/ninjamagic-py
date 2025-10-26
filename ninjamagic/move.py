@@ -1,8 +1,9 @@
 import esper
+
 from ninjamagic import bus
 from ninjamagic.component import Connection, transform
 from ninjamagic.util import Size
-from ninjamagic.world import ChipGrid
+from ninjamagic.world.state import ChipGrid
 
 
 def process():

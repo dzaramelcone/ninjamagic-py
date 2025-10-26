@@ -9,7 +9,7 @@ from fastapi import WebSocket
 from ninjamagic import reach
 from ninjamagic.component import ActId, Conditions, EntityId, Skill, Stances
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
-from ninjamagic.world import ChipSet
+from ninjamagic.world.state import ChipSet
 
 
 class Signal:
@@ -143,16 +143,20 @@ class Interrupt(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class Emit(Signal):
-    """Send a message from an entity to others within `reach`.
+class Echo(Signal):
+    """Send `text` to `source`.
+
+    If `otext`, send `otext` to entities within `range`.
 
     If `target` and `target_text`, send `target_text` to `target` instead."""
 
     source: EntityId
-    range: reach.Selector
     text: str
-    target: EntityId | None = None
+    range: reach.Selector = reach.adjacent
+    otext: str = ""
+    target: EntityId = 0
     target_text: str = ""
+    force_send_to_target: bool = False
 
 
 @signal(frozen=True, slots=True, kw_only=True)

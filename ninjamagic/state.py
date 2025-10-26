@@ -10,7 +10,7 @@ from ninjamagic import (
     act,
     combat,
     conn,
-    emit,
+    echo,
     experience,
     lag,
     move,
@@ -19,7 +19,7 @@ from ninjamagic import (
     visibility,
 )
 
-TPS = 1000
+TPS = 240.0
 STEP = 1.0 / TPS
 MAX_LATE_RESET = 0.25
 
@@ -75,7 +75,7 @@ class State:
             move.process()
             visibility.process()
             experience.process()
-            emit.process()
+            echo.process()
             outbox.process()
             bus.clear()
             esper.clear_dead_entities()
