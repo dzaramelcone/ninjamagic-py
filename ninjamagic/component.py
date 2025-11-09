@@ -11,11 +11,16 @@ MAX_HEALTH = 100.0
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
+Chip = tuple[int, int, int, float, float, float]
+ChipGrid = bytearray
+ChipSet = list[Chip]
 Connection = WebSocket
 EntityId = int
-Stamina = float
+Gas = dict[tuple[int, int], float]
 Lag = float
 OwnerId = int
+Size = tuple[int, int]
+Stamina = float
 
 
 @component(slots=True)

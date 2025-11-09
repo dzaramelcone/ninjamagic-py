@@ -12,7 +12,6 @@ from ninjamagic.component import OwnerId
 from ninjamagic.config import settings
 from ninjamagic.state import State
 from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
-from ninjamagic.world.router import router as world_router
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger(__name__)
@@ -20,7 +19,6 @@ log = logging.getLogger(__name__)
 
 app = FastAPI(lifespan=State())
 app.include_router(router=auth_router)
-app.include_router(router=world_router)
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
 app.mount("/static", StaticFiles(directory="ninjamagic/static/"), name="static")
 
