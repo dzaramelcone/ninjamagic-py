@@ -5,15 +5,15 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import Connection, Transform
 from ninjamagic.util import VIEW_STRIDE
-from ninjamagic.world.state import get_chipset
+from ninjamagic.world.state import ChipSet
 
 log = logging.getLogger(__name__)
-VIEW_W, VIEW_H = VIEW_STRIDE.width, VIEW_STRIDE.height
+VIEW_H, VIEW_W = VIEW_STRIDE
 CORNERS = (
-    (VIEW_W, VIEW_H),
-    (-VIEW_W, VIEW_H),
-    (VIEW_W, -VIEW_H),
-    (-VIEW_W, -VIEW_H),
+    (VIEW_H, VIEW_W),
+    (-VIEW_H, VIEW_W),
+    (VIEW_H, -VIEW_W),
+    (-VIEW_H, -VIEW_W),
 )
 
 
@@ -44,7 +44,8 @@ def process():
             if not same_map:
                 bus.pulse(
                     bus.OutboundChipSet(
-                        to=sig.source, chipset=get_chipset(map_id=sig.to_map_id)
+                        to=sig.source,
+                        chipset=esper.component_for_entity(sig.to_map_id, ChipSet),
                     )
                 )
 

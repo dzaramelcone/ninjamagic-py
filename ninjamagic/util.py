@@ -9,6 +9,9 @@ import inflect
 
 from ninjamagic.config import settings
 
+FOUR_DIRS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+EIGHT_DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+EPSILON = 1e-12
 # TODO: Clean up the RNG global
 RNG = random.Random(x=settings.random_seed)
 INFLECTOR = inflect.engine()
@@ -179,20 +182,14 @@ class Compass(StrEnum):
                 raise ValueError(f"Unknown compass {self!r}")
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Size:
-    width: int
-    height: int
-
-
 def serial(counter=itertools.count(1)) -> int:
     return next(counter)
 
 
 OWNER_SESSION_KEY = "user"
 TEST_SETUP_KEY = "testsetup"
-TILE_STRIDE = Size(width=16, height=16)
-VIEW_STRIDE = Size(width=6, height=6)
+TILE_STRIDE_H, TILE_STRIDE_W = TILE_STRIDE = (16, 16)
+VIEW_STRIDE = (6, 6)
 
 VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()

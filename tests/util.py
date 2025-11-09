@@ -24,7 +24,7 @@ class FakeUserSetup:
     stance: Stance = Field(default_factory=Stance)
     stats: Stats = Field(default_factory=Stats)
     skills: Skills = Field(default_factory=Skills)
-    transform: Transform = Field(default_factory=lambda: Transform(map_id=1, x=2, y=2))
+    transform: Transform = Field(default_factory=lambda: Transform(map_id=2, x=2, y=2))
     noun: Noun = Field(default_factory=Noun)
 
 
