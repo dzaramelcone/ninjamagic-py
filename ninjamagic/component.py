@@ -12,7 +12,8 @@ Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
 Chip = tuple[int, int, int, float, float, float]
-ChipGrid = bytearray
+Chips = bytearray
+ChipsGrid = memoryview
 ChipSet = list[Chip]
 Connection = WebSocket
 EntityId = int
@@ -64,6 +65,28 @@ class Transform:
     map_id: EntityId
     x: int
     y: int
+
+
+@component(slots=True, kw_only=True)
+class AABB:
+    "Axis-aligned bounding box."
+
+    top: int
+    bot: int
+    left: int
+    right: int
+
+    def clear(self):
+        self.top = self.bot = self.left = self.right = 0
+
+    def contains(self, *, x: int, y: int) -> bool:
+        return self.top <= y <= self.bot and self.left <= x <= self.right
+
+    def append(self, *, x: int, y: int):
+        self.top = min(self.top, y)
+        self.bot = max(self.bot, y)
+        self.left = min(self.left, x)
+        self.right = max(self.right, x)
 
 
 @component(slots=True, frozen=True)
