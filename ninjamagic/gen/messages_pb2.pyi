@@ -109,6 +109,33 @@ class Tile(google.protobuf.message.Message):
 global___Tile = Tile
 
 @typing.final
+class Gas(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    MAP_ID_FIELD_NUMBER: builtins.int
+    X_FIELD_NUMBER: builtins.int
+    Y_FIELD_NUMBER: builtins.int
+    V_FIELD_NUMBER: builtins.int
+    id: builtins.int
+    map_id: builtins.int
+    x: builtins.int
+    y: builtins.int
+    v: builtins.float
+    def __init__(
+        self,
+        *,
+        id: builtins.int = ...,
+        map_id: builtins.int = ...,
+        x: builtins.int = ...,
+        y: builtins.int = ...,
+        v: builtins.float = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "map_id", b"map_id", "v", b"v", "x", b"x", "y", b"y"]) -> None: ...
+
+global___Gas = Gas
+
+@typing.final
 class Kind(google.protobuf.message.Message):
     """A wrapper that can contain any of our specific message types."""
 
@@ -118,6 +145,7 @@ class Kind(google.protobuf.message.Message):
     POS_FIELD_NUMBER: builtins.int
     CHIP_FIELD_NUMBER: builtins.int
     TILE_FIELD_NUMBER: builtins.int
+    GAS_FIELD_NUMBER: builtins.int
     @property
     def msg(self) -> global___Msg: ...
     @property
@@ -126,6 +154,8 @@ class Kind(google.protobuf.message.Message):
     def chip(self) -> global___Chip: ...
     @property
     def tile(self) -> global___Tile: ...
+    @property
+    def gas(self) -> global___Gas: ...
     def __init__(
         self,
         *,
@@ -133,10 +163,11 @@ class Kind(google.protobuf.message.Message):
         pos: global___Pos | None = ...,
         chip: global___Chip | None = ...,
         tile: global___Tile | None = ...,
+        gas: global___Gas | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "msg", b"msg", "pos", b"pos", "tile", b"tile"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "msg", b"msg", "pos", b"pos", "tile", b"tile"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["body", b"body"]) -> typing.Literal["msg", "pos", "chip", "tile"] | None: ...
+    def HasField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "gas", b"gas", "msg", b"msg", "pos", b"pos", "tile", b"tile"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "gas", b"gas", "msg", b"msg", "pos", b"pos", "tile", b"tile"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["body", b"body"]) -> typing.Literal["msg", "pos", "chip", "tile", "gas"] | None: ...
 
 global___Kind = Kind
 
