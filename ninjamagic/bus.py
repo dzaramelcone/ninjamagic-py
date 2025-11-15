@@ -7,7 +7,16 @@ from typing import TypeVar, cast
 from fastapi import WebSocket
 
 from ninjamagic import reach
-from ninjamagic.component import ActId, Conditions, EntityId, Skill, Stances
+from ninjamagic.component import (
+    AABB,
+    ActId,
+    Conditions,
+    EntityId,
+    Gas,
+    Skill,
+    Stances,
+    Transform,
+)
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
 from ninjamagic.world.state import ChipSet
 
@@ -83,6 +92,19 @@ class PositionChanged(Signal):
     to_map_id: EntityId
     to_x: int
     to_y: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class CreateGas(Signal):
+    loc: tuple[int, int, int]
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class GasUpdated(Signal):
+    source: EntityId
+    transform: Transform
+    aabb: AABB
+    gas: Gas
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -175,6 +197,18 @@ class OutboundTile(Signal):
     map_id: EntityId
     top: int
     left: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundGas(Signal):
+    """An outbound gas tile."""
+
+    to: EntityId
+    gas_id: int
+    map_id: int
+    x: int
+    y: int
+    v: float
 
 
 @signal(frozen=True, slots=True, kw_only=True)
