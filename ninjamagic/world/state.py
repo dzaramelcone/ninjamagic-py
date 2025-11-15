@@ -1,13 +1,16 @@
 import esper
 
-from ninjamagic.component import ChipGrid, ChipSet, EntityId, Size
+from ninjamagic.component import Chips, ChipSet, ChipsGrid, EntityId, Size
 from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W
 
 
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
+    h, w = TILE_STRIDE
+    chips = bytearray([0] * h * w)
+    esper.add_component(out, chips, Chips)
+    esper.add_component(out, memoryview(chips).cast("B", (h, w)), ChipsGrid)
     esper.add_component(out, TILE_STRIDE, Size)
-    esper.add_component(out, bytearray([0] * TILE_STRIDE_H * TILE_STRIDE_W), ChipGrid)
     esper.add_component(out, [(0, out, ord(" "), 1.0, 1.0, 1.0, 1.0)], ChipSet)
     return out
 
@@ -28,7 +31,8 @@ def build_demo() -> EntityId:
     ]
 
     esper.add_component(out, (h, w), Size)
-    esper.add_component(out, chips, ChipGrid)
+    esper.add_component(out, chips, Chips)
+    esper.add_component(out, memoryview(chips).cast("B", (h, w)), ChipsGrid)
     esper.add_component(out, chipset, ChipSet)
     return out
 

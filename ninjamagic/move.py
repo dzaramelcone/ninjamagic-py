@@ -1,29 +1,29 @@
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import ChipGrid, Connection, Size, transform
+from ninjamagic.component import ChipsGrid, Connection, Size, transform
 
 
-def can_enter(*, grid: ChipGrid, size: Size, y: int, x: int) -> bool:
-    h, w = size
-    return grid[y * w + x] == 1
+def can_enter(*, grid: ChipsGrid, y: int, x: int) -> bool:
+    """Check if `y,x` of `grid` can be entered. Assumes y,x is in bounds."""
+
+    return grid[y, x] == 1
 
 
 def process():
     for sig in bus.iter(bus.MoveCompass):
         loc = transform(sig.source)
-        sz = h, w = esper.component_for_entity(loc.map_id, Size)
-        grid = esper.component_for_entity(loc.map_id, ChipGrid)
+        h, w = esper.component_for_entity(loc.map_id, Size)
+        grid = esper.component_for_entity(loc.map_id, ChipsGrid)
 
         from_map_id = loc.map_id
         from_y, from_x = loc.y, loc.x
 
-        dir_y, dir_x = sig.dir.to_vector()
-        to_y = (from_y + dir_y) % h
-        to_x = (from_x + dir_x) % w
+        delta_y, delta_x = sig.dir.to_vector()
+        to_y, to_x = (from_y + delta_y) % h, (from_x + delta_x) % w
         to_map_id = from_map_id
 
-        if not can_enter(grid=grid, size=sz, y=to_y, x=to_x):
+        if not can_enter(grid=grid, y=to_y, x=to_x):
             if esper.has_component(sig.source, Connection):
                 bus.pulse(bus.Outbound(to=sig.source, text="You can't go there."))
             continue
