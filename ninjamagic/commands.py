@@ -5,7 +5,7 @@ from typing import Protocol
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is
+from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is, transform
 from ninjamagic.util import Compass, get_melee_delay
 
 log = logging.getLogger(__name__)
@@ -174,6 +174,16 @@ class Sit(Command):
         return OK
 
 
+class Fart(Command):
+    text: str = "fart"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        tform = transform(root.source)
+        story.echo("{0} {0:farts}.", root.source)
+        bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -185,4 +195,5 @@ commands: list[Command] = [
     Lie(),
     Kneel(),
     Block(),
+    Fart(),
 ]
