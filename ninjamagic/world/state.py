@@ -38,17 +38,26 @@ def build_demo() -> EntityId:
 
 
 def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytes]:
-    """Get a 16x16 tile from a map, starting from (top, left),
-    clamped to strides of TILE_STRIDE and wrapped toroidally."""
-    chip_grid = esper.component_for_entity(map_id, ChipGrid)
+    """Get a 16x16 tile from a map:
+
+    - Starts from (top, left)
+    - Floors (top, left) to factors of TILE_STRIDE
+    - Wraps toroidally.
+    """
+
+    chips = esper.component_for_entity(map_id, Chips)
     max_h, max_w = esper.component_for_entity(map_id, Size)
     top = (top % max_h) // TILE_STRIDE_H * TILE_STRIDE_H
     left = (left % max_w) // TILE_STRIDE_W * TILE_STRIDE_W
-    out = b"".join(
-        chip_grid[(top + r) * max_w + left : (top + r) * max_w + left + TILE_STRIDE_W]
-        for r in range(TILE_STRIDE_H)
-    )
-    return top, left, out
+
+    out = bytearray(TILE_STRIDE_H * TILE_STRIDE_W)
+    i = 0
+    for y in range(top, top + TILE_STRIDE_H):
+        start = y * max_w + left
+        out[i : i + TILE_STRIDE_W] = chips[start : start + TILE_STRIDE_W]
+        i += TILE_STRIDE_W
+
+    return top, left, bytes(out)
 
 
 NOWHERE = build_nowhere()
