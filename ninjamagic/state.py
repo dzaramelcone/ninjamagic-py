@@ -12,6 +12,7 @@ from ninjamagic import (
     conn,
     echo,
     experience,
+    gas,
     lag,
     move,
     outbox,
@@ -70,6 +71,7 @@ class State:
             conn.process()
             lag.process(now=loop.time())
             parser.process()
+            gas.process(now=loop.time())
             act.process(now=loop.time())
             combat.process()
             move.process()
