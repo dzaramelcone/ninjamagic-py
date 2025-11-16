@@ -1,12 +1,12 @@
 # client: alice
 # len: 12 B
-0a0a120808071002180c200c
+0a0a120808071001180c200c
 {
   "envelope": [
     {
       "pos": {
         "id": 7,
-        "map_id": 2,
+        "map_id": 1,
         "x": 12,
         "y": 12
       }

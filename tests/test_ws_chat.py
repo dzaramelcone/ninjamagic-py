@@ -4,7 +4,7 @@ import pytest
 
 from ninjamagic.component import Health, Noun, Skill, Skills, Transform
 from ninjamagic.util import VIEW_STRIDE, Pronouns, get_melee_delay
-from ninjamagic.world.state import DEMO
+from ninjamagic.world.state import TEST
 from tests.util import FakeUserSetup
 
 H, W = VIEW_STRIDE
@@ -68,7 +68,7 @@ async def test_moves(golden, client_factory):
         FakeUserSetup(
             subj="alice",
             email="alice@x.test",
-            transform=Transform(map_id=DEMO, x=6, y=6),
+            transform=Transform(map_id=TEST, x=6, y=6),
             noun=Noun(value="Alice", pronouns=Pronouns.SHE),
         ),
     )
@@ -77,7 +77,7 @@ async def test_moves(golden, client_factory):
         FakeUserSetup(
             subj="bob",
             email="bob@x.test",
-            transform=Transform(map_id=DEMO, x=6 + OUTSIDE, y=6 + OUTSIDE),
+            transform=Transform(map_id=TEST, x=6 + OUTSIDE, y=6 + OUTSIDE),
             noun=Noun(value="Bob", pronouns=Pronouns.HE),
         ),
     )

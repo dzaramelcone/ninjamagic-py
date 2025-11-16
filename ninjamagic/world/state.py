@@ -8,9 +8,21 @@ from ninjamagic.world import simple
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
     h, w = TILE_STRIDE
-    chips = {(0, 0): bytearray([0] * h * w)}
+    chips = {
+        (0, 0): bytearray([1] * h * w),
+        (h, 0): bytearray([1] * h * w),
+        (0, w): bytearray([1] * h * w),
+        (h, w): bytearray([1] * h * w),
+    }
+
     esper.add_component(out, chips, Chips)
-    esper.add_component(out, [(0, out, ord(" "), 1.0, 1.0, 1.0, 1.0)], ChipSet)
+    chipset = [
+        # tile id, map id, glyph, h, s, v, a
+        (0, out, ord(" "), 1.0, 1.0, 1.0, 1.0),
+        (1, out, ord("."), 0.52777, 0.5, 0.9, 1.0),
+        (2, out, ord("#"), 0.73888, 0.34, 1.0, 1.0),
+    ]
+    esper.add_component(out, chipset, ChipSet)
     return out
 
 
@@ -52,4 +64,5 @@ def get_tile(
 
 
 NOWHERE = build_nowhere()
+TEST = NOWHERE
 DEMO = build_demo()
