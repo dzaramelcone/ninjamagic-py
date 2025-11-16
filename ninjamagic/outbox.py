@@ -2,21 +2,21 @@ import asyncio
 import logging
 from collections import defaultdict
 from typing import Protocol
-from weakref import WeakKeyDictionary as WeakKeyDict
+from weakref import WeakKeyDictionary
 
 import esper
 from fastapi.websockets import WebSocketState
 
 from ninjamagic import bus
 from ninjamagic.component import Connection, EntityId
-from ninjamagic.gen.messages_pb2 import Chip, Kind, Msg, Packet, Pos, Tile
-from ninjamagic.world import get_tile
+from ninjamagic.gen.messages_pb2 import Kind, Packet
+from ninjamagic.world.state import get_tile
 
 log = logging.getLogger(__name__)
 mailbag = defaultdict(list)
 
 # use weak keys so cache cleans when the websocket Connection is GC'd
-sent_tiles: WeakKeyDict[Connection, set[tuple[int, int, int]]] = WeakKeyDict()
+sent_tiles = WeakKeyDictionary[Connection, set[tuple[int, int, int]]]()
 
 
 class Envelope(Protocol):
@@ -26,7 +26,13 @@ class Envelope(Protocol):
 def process():
     # Send tiles as bytes.
     loop = asyncio.get_running_loop()
-    for type in (bus.Outbound, bus.OutboundMove, bus.OutboundChipSet, bus.OutboundTile):
+    for type in (
+        bus.Outbound,
+        bus.OutboundMove,
+        bus.OutboundChipSet,
+        bus.OutboundTile,
+        bus.OutboundGas,
+    ):
         for signal in bus.iter(type):
             mailbag[signal.to].append(signal)
 
@@ -65,47 +71,49 @@ def try_insert(
 ) -> bool:
     match sig:
         case bus.Outbound():
-            envelope.add().msg.CopyFrom(Msg(text=sig.text))
+            msg = envelope.add().msg
+            msg.text = sig.text
             return True
         case bus.OutboundMove():
-            envelope.add().pos.CopyFrom(
-                Pos(
-                    id=0 if to == sig.source else sig.source,
-                    map_id=sig.map_id,
-                    x=sig.x,
-                    y=sig.y,
-                )
-            )
+            pos = envelope.add().pos
+            pos.id = 0 if to == sig.source else sig.source
+            pos.map_id = sig.map_id
+            pos.x = sig.x
+            pos.y = sig.y
             return True
         case bus.OutboundChipSet():
             for id, map_id, glyph, h, s, v, a in sig.chipset:
-                envelope.add().chip.CopyFrom(
-                    Chip(
-                        id=id,
-                        map_id=map_id,
-                        glyph=glyph,
-                        h=h,
-                        s=s,
-                        v=v,
-                        a=a,
-                    )
-                )
+                chip = envelope.add().chip
+                chip.id = id
+                chip.map_id = map_id
+                chip.glyph = glyph
+                chip.h = h
+                chip.s = s
+                chip.v = v
+                chip.a = a
             return True
         case bus.OutboundTile():
             top, left, data = get_tile(map_id=sig.map_id, top=sig.top, left=sig.left)
+            if not data:
+                return False
             seen = sent_tiles.setdefault(conn, set())
             key = (sig.map_id, top, left)
             if key in seen:
                 return False
 
             seen.add(key)
-            envelope.add().tile.CopyFrom(
-                Tile(
-                    map_id=sig.map_id,
-                    top=top,
-                    left=left,
-                    data=data,
-                )
-            )
+            tile = envelope.add().tile
+            tile.map_id = sig.map_id
+            tile.top = top
+            tile.left = left
+            tile.data = bytes(data)
+            return True
+        case bus.OutboundGas():
+            gas = envelope.add().gas
+            gas.id = sig.gas_id
+            gas.map_id = sig.map_id
+            gas.x = sig.x
+            gas.y = sig.y
+            gas.v = sig.v
             return True
     return False

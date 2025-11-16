@@ -11,11 +11,17 @@ MAX_HEALTH = 100.0
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
+Chip = tuple[int, int, int, float, float, float]
+Chips = dict[tuple[int, int], bytearray]
+ChipSet = list[Chip]
 Connection = WebSocket
+Glyph = str
 EntityId = int
-Stamina = float
+Gas = dict[tuple[int, int], float]
 Lag = float
 OwnerId = int
+Size = tuple[int, int]
+Stamina = float
 
 
 @component(slots=True)
@@ -59,6 +65,36 @@ class Transform:
     map_id: EntityId
     x: int
     y: int
+
+
+@component(slots=True, kw_only=True)
+class AABB:
+    "Axis-aligned bounding box."
+
+    top: int
+    bot: int
+    left: int
+    right: int
+
+    def clear(self):
+        self.top = self.bot = self.left = self.right = 0
+
+    def contains(self, *, x: int, y: int) -> bool:
+        return self.top <= y <= self.bot and self.left <= x <= self.right
+
+    def intersects(self, *, other: "AABB") -> bool:
+        return not (
+            self.right < other.left
+            or self.left > other.right
+            or self.bot < other.top
+            or self.top > other.bot
+        )
+
+    def append(self, *, x: int, y: int):
+        self.top = min(self.top, y)
+        self.bot = max(self.bot, y)
+        self.left = min(self.left, x)
+        self.right = max(self.right, x)
 
 
 @component(slots=True, frozen=True)

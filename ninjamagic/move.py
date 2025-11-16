@@ -1,28 +1,22 @@
 import esper
+
 from ninjamagic import bus
 from ninjamagic.component import Connection, transform
-from ninjamagic.util import Size
-from ninjamagic.world import ChipGrid
+from ninjamagic.world.state import can_enter
 
 
 def process():
     for sig in bus.iter(bus.MoveCompass):
         loc = transform(sig.source)
 
-        maybe_sz_grid = esper.try_components(loc.map_id, Size, ChipGrid)
-        if not maybe_sz_grid:
-            raise KeyError(f"Entity {loc.map_id} missing Size or Grid, is it a map?")
-
-        sz, grid = maybe_sz_grid
         from_map_id = loc.map_id
         from_y, from_x = loc.y, loc.x
 
-        dir_y, dir_x = sig.dir.to_vector()
-        to_y = (from_y + dir_y) % sz.height
-        to_x = (from_x + dir_x) % sz.width
+        delta_y, delta_x = sig.dir.to_vector()
+        to_y, to_x = (from_y + delta_y), (from_x + delta_x)
         to_map_id = from_map_id
 
-        if grid[to_y, to_x] != 1:
+        if not can_enter(map_id=loc.map_id, y=to_y, x=to_x):
             if esper.has_component(sig.source, Connection):
                 bus.pulse(bus.Outbound(to=sig.source, text="You can't go there."))
             continue
