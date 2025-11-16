@@ -3,7 +3,7 @@ import heapq
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import AABB, ChipsGrid, EntityId, Gas, Size, Transform
+from ninjamagic.component import AABB, EntityId, Gas, Transform
 from ninjamagic.move import can_enter
 from ninjamagic.util import EIGHT_DIRS as DIRS, EPSILON, Walltime
 
@@ -33,8 +33,6 @@ def process(now: Walltime):
 
     while PQ and PQ[0][0] <= now:
         _, eid, transform, aabb, gas = heapq.heappop(PQ)
-        grid = esper.component_for_entity(transform.map_id, ChipsGrid)
-        size = esper.component_for_entity(transform.map_id, Size)
 
         aabb.clear()
         for point, potence in gas.items():
@@ -43,7 +41,7 @@ def process(now: Walltime):
             neighbors.clear()
             for dy, dx in DIRS:
                 n = ny, nx = y + dy, x + dx
-                if not can_enter(grid=grid, size=size, y=ny, x=nx):
+                if not can_enter(map_id=transform.map_id, y=ny, x=nx):
                     continue
                 neighbors.append(n)
 

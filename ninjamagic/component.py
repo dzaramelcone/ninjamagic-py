@@ -12,10 +12,10 @@ Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
 Chip = tuple[int, int, int, float, float, float]
-Chips = bytearray
-ChipsGrid = memoryview
+Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
 Connection = WebSocket
+Glyph = str
 EntityId = int
 Gas = dict[tuple[int, int], float]
 Lag = float
@@ -81,6 +81,14 @@ class AABB:
 
     def contains(self, *, x: int, y: int) -> bool:
         return self.top <= y <= self.bot and self.left <= x <= self.right
+
+    def intersects(self, *, other: "AABB") -> bool:
+        return not (
+            self.right < other.left
+            or self.left > other.right
+            or self.bot < other.top
+            or self.top > other.bot
+        )
 
     def append(self, *, x: int, y: int):
         self.top = min(self.top, y)

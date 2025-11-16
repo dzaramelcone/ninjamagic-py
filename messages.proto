@@ -9,8 +9,8 @@ message Msg {
 message Pos {
   uint32 id = 1;
   uint32 map_id = 2;
-  uint32 x = 3;
-  uint32 y = 4;
+  int32 x = 3;
+  int32 y = 4;
 }
 
 message Chip {
@@ -25,16 +25,16 @@ message Chip {
 
 message Tile {
   uint32 map_id = 1;
-  uint32 top = 2;
-  uint32 left = 3;
+  int32 top = 2;
+  int32 left = 3;
   bytes data = 4;
 }
 
 message Gas {
   uint32 id = 1;
   uint32 map_id = 2;
-  uint32 x = 3;
-  uint32 y = 4;
+  int32 x = 3;
+  int32 y = 4;
   float v = 5;
 
 }

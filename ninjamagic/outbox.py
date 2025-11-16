@@ -94,6 +94,8 @@ def try_insert(
             return True
         case bus.OutboundTile():
             top, left, data = get_tile(map_id=sig.map_id, top=sig.top, left=sig.left)
+            if not data:
+                return False
             seen = sent_tiles.setdefault(conn, set())
             key = (sig.map_id, top, left)
             if key in seen:
@@ -104,7 +106,7 @@ def try_insert(
             tile.map_id = sig.map_id
             tile.top = top
             tile.left = left
-            tile.data = data
+            tile.data = bytes(data)
             return True
         case bus.OutboundGas():
             gas = envelope.add().gas
