@@ -1,11 +1,11 @@
 # client: bob
 # len: 10 B
-0a0812061002180e200e
+0a0812061001180e200e
 {
   "envelope": [
     {
       "pos": {
-        "map_id": 2,
+        "map_id": 1,
         "x": 14,
         "y": 14
       }
