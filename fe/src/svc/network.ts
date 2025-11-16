@@ -2,7 +2,7 @@
 import { useGameStore } from "../state";
 import { world } from "./world";
 import { postLine } from "../ui/chat";
-import { Packet, Msg, Pos, Chip, Tile } from "../gen/messages";
+import { Packet, Msg, Pos, Chip, Tile, Gas } from "../gen/messages";
 
 const { setPosition, cullPositions } = useGameStore.getState();
 let ws: WebSocket;
@@ -18,6 +18,9 @@ const handlerMap = {
   },
   tile: (body: Tile) => {
     world.handleTile(body.mapId, body.top, body.left, body.data);
+  },
+  gas: (body: Gas) => {
+    world.handleGas(body.id, body.mapId, body.x, body.y, body.v);
   },
 };
 
@@ -48,6 +51,8 @@ export function initializeNetwork() {
         case "tile":
           handlerMap.tile(body.tile);
           break;
+        case "gas":
+          handlerMap.gas(body.gas);
       }
     }
     if (posDirty) {
