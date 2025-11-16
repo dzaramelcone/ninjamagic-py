@@ -4,8 +4,8 @@ import { world } from "../svc/world";
 import { hsv2rgb, lerpHSV_rgb } from "../util/colors";
 import { Terminal } from "@xterm/xterm";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { computeFOV } from "../util/fov";
 import "@xterm/xterm/css/xterm.css";
-
 export const COLS = 13;
 export const ROWS = 13;
 
@@ -41,11 +41,24 @@ function composeFrame(
   if (!player) return;
   if (!world.hasMap(player.map_id)) return;
 
-  const map = world.getMap(player.map_id);
+  const FOV_RADIUS = Math.max(COLS, ROWS); // tweak if you want shorter LOS
+
+  // Compute what's currently visible
+  const visible = computeFOV(player.x, player.y, FOV_RADIUS, (x, y) =>
+    world.isOpaque(player.map_id, x, y)
+  );
+
+  // Mark all visible tiles as "seen" in memory
+  for (const key of visible) {
+    const [xs, ys] = key.split(",");
+    const x = Number(xs);
+    const y = Number(ys);
+    world.markSeen(player.map_id, x, y);
+  }
+
   const camLeft = player.x - Math.floor(COLS / 2);
   const camTop = player.y - Math.floor(ROWS / 2);
 
-  // base + gas colors in RGB
   const BASE_BG: [number, number, number] = [28, 31, 39];
   const GAS_PURPLE: [number, number, number] = [160, 0, 255];
 
@@ -55,22 +68,54 @@ function composeFrame(
     const worldY = camTop + vy;
     for (let vx = 0; vx < COLS; vx++) {
       const worldX = camLeft + vx;
+      const key = `${worldX},${worldY}`;
+      const isVisible = visible.has(key);
+      const wasSeen = world.wasSeen(player.map_id, worldX, worldY);
 
-      const { char, color } = world.getChipId(player.map_id, worldX, worldY);
-      const glyph = isEntityAt(player.map_id, worldX, worldY) ? "@" : char;
+      // 1) Never seen: hard black void
+      if (!isVisible && !wasSeen) {
+        out += `\x1b[49m\x1b[38;2;0;0;0m `;
+        continue;
+      }
 
-      const [fr, fg, fb] = hsv2rgb(color.h, color.s, color.v);
+      // For visible & seen tiles we still want to use the actual chip.
+      let char = " ";
+      let color = { h: 0, s: 0, v: 1 };
 
-      // directly read the map gas array using same indices as world coords
-      const gasV = map.gas[worldY]?.[worldX] ?? 0; // undefined-safe for edge maps (no wrap here)
+      try {
+        const chip = world.getChipId(player.map_id, worldX, worldY);
+        char = chip.char;
+        color = chip.color;
+      } catch {
+        // If something went missing, we just keep it blank.
+      }
 
-      if (gasV > 0) {
-        const t = Math.min(1, Math.max(0, gasV));
-        const eased = Math.sqrt(1 - (t - 1) * (t - 1));
-        const [br, bg, bb] = lerpHSV_rgb(BASE_BG, GAS_PURPLE, eased);
-        out += `\x1b[48;2;${br};${bg};${bb}m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
+      const hasEntity = isEntityAt(player.map_id, worldX, worldY);
+      const glyph = hasEntity ? "@" : char;
+
+      if (isVisible) {
+        // 2) Currently visible: full brightness + gas
+        const [fr, fg, fb] = hsv2rgb(color.h, color.s, color.v);
+        const gasV = world.getGasAt(player.map_id, worldX, worldY);
+
+        if (gasV > 0) {
+          const t = Math.min(1, Math.max(0, gasV));
+          const eased = Math.sqrt(1 - (t - 1) * (t - 1));
+          const [br, bg, bb] = lerpHSV_rgb(BASE_BG, GAS_PURPLE, eased);
+          out += `\x1b[48;2;${br};${bg};${bb}m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
+        } else {
+          out += `\x1b[49m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
+        }
       } else {
-        out += `\x1b[49m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
+        // 3) Seen before but not currently visible: dimmer, no gas
+        // Dim by reducing saturation + value in HSV.
+        const dimS = color.s * 0.85;
+        const dimV = color.v * 0.44;
+        const [fr, fg, fb] = hsv2rgb(color.h, dimS, dimV);
+
+        // Slightly dark background to distinguish from void
+        const [br, bg, bb] = BASE_BG;
+        out += `\x1b[48;2;${br};${bg};${bb}m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
       }
     }
     if (vy < ROWS - 1) out += "\r\n";
