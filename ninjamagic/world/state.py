@@ -1,27 +1,22 @@
 import esper
 
-from ninjamagic.component import Chips, ChipSet, ChipsGrid, EntityId, Size
+from ninjamagic.component import Chips, ChipSet, EntityId
 from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W
+from ninjamagic.world import simple
 
 
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
     h, w = TILE_STRIDE
-    chips = bytearray([0] * h * w)
+    chips = {(0, 0): bytearray([0] * h * w)}
     esper.add_component(out, chips, Chips)
-    esper.add_component(out, memoryview(chips).cast("B", (h, w)), ChipsGrid)
-    esper.add_component(out, TILE_STRIDE, Size)
     esper.add_component(out, [(0, out, ord(" "), 1.0, 1.0, 1.0, 1.0)], ChipSet)
     return out
 
 
 def build_demo() -> EntityId:
     out = esper.create_entity()
-    # note to self when factories land; assert multiple of TILE_STRIDE in the ctor
-    h, w = TILE_STRIDE_H * 3, TILE_STRIDE_W * 3
-    chips = bytearray([1] * h * w)
-    for y, x in [(8, 8), (8, 23), (23, 8), (23, 23)]:
-        chips[y * w + x] = 2
+    chips = simple.build_level(lut=[1, 2])
 
     chipset = [
         # tile id, map id, glyph, h, s, v, a
@@ -30,34 +25,30 @@ def build_demo() -> EntityId:
         (2, out, ord("#"), 0.73888, 0.34, 1.0, 1.0),
     ]
 
-    esper.add_component(out, (h, w), Size)
     esper.add_component(out, chips, Chips)
-    esper.add_component(out, memoryview(chips).cast("B", (h, w)), ChipsGrid)
     esper.add_component(out, chipset, ChipSet)
     return out
 
 
-def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytes]:
-    """Get a 16x16 tile from a map:
+def can_enter(*, map_id: int, y: int, x: int) -> bool:
+    """Check if `y,x` of `grid` can be entered. Assumes y,x is in bounds."""
+    top, left, grid = get_tile(map_id=map_id, top=y, left=x)
+    if not grid:
+        return False
+    y -= top
+    x -= left
+    return grid[y * TILE_STRIDE_W + x] == 1
 
-    - Starts from (top, left)
-    - Floors (top, left) to factors of TILE_STRIDE
-    - Wraps toroidally.
-    """
+
+def get_tile(
+    *, map_id: EntityId, top: int, left: int
+) -> tuple[int, int, bytearray | None]:
+    """Get a 16x16 tile from a map. Floors (top, left) to factors of TILE_STRIDE."""
 
     chips = esper.component_for_entity(map_id, Chips)
-    max_h, max_w = esper.component_for_entity(map_id, Size)
-    top = (top % max_h) // TILE_STRIDE_H * TILE_STRIDE_H
-    left = (left % max_w) // TILE_STRIDE_W * TILE_STRIDE_W
-
-    out = bytearray(TILE_STRIDE_H * TILE_STRIDE_W)
-    i = 0
-    for y in range(top, top + TILE_STRIDE_H):
-        start = y * max_w + left
-        out[i : i + TILE_STRIDE_W] = chips[start : start + TILE_STRIDE_W]
-        i += TILE_STRIDE_W
-
-    return top, left, bytes(out)
+    top = top // TILE_STRIDE_H * TILE_STRIDE_H
+    left = left // TILE_STRIDE_W * TILE_STRIDE_W
+    return top, left, chips.get((top, left), None)
 
 
 NOWHERE = build_nowhere()

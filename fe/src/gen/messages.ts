@@ -32,11 +32,11 @@ export interface Pos {
      */
     mapId: number;
     /**
-     * @generated from protobuf field: uint32 x = 3
+     * @generated from protobuf field: int32 x = 3
      */
     x: number;
     /**
-     * @generated from protobuf field: uint32 y = 4
+     * @generated from protobuf field: int32 y = 4
      */
     y: number;
 }
@@ -82,17 +82,42 @@ export interface Tile {
      */
     mapId: number;
     /**
-     * @generated from protobuf field: uint32 top = 2
+     * @generated from protobuf field: int32 top = 2
      */
     top: number;
     /**
-     * @generated from protobuf field: uint32 left = 3
+     * @generated from protobuf field: int32 left = 3
      */
     left: number;
     /**
      * @generated from protobuf field: bytes data = 4
      */
     data: Uint8Array;
+}
+/**
+ * @generated from protobuf message ninjamagic.Gas
+ */
+export interface Gas {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: uint32 map_id = 2
+     */
+    mapId: number;
+    /**
+     * @generated from protobuf field: int32 x = 3
+     */
+    x: number;
+    /**
+     * @generated from protobuf field: int32 y = 4
+     */
+    y: number;
+    /**
+     * @generated from protobuf field: float v = 5
+     */
+    v: number;
 }
 /**
  * A wrapper that can contain any of our specific message types.
@@ -127,6 +152,12 @@ export interface Kind {
          * @generated from protobuf field: ninjamagic.Tile tile = 4
          */
         tile: Tile;
+    } | {
+        oneofKind: "gas";
+        /**
+         * @generated from protobuf field: ninjamagic.Gas gas = 5
+         */
+        gas: Gas;
     } | {
         oneofKind: undefined;
     };
@@ -195,8 +226,8 @@ class Pos$Type extends MessageType<Pos> {
         super("ninjamagic.Pos", [
             { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 2, name: "map_id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 3, name: "x", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 4, name: "y", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+            { no: 3, name: "x", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 4, name: "y", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
         ]);
     }
     create(value?: PartialMessage<Pos>): Pos {
@@ -220,11 +251,11 @@ class Pos$Type extends MessageType<Pos> {
                 case /* uint32 map_id */ 2:
                     message.mapId = reader.uint32();
                     break;
-                case /* uint32 x */ 3:
-                    message.x = reader.uint32();
+                case /* int32 x */ 3:
+                    message.x = reader.int32();
                     break;
-                case /* uint32 y */ 4:
-                    message.y = reader.uint32();
+                case /* int32 y */ 4:
+                    message.y = reader.int32();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -244,12 +275,12 @@ class Pos$Type extends MessageType<Pos> {
         /* uint32 map_id = 2; */
         if (message.mapId !== 0)
             writer.tag(2, WireType.Varint).uint32(message.mapId);
-        /* uint32 x = 3; */
+        /* int32 x = 3; */
         if (message.x !== 0)
-            writer.tag(3, WireType.Varint).uint32(message.x);
-        /* uint32 y = 4; */
+            writer.tag(3, WireType.Varint).int32(message.x);
+        /* int32 y = 4; */
         if (message.y !== 0)
-            writer.tag(4, WireType.Varint).uint32(message.y);
+            writer.tag(4, WireType.Varint).int32(message.y);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -360,8 +391,8 @@ class Tile$Type extends MessageType<Tile> {
     constructor() {
         super("ninjamagic.Tile", [
             { no: 1, name: "map_id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 2, name: "top", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 3, name: "left", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "top", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 3, name: "left", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
             { no: 4, name: "data", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
         ]);
     }
@@ -383,11 +414,11 @@ class Tile$Type extends MessageType<Tile> {
                 case /* uint32 map_id */ 1:
                     message.mapId = reader.uint32();
                     break;
-                case /* uint32 top */ 2:
-                    message.top = reader.uint32();
+                case /* int32 top */ 2:
+                    message.top = reader.int32();
                     break;
-                case /* uint32 left */ 3:
-                    message.left = reader.uint32();
+                case /* int32 left */ 3:
+                    message.left = reader.int32();
                     break;
                 case /* bytes data */ 4:
                     message.data = reader.bytes();
@@ -407,12 +438,12 @@ class Tile$Type extends MessageType<Tile> {
         /* uint32 map_id = 1; */
         if (message.mapId !== 0)
             writer.tag(1, WireType.Varint).uint32(message.mapId);
-        /* uint32 top = 2; */
+        /* int32 top = 2; */
         if (message.top !== 0)
-            writer.tag(2, WireType.Varint).uint32(message.top);
-        /* uint32 left = 3; */
+            writer.tag(2, WireType.Varint).int32(message.top);
+        /* int32 left = 3; */
         if (message.left !== 0)
-            writer.tag(3, WireType.Varint).uint32(message.left);
+            writer.tag(3, WireType.Varint).int32(message.left);
         /* bytes data = 4; */
         if (message.data.length)
             writer.tag(4, WireType.LengthDelimited).bytes(message.data);
@@ -427,13 +458,93 @@ class Tile$Type extends MessageType<Tile> {
  */
 export const Tile = new Tile$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class Gas$Type extends MessageType<Gas> {
+    constructor() {
+        super("ninjamagic.Gas", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "map_id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 3, name: "x", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 4, name: "y", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 5, name: "v", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Gas>): Gas {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.mapId = 0;
+        message.x = 0;
+        message.y = 0;
+        message.v = 0;
+        if (value !== undefined)
+            reflectionMergePartial<Gas>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Gas): Gas {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* uint32 map_id */ 2:
+                    message.mapId = reader.uint32();
+                    break;
+                case /* int32 x */ 3:
+                    message.x = reader.int32();
+                    break;
+                case /* int32 y */ 4:
+                    message.y = reader.int32();
+                    break;
+                case /* float v */ 5:
+                    message.v = reader.float();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Gas, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* uint32 map_id = 2; */
+        if (message.mapId !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.mapId);
+        /* int32 x = 3; */
+        if (message.x !== 0)
+            writer.tag(3, WireType.Varint).int32(message.x);
+        /* int32 y = 4; */
+        if (message.y !== 0)
+            writer.tag(4, WireType.Varint).int32(message.y);
+        /* float v = 5; */
+        if (message.v !== 0)
+            writer.tag(5, WireType.Bit32).float(message.v);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Gas
+ */
+export const Gas = new Gas$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class Kind$Type extends MessageType<Kind> {
     constructor() {
         super("ninjamagic.Kind", [
             { no: 1, name: "msg", kind: "message", oneof: "body", T: () => Msg },
             { no: 2, name: "pos", kind: "message", oneof: "body", T: () => Pos },
             { no: 3, name: "chip", kind: "message", oneof: "body", T: () => Chip },
-            { no: 4, name: "tile", kind: "message", oneof: "body", T: () => Tile }
+            { no: 4, name: "tile", kind: "message", oneof: "body", T: () => Tile },
+            { no: 5, name: "gas", kind: "message", oneof: "body", T: () => Gas }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -472,6 +583,12 @@ class Kind$Type extends MessageType<Kind> {
                         tile: Tile.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).tile)
                     };
                     break;
+                case /* ninjamagic.Gas gas */ 5:
+                    message.body = {
+                        oneofKind: "gas",
+                        gas: Gas.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).gas)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -496,6 +613,9 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Tile tile = 4; */
         if (message.body.oneofKind === "tile")
             Tile.internalBinaryWrite(message.body.tile, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Gas gas = 5; */
+        if (message.body.oneofKind === "gas")
+            Gas.internalBinaryWrite(message.body.gas, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

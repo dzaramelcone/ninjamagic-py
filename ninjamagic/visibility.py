@@ -3,7 +3,7 @@ import logging
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Connection, Transform
+from ninjamagic.component import AABB, Connection, Glyph, Transform
 from ninjamagic.util import VIEW_STRIDE
 from ninjamagic.world.state import ChipSet
 
@@ -48,7 +48,7 @@ def notify_movement(sig: bus.PositionChanged):
                 )
             )
 
-    for o_id, o_pos in esper.get_component(Transform):
+    for o_id, (o_pos, _) in esper.get_components(Transform, Glyph):
         if o_id == sig.source:
             continue
 
@@ -112,7 +112,14 @@ def notify_gas(sig: bus.GasUpdated):
     for eid, (transform, _) in esper.get_components(Transform, Connection):
         if sig.transform.map_id != transform.map_id:
             continue
-        if not sig.aabb.contains(x=transform.x, y=transform.y):
+        if not sig.aabb.intersects(
+            other=AABB(
+                top=transform.y - VIEW_H,
+                bot=transform.y + VIEW_H,
+                left=transform.x - VIEW_W,
+                right=transform.x + VIEW_W,
+            )
+        ):
             continue
         for (y, x), v in sig.gas.items():
             if abs(transform.y - y) > VIEW_H or abs(transform.x - x) > VIEW_W:
