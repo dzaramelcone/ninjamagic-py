@@ -52,5 +52,5 @@ def generate_prefabs():
             print("".join([LUT[game[y, x]] for x in range(SIZE[1])]))
         out.extend(game.cast("B"))
 
-    with open("prefabs.txt", "wb") as fw:
+    with open("prefabs.bin", "wb") as fw:
         fw.write(out)
