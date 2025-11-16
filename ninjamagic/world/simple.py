@@ -140,7 +140,7 @@ def build_level(lut: list[int]) -> dict[tuple[int, int], bytearray]:
     for rooms, edges in generate(exit_distance=13, min_rooms=35, max_rooms=55):
         pass
 
-    with open("prefabs.txt", "rb") as fr:
+    with open("prefabs.bin", "rb") as fr:
         prefabs = fr.read()
     tiles: dict[tuple[int, int], bytearray] = {}
     cc = defaultdict[tuple[int, int], list[tuple[int, int]]](list)
