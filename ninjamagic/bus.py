@@ -7,9 +7,18 @@ from typing import TypeVar, cast
 from fastapi import WebSocket
 
 from ninjamagic import reach
-from ninjamagic.component import ActId, Conditions, EntityId, Skill, Stances
+from ninjamagic.component import (
+    AABB,
+    ActId,
+    Conditions,
+    EntityId,
+    Gas,
+    Skill,
+    Stances,
+    Transform,
+)
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
-from ninjamagic.world import ChipSet
+from ninjamagic.world.state import ChipSet
 
 
 class Signal:
@@ -86,6 +95,19 @@ class PositionChanged(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class CreateGas(Signal):
+    loc: tuple[int, int, int]
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class GasUpdated(Signal):
+    source: EntityId
+    transform: Transform
+    aabb: AABB
+    gas: Gas
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class StanceChanged(Signal):
     "An entity's stance changed."
 
@@ -143,16 +165,20 @@ class Interrupt(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
-class Emit(Signal):
-    """Send a message from an entity to others within `reach`.
+class Echo(Signal):
+    """Send `text` to `source`.
+
+    If `otext`, send `otext` to entities within `range`.
 
     If `target` and `target_text`, send `target_text` to `target` instead."""
 
     source: EntityId
-    range: reach.Selector
     text: str
-    target: EntityId | None = None
+    range: reach.Selector = reach.adjacent
+    otext: str = ""
+    target: EntityId = 0
     target_text: str = ""
+    force_send_to_target: bool = False
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -171,6 +197,18 @@ class OutboundTile(Signal):
     map_id: EntityId
     top: int
     left: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundGas(Signal):
+    """An outbound gas tile."""
+
+    to: EntityId
+    gas_id: int
+    map_id: int
+    x: int
+    y: int
+    v: float
 
 
 @signal(frozen=True, slots=True, kw_only=True)

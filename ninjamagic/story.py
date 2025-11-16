@@ -36,29 +36,25 @@ def echo(
     story: str,
     *args: EntityId,
     range: reach.Selector = reach.adjacent,
-    send_to_target: bool = True,
     **kwargs,
 ):
-    has_source = len(args) > 0 and client(args[0])
-    if has_source:
-        bus.pulse(
-            bus.Outbound(
-                to=args[0], text=vrender(story, args, kwargs, first_person=args[0])
-            )
-        )
+    source = target = 0
+    text = target_text = ""
 
-    target = None
-    target_text = ""
-    if send_to_target and len(args) > 1 and client(args[1]):
+    if len(args) > 0 and client(args[0]):
+        source = args[0]
+        text = vrender(story, args, kwargs, first_person=source)
+
+    if len(args) > 1 and client(args[1]):
         target = args[1]
         target_text = vrender(story, args, kwargs, first_person=target)
-    # note if source and target are not adjacent, target may need to emit also.
-    # "SharedEmit" signal that returns true if c in range of a or b
+
     bus.pulse(
-        bus.Emit(
-            source=args[0],
+        bus.Echo(
+            source=source,
+            text=text,
             range=range,
-            text=vrender(story, args, kwargs),
+            otext=vrender(story, args, kwargs),
             target=target,
             target_text=target_text,
         ),

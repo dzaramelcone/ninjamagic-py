@@ -4,9 +4,11 @@ import pytest
 
 from ninjamagic.component import Health, Noun, Skill, Skills, Transform
 from ninjamagic.util import VIEW_STRIDE, Pronouns, get_melee_delay
+from ninjamagic.world.state import TEST
 from tests.util import FakeUserSetup
 
-INSIDE = VIEW_STRIDE.width
+H, W = VIEW_STRIDE
+INSIDE = W
 OUTSIDE = INSIDE + 1
 
 
@@ -49,6 +51,7 @@ async def test_solo_client(golden, client_factory, alice_setup) -> None:
 async def test_chat(golden, client_factory, alice_setup, bob_setup):
     alice = await client_factory(alice_setup)
     bob = await client_factory(bob_setup)
+    await alice.recv()
     async with asyncio.timeout(1):
         await alice.send("say hi")
         golden("alice", await alice.recv())
@@ -65,7 +68,7 @@ async def test_moves(golden, client_factory):
         FakeUserSetup(
             subj="alice",
             email="alice@x.test",
-            transform=Transform(map_id=1, x=7, y=7),
+            transform=Transform(map_id=TEST, x=6, y=6),
             noun=Noun(value="Alice", pronouns=Pronouns.SHE),
         ),
     )
@@ -74,7 +77,7 @@ async def test_moves(golden, client_factory):
         FakeUserSetup(
             subj="bob",
             email="bob@x.test",
-            transform=Transform(map_id=1, x=7 + OUTSIDE, y=7 + OUTSIDE),
+            transform=Transform(map_id=TEST, x=6 + OUTSIDE, y=6 + OUTSIDE),
             noun=Noun(value="Bob", pronouns=Pronouns.HE),
         ),
     )
@@ -140,6 +143,8 @@ async def test_combat_and_exp(golden, client_factory):
             ),
         ),
     )
+    await alice.recv()
+
     # bob takes a swing at alice (jerk!)
     async with asyncio.timeout(0.25):
         await bob.send("att alice")

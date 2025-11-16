@@ -9,6 +9,9 @@ import inflect
 
 from ninjamagic.config import settings
 
+FOUR_DIRS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+EIGHT_DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+EPSILON = 1e-12
 # TODO: Clean up the RNG global
 RNG = random.Random(x=settings.random_seed)
 INFLECTOR = inflect.engine()
@@ -179,20 +182,14 @@ class Compass(StrEnum):
                 raise ValueError(f"Unknown compass {self!r}")
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Size:
-    width: int
-    height: int
-
-
 def serial(counter=itertools.count(1)) -> int:
     return next(counter)
 
 
 OWNER_SESSION_KEY = "user"
 TEST_SETUP_KEY = "testsetup"
-TILE_STRIDE = Size(width=16, height=16)
-VIEW_STRIDE = Size(width=6, height=6)
+TILE_STRIDE_H, TILE_STRIDE_W = TILE_STRIDE = (16, 16)
+VIEW_STRIDE = (6, 6)
 
 VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
@@ -226,8 +223,8 @@ def contest(
     flat_ranks_per_tier: float = 25.0,  # baseline ranks per tier
     pct_ranks_per_tier: float = 0.185,  # more ranks per tier as both sides grow
     pct_ranks_per_tier_amplify: float = 7.0,  # amplify base ranks to slightly prefer pct
-    min_mult: float = 0.10,  # clamp: 10%
-    max_mult: float = 10.0,  # clamp: 10x
+    min_mult: float = 0.08,  # clamp: 8%
+    max_mult: float = 12.5,  # clamp: 12.5x
 ) -> ContestResult:
     "Contest two ranks and return mult, attack rank roll, defend rank roll."
 
@@ -245,14 +242,6 @@ def contest(
         pct_ranks_per_tier * min(attack, defend) + pct_ranks_per_tier_amplify,
     )
     tier_delta = (attack - defend) / ranks_per_tier
-
-    # turn tier delta into multiplicative factor:
-    # 1 + |Δ|.
-    mult = 1.0 + abs(tier_delta)
-    # invert if underdog
-    if tier_delta < 0:
-        mult = 1.0 / mult
-    # clamp to bounds
-    mult = clamp(mult, min_mult, max_mult)
+    mult = clamp(2**tier_delta, min_mult, max_mult)
 
     return mult, attack - dilute, defend - dilute

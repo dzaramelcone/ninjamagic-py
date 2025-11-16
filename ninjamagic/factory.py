@@ -3,6 +3,7 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import (
     EntityId,
+    Glyph,
     Health,
     Noun,
     Skills,
@@ -12,11 +13,16 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.world import NOWHERE, demo_map
+from ninjamagic.world.state import DEMO, NOWHERE
+
+SPAWN = (DEMO, 8, 8)
 
 
 def create(entity: EntityId):
-    esper.add_component(entity, Transform(map_id=demo_map, x=1, y=1))
+    # spawn point
+    map, y, x = SPAWN
+    esper.add_component(entity, Transform(map_id=map, x=x, y=y))
+    esper.add_component(entity, "@", Glyph)
     esper.add_component(entity, Noun())
     esper.add_component(entity, Health())
     esper.add_component(entity, Stance())
@@ -27,15 +33,16 @@ def create(entity: EntityId):
 
         setup_test_entity(entity)
 
+    pos = transform(entity)
     bus.pulse(
         bus.PositionChanged(
             source=entity,
             from_map_id=0,
             from_x=0,
             from_y=0,
-            to_map_id=demo_map,
-            to_x=1,
-            to_y=1,
+            to_map_id=pos.map_id,
+            to_x=pos.x,
+            to_y=pos.y,
         )
     )
 

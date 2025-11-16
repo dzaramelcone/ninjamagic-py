@@ -1,3 +1,4 @@
+//src/state.ts
 import { createStore } from "zustand/vanilla";
 import { ROWS, COLS } from "./ui/map";
 const PLAYER_ID = 0;

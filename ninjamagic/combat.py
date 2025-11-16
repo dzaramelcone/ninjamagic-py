@@ -32,7 +32,6 @@ def process():
                 "{0} {0:swings} wide at {1}!",
                 sig.source,
                 sig.target,
-                send_to_target=False,
             )
             continue
 

@@ -9,8 +9,8 @@ message Msg {
 message Pos {
   uint32 id = 1;
   uint32 map_id = 2;
-  uint32 x = 3;
-  uint32 y = 4;
+  int32 x = 3;
+  int32 y = 4;
 }
 
 message Chip {
@@ -25,9 +25,18 @@ message Chip {
 
 message Tile {
   uint32 map_id = 1;
-  uint32 top = 2;
-  uint32 left = 3;
+  int32 top = 2;
+  int32 left = 3;
   bytes data = 4;
+}
+
+message Gas {
+  uint32 id = 1;
+  uint32 map_id = 2;
+  int32 x = 3;
+  int32 y = 4;
+  float v = 5;
+
 }
 
 // A wrapper that can contain any of our specific message types.
@@ -37,6 +46,7 @@ message Kind {
     Pos pos = 2;
     Chip chip = 3;
     Tile tile = 4;
+    Gas gas = 5;
   }
 }
 
