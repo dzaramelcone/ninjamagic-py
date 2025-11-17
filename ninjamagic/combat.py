@@ -63,6 +63,14 @@ def process():
             sig.target,
             damage=damage,
         )
+        bus.pulse(
+            bus.OutboundHealth(
+                to=sig.source, source=sig.target, pct=target_health.cur / 100.0
+            ),
+            bus.OutboundHealth(
+                to=sig.target, source=sig.target, pct=target_health.cur / 100.0
+            ),
+        )
 
         bus.pulse_in(
             util.pert(A, B, MODE),

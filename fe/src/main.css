@@ -24,19 +24,21 @@
   --ansi-bright-cyan: #B0F1E4;
   --ansi-bright-white: #FFFFFF;
 
+  --health: var(--danger);
   --row-h: 22px;
 }
 
 html,
 body {
   margin: 0;
+  padding-top: 24px;
   height: 100%;
   background: var(--bg);
   color: var(--on-surface);
   font-family: 'IBM Plex Mono', monospace;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
 }
 
 /* ─── card ────────────────────────────────────────── */
@@ -51,12 +53,20 @@ body {
   border-radius: 18px;
   overflow: hidden;
 }
-
 #mapBox {
   align-self: center;
   border-radius: 12px;
   overflow: hidden;
   z-index: 0;
+}
+
+#nearby {
+  white-space: pre;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  flex: 0 0 22ch;
+  width: 22ch;
+  margin-right: 16px;
 }
 
 #chat {

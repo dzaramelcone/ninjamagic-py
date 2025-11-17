@@ -2,9 +2,22 @@
 import { useGameStore } from "../state";
 import { world } from "./world";
 import { postLine } from "../ui/chat";
-import { Packet, Msg, Pos, Chip, Tile, Gas } from "../gen/messages";
+import {
+  Packet,
+  Msg,
+  Pos,
+  Chip,
+  Tile,
+  Gas,
+  Glyph,
+  Noun,
+  Health,
+  Stance,
+} from "../gen/messages";
 
-const { setPosition, cullPositions } = useGameStore.getState();
+const { setPosition, cullPositions, setGlyph, setNoun, setHealth, setStance } =
+  useGameStore.getState();
+
 let ws: WebSocket;
 const handlerMap = {
   msg: (body: Msg) => {
@@ -21,6 +34,21 @@ const handlerMap = {
   },
   gas: (body: Gas) => {
     world.handleGas(body.id, body.mapId, body.x, body.y, body.v);
+  },
+
+  glyph: (body: Glyph) => {
+    setGlyph(body.id, body.glyph);
+  },
+  noun: (body: Noun) => {
+    setNoun(body.id, body.text);
+  },
+
+  health: (body: Health) => {
+    setHealth(body.id, body.pct);
+  },
+
+  stance: (body: Stance) => {
+    setStance(body.id, body.text);
   },
 };
 
@@ -53,6 +81,19 @@ export function initializeNetwork() {
           break;
         case "gas":
           handlerMap.gas(body.gas);
+          break;
+        case "glyph":
+          handlerMap.glyph(body.glyph);
+          break;
+        case "noun":
+          handlerMap.noun(body.noun);
+          break;
+        case "health":
+          handlerMap.health(body.health);
+          break;
+        case "stance":
+          handlerMap.stance(body.stance);
+          break;
       }
     }
     if (posDirty) {

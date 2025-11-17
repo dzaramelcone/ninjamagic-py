@@ -39,6 +39,27 @@ message Gas {
 
 }
 
+message Glyph {
+  uint32 id = 1;
+  string glyph = 2;
+}
+
+message Noun {
+  uint32 id = 1;
+  string text = 2;
+}
+
+message Health {
+  uint32 id = 1;
+  float pct = 2;
+}
+
+message Stance {
+  uint32 id = 1;
+  string text = 2;
+}
+
+
 // A wrapper that can contain any of our specific message types.
 message Kind {
   oneof body {
@@ -47,6 +68,10 @@ message Kind {
     Chip chip = 3;
     Tile tile = 4;
     Gas gas = 5;
+    Glyph glyph = 6;
+    Noun noun = 7;
+    Health health = 8;
+    Stance stance = 9;
   }
 }
 
