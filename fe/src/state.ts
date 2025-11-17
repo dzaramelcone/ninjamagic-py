@@ -1,4 +1,4 @@
-//src/state.ts
+// src/state.ts
 import { createStore } from "zustand/vanilla";
 import { ROWS, COLS } from "./ui/map";
 const PLAYER_ID = 0;
@@ -10,19 +10,33 @@ export type EntityPosition = {
   y: number;
 };
 
+type EntityMeta = {
+  glyph?: string;
+  noun?: string;
+  stance?: string;
+  healthPct?: number; // from Health.pct (0..1)
+};
+
 type GameStore = {
   entities: Record<number, EntityPosition>;
+  entityMeta: Record<number, EntityMeta>;
   messages: string[];
 
   getPlayer: () => EntityPosition;
   setPosition: (id: number, map_id: number, x: number, y: number) => void;
   entityChecker: () => (map_id: number, x: number, y: number) => boolean;
   cullPositions: () => void;
+  setGlyph: (id: number, glyph: string) => void;
+  setNoun: (id: number, text: string) => void;
+  setHealth: (id: number, pct: number) => void;
+  setStance: (id: number, text: string) => void;
 };
 
 export const useGameStore = createStore<GameStore>((set, get) => ({
   entities: {},
+  entityMeta: {},
   messages: [],
+
   getPlayer: () => {
     return get().entities[PLAYER_ID];
   },
@@ -49,19 +63,82 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
   cullPositions: () => {
     console.log(`Cull positions`);
-    const { entities: entities } = get();
+    const { entities, entityMeta } = get();
     const player = entities[PLAYER_ID];
+    if (!player) {
+      // Nothing to cull yet
+      return;
+    }
+
+    const keptEntries = Object.entries(entities).filter(([_, entity]) => {
+      const e = entity as EntityPosition;
+      return (
+        e.id === PLAYER_ID ||
+        (e.map_id === player.map_id &&
+          Math.abs(e.x - player.x) <= Math.floor(ROWS / 2) &&
+          Math.abs(e.y - player.y) <= Math.floor(COLS / 2))
+      );
+    });
+
+    const newEntities: Record<number, EntityPosition> = Object.fromEntries(
+      keptEntries
+    ) as Record<number, EntityPosition>;
+
+    const keptIds = new Set<number>(
+      Object.keys(newEntities).map((k) => Number(k))
+    );
+
+    const newMeta: Record<number, EntityMeta> = Object.fromEntries(
+      Object.entries(entityMeta).filter(([id]) => keptIds.has(Number(id)))
+    ) as Record<number, EntityMeta>;
+
     set({
-      entities: Object.fromEntries(
-        Object.entries(entities).filter(([_, entity]) => {
-          return (
-            entity.id === PLAYER_ID ||
-            (entity.map_id === player.map_id &&
-              Math.abs(entity.x - player.x) <= Math.floor(ROWS / 2) &&
-              Math.abs(entity.y - player.y) <= Math.floor(COLS / 2))
-          );
-        })
-      ),
+      entities: newEntities,
+      entityMeta: newMeta,
     });
   },
+
+  setGlyph: (id, glyph) =>
+    set((state) => ({
+      entityMeta: {
+        ...state.entityMeta,
+        [id]: {
+          ...(state.entityMeta[id] ?? {}),
+          glyph,
+        },
+      },
+    })),
+
+  setNoun: (id, text) =>
+    set((state) => ({
+      entityMeta: {
+        ...state.entityMeta,
+        [id]: {
+          ...(state.entityMeta[id] ?? {}),
+          noun: text,
+        },
+      },
+    })),
+
+  setHealth: (id, pct) =>
+    set((state) => ({
+      entityMeta: {
+        ...state.entityMeta,
+        [id]: {
+          ...(state.entityMeta[id] ?? {}),
+          healthPct: pct,
+        },
+      },
+    })),
+
+  setStance: (id, text) =>
+    set((state) => ({
+      entityMeta: {
+        ...state.entityMeta,
+        [id]: {
+          ...(state.entityMeta[id] ?? {}),
+          stance: text,
+        },
+      },
+    })),
 }));

@@ -212,6 +212,42 @@ class OutboundGas(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class OutboundHealth(Signal):
+    """An outbound health update."""
+
+    to: EntityId
+    source: EntityId
+    pct: float
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundGlyph(Signal):
+    """An outbound glyph update."""
+
+    to: EntityId
+    source: EntityId
+    glyph: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundNoun(Signal):
+    """An outbound noun update."""
+
+    to: EntityId
+    source: EntityId
+    noun: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundStance(Signal):
+    """An outbound stance update."""
+
+    to: EntityId
+    source: EntityId
+    stance: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class OutboundChipSet(Signal):
     """An outbound map chip set."""
 
