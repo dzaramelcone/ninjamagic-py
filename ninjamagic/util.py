@@ -189,7 +189,7 @@ def serial(counter=itertools.count(1)) -> int:
 OWNER_SESSION_KEY = "user"
 TEST_SETUP_KEY = "testsetup"
 TILE_STRIDE_H, TILE_STRIDE_W = TILE_STRIDE = (16, 16)
-VIEW_STRIDE = (6, 6)
+VIEW_STRIDE_H, VIEW_STRIDE_W = VIEW_STRIDE = (6, 6)
 
 VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()

@@ -32,6 +32,10 @@ def process():
         bus.OutboundChipSet,
         bus.OutboundTile,
         bus.OutboundGas,
+        bus.OutboundGlyph,
+        bus.OutboundNoun,
+        bus.OutboundHealth,
+        bus.OutboundStance,
     ):
         for signal in bus.iter(type):
             mailbag[signal.to].append(signal)
@@ -73,6 +77,26 @@ def try_insert(
         case bus.Outbound():
             msg = envelope.add().msg
             msg.text = sig.text
+            return True
+        case bus.OutboundNoun():
+            noun = envelope.add().noun
+            noun.id = 0 if to == sig.source else sig.source
+            noun.text = sig.noun
+            return True
+        case bus.OutboundHealth():
+            health = envelope.add().health
+            health.id = 0 if to == sig.source else sig.source
+            health.pct = sig.pct
+            return True
+        case bus.OutboundStance():
+            stance = envelope.add().stance
+            stance.id = 0 if to == sig.source else sig.source
+            stance.text = sig.stance
+            return True
+        case bus.OutboundGlyph():
+            glyph = envelope.add().glyph
+            glyph.id = 0 if to == sig.source else sig.source
+            glyph.glyph = sig.glyph
             return True
         case bus.OutboundMove():
             pos = envelope.add().pos

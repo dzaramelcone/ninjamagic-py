@@ -120,6 +120,58 @@ export interface Gas {
     v: number;
 }
 /**
+ * @generated from protobuf message ninjamagic.Glyph
+ */
+export interface Glyph {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: string glyph = 2
+     */
+    glyph: string;
+}
+/**
+ * @generated from protobuf message ninjamagic.Noun
+ */
+export interface Noun {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: string text = 2
+     */
+    text: string;
+}
+/**
+ * @generated from protobuf message ninjamagic.Health
+ */
+export interface Health {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: float pct = 2
+     */
+    pct: number;
+}
+/**
+ * @generated from protobuf message ninjamagic.Stance
+ */
+export interface Stance {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: string text = 2
+     */
+    text: string;
+}
+/**
  * A wrapper that can contain any of our specific message types.
  *
  * @generated from protobuf message ninjamagic.Kind
@@ -158,6 +210,30 @@ export interface Kind {
          * @generated from protobuf field: ninjamagic.Gas gas = 5
          */
         gas: Gas;
+    } | {
+        oneofKind: "glyph";
+        /**
+         * @generated from protobuf field: ninjamagic.Glyph glyph = 6
+         */
+        glyph: Glyph;
+    } | {
+        oneofKind: "noun";
+        /**
+         * @generated from protobuf field: ninjamagic.Noun noun = 7
+         */
+        noun: Noun;
+    } | {
+        oneofKind: "health";
+        /**
+         * @generated from protobuf field: ninjamagic.Health health = 8
+         */
+        health: Health;
+    } | {
+        oneofKind: "stance";
+        /**
+         * @generated from protobuf field: ninjamagic.Stance stance = 9
+         */
+        stance: Stance;
     } | {
         oneofKind: undefined;
     };
@@ -537,6 +613,226 @@ class Gas$Type extends MessageType<Gas> {
  */
 export const Gas = new Gas$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class Glyph$Type extends MessageType<Glyph> {
+    constructor() {
+        super("ninjamagic.Glyph", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "glyph", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Glyph>): Glyph {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.glyph = "";
+        if (value !== undefined)
+            reflectionMergePartial<Glyph>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Glyph): Glyph {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* string glyph */ 2:
+                    message.glyph = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Glyph, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* string glyph = 2; */
+        if (message.glyph !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.glyph);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Glyph
+ */
+export const Glyph = new Glyph$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Noun$Type extends MessageType<Noun> {
+    constructor() {
+        super("ninjamagic.Noun", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "text", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Noun>): Noun {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.text = "";
+        if (value !== undefined)
+            reflectionMergePartial<Noun>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Noun): Noun {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* string text */ 2:
+                    message.text = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Noun, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* string text = 2; */
+        if (message.text !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.text);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Noun
+ */
+export const Noun = new Noun$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Health$Type extends MessageType<Health> {
+    constructor() {
+        super("ninjamagic.Health", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "pct", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Health>): Health {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.pct = 0;
+        if (value !== undefined)
+            reflectionMergePartial<Health>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Health): Health {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* float pct */ 2:
+                    message.pct = reader.float();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Health, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* float pct = 2; */
+        if (message.pct !== 0)
+            writer.tag(2, WireType.Bit32).float(message.pct);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Health
+ */
+export const Health = new Health$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Stance$Type extends MessageType<Stance> {
+    constructor() {
+        super("ninjamagic.Stance", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "text", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Stance>): Stance {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.text = "";
+        if (value !== undefined)
+            reflectionMergePartial<Stance>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Stance): Stance {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* string text */ 2:
+                    message.text = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Stance, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* string text = 2; */
+        if (message.text !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.text);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Stance
+ */
+export const Stance = new Stance$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class Kind$Type extends MessageType<Kind> {
     constructor() {
         super("ninjamagic.Kind", [
@@ -544,7 +840,11 @@ class Kind$Type extends MessageType<Kind> {
             { no: 2, name: "pos", kind: "message", oneof: "body", T: () => Pos },
             { no: 3, name: "chip", kind: "message", oneof: "body", T: () => Chip },
             { no: 4, name: "tile", kind: "message", oneof: "body", T: () => Tile },
-            { no: 5, name: "gas", kind: "message", oneof: "body", T: () => Gas }
+            { no: 5, name: "gas", kind: "message", oneof: "body", T: () => Gas },
+            { no: 6, name: "glyph", kind: "message", oneof: "body", T: () => Glyph },
+            { no: 7, name: "noun", kind: "message", oneof: "body", T: () => Noun },
+            { no: 8, name: "health", kind: "message", oneof: "body", T: () => Health },
+            { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -589,6 +889,30 @@ class Kind$Type extends MessageType<Kind> {
                         gas: Gas.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).gas)
                     };
                     break;
+                case /* ninjamagic.Glyph glyph */ 6:
+                    message.body = {
+                        oneofKind: "glyph",
+                        glyph: Glyph.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).glyph)
+                    };
+                    break;
+                case /* ninjamagic.Noun noun */ 7:
+                    message.body = {
+                        oneofKind: "noun",
+                        noun: Noun.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).noun)
+                    };
+                    break;
+                case /* ninjamagic.Health health */ 8:
+                    message.body = {
+                        oneofKind: "health",
+                        health: Health.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).health)
+                    };
+                    break;
+                case /* ninjamagic.Stance stance */ 9:
+                    message.body = {
+                        oneofKind: "stance",
+                        stance: Stance.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).stance)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -616,6 +940,18 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Gas gas = 5; */
         if (message.body.oneofKind === "gas")
             Gas.internalBinaryWrite(message.body.gas, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Glyph glyph = 6; */
+        if (message.body.oneofKind === "glyph")
+            Glyph.internalBinaryWrite(message.body.glyph, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Noun noun = 7; */
+        if (message.body.oneofKind === "noun")
+            Noun.internalBinaryWrite(message.body.noun, writer.tag(7, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Health health = 8; */
+        if (message.body.oneofKind === "health")
+            Health.internalBinaryWrite(message.body.health, writer.tag(8, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Stance stance = 9; */
+        if (message.body.oneofKind === "stance")
+            Stance.internalBinaryWrite(message.body.stance, writer.tag(9, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

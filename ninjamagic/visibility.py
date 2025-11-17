@@ -3,7 +3,15 @@ import logging
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import AABB, Connection, Glyph, Transform
+from ninjamagic.component import (
+    AABB,
+    Connection,
+    Glyph,
+    Health,
+    Noun,
+    Stance,
+    Transform,
+)
 from ninjamagic.util import VIEW_STRIDE
 from ninjamagic.world.state import ChipSet
 
@@ -20,6 +28,10 @@ CORNERS = (
 def notify_movement(sig: bus.PositionChanged):
     notify_source = esper.has_component(sig.source, Connection)
     same_map = sig.to_map_id == sig.from_map_id
+    sig_glyph = esper.try_component(sig.source, Glyph)
+    sig_noun = esper.try_component(sig.source, Noun)
+    sig_health = esper.try_component(sig.source, Health)
+    sig_stance = esper.try_component(sig.source, Stance)
     # tell source. send tiles.
     if notify_source:
         bus.pulse(
@@ -40,6 +52,26 @@ def notify_movement(sig: bus.PositionChanged):
                 for dx, dy in CORNERS
             ],
         )
+        if sig_glyph:
+            bus.pulse(
+                bus.OutboundGlyph(to=sig.source, source=sig.source, glyph=sig_glyph)
+            )
+        if sig_health:
+            bus.pulse(
+                bus.OutboundHealth(
+                    to=sig.source, source=sig.source, pct=sig_health.cur / 100.0
+                )
+            )
+        if sig_noun:
+            bus.pulse(
+                bus.OutboundNoun(to=sig.source, source=sig.source, noun=sig_noun.value)
+            )
+        if sig_stance:
+            bus.pulse(
+                bus.OutboundStance(
+                    to=sig.source, source=sig.source, stance=sig_stance.cur
+                )
+            )
         if not same_map:
             bus.pulse(
                 bus.OutboundChipSet(
@@ -48,9 +80,13 @@ def notify_movement(sig: bus.PositionChanged):
                 )
             )
 
-    for o_id, (o_pos, _) in esper.get_components(Transform, Glyph):
+    for o_id, (o_pos, o_glyph) in esper.get_components(Transform, Glyph):
         if o_id == sig.source:
             continue
+
+        o_noun = esper.try_component(o_id, Noun)
+        o_health = esper.try_component(o_id, Health)
+        o_stance = esper.try_component(o_id, Stance)
 
         notify_other = esper.has_component(o_id, Connection)
 
@@ -76,8 +112,28 @@ def notify_movement(sig: bus.PositionChanged):
                     map_id=sig.to_map_id,
                     x=sig.to_x,
                     y=sig.to_y,
-                )
+                ),
             )
+            if sig_glyph:
+                bus.pulse(
+                    bus.OutboundGlyph(to=o_id, source=sig.source, glyph=sig_glyph)
+                )
+            if sig_health:
+                bus.pulse(
+                    bus.OutboundHealth(
+                        to=o_id, source=sig.source, pct=sig_health.cur / 100.0
+                    )
+                )
+            if sig_noun:
+                bus.pulse(
+                    bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value)
+                )
+            if sig_stance:
+                bus.pulse(
+                    bus.OutboundStance(
+                        to=o_id, source=sig.source, stance=sig_stance.cur
+                    )
+                )
 
         # symmetrical
         if notify_source and in_to:
@@ -90,6 +146,22 @@ def notify_movement(sig: bus.PositionChanged):
                     y=o_pos.y,
                 )
             )
+            if o_glyph:
+                bus.pulse(bus.OutboundGlyph(to=sig.source, source=o_id, glyph=o_glyph))
+            if o_health:
+                bus.pulse(
+                    bus.OutboundHealth(
+                        to=sig.source, source=o_id, pct=o_health.cur / 100.0
+                    )
+                )
+            if o_noun:
+                bus.pulse(
+                    bus.OutboundNoun(to=sig.source, source=o_id, noun=o_noun.value)
+                )
+            if o_stance:
+                bus.pulse(
+                    bus.OutboundStance(to=sig.source, source=o_id, stance=o_stance.cur)
+                )
 
         # publish to former observers
         if notify_other and in_from and not in_to:
@@ -102,6 +174,26 @@ def notify_movement(sig: bus.PositionChanged):
                     y=sig.to_y,
                 )
             )
+            if sig_glyph:
+                bus.pulse(
+                    bus.OutboundGlyph(to=o_id, source=sig.source, glyph=sig_glyph)
+                )
+            if sig_health:
+                bus.pulse(
+                    bus.OutboundHealth(
+                        to=o_id, source=sig.source, pct=sig_health.cur / 100.0
+                    )
+                )
+            if sig_noun:
+                bus.pulse(
+                    bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value)
+                )
+            if sig_stance:
+                bus.pulse(
+                    bus.OutboundStance(
+                        to=o_id, source=sig.source, stance=sig_stance.cur
+                    )
+                )
 
 
 def notify_gas(sig: bus.GasUpdated):
