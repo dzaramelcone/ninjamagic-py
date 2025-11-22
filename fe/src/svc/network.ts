@@ -17,46 +17,42 @@ import {
 import { COLS, ROWS } from "../ui/map";
 
 const PLAYER_ID = 0;
+const NONE_LEVEL_ID = 1;
+type PosLike = { id: number; map_id: number; x: number; y: number };
 const { setPosition, cullPositions, setGlyph, setNoun, setHealth, setStance } =
   useGameStore.getState();
 
 function cardinalFromDelta(dx: number, dy: number): string | null {
   if (dx === 0 && dy === 0) return null;
 
-  const sx = Math.sign(dx);
-  const sy = Math.sign(dy);
+  // Screen coords are (x right, y down). For math coords, y should increase upward,
+  // so we negate dy. atan2 returns angle in [-π, π], 0 along +X (east).
+  const angle = Math.atan2(-dy, dx);
+  const tau = Math.PI * 2;
 
-  // pure vertical
-  if (sx === 0) {
-    return sy < 0 ? "north" : "south";
+  let octant = Math.round((8 * angle) / tau); // range roughly [-4..4]
+  if (octant < 0) octant += 8; // wrap to [0..7]
+
+  switch (octant) {
+    case 0:
+      return "east";
+    case 1:
+      return "northeast";
+    case 2:
+      return "north";
+    case 3:
+      return "northwest";
+    case 4:
+      return "west";
+    case 5:
+      return "southwest";
+    case 6:
+      return "south";
+    case 7:
+      return "southeast";
+    default:
+      return null;
   }
-
-  // pure horizontal
-  if (sy === 0) {
-    return sx > 0 ? "east" : "west";
-  }
-
-  // diagonals
-  if (sy < 0 && sx > 0) return "northeast";
-  if (sy < 0 && sx < 0) return "northwest";
-  if (sy > 0 && sx > 0) return "southeast";
-  if (sy > 0 && sx < 0) return "southwest";
-
-  return null;
-}
-
-function isInView(
-  mapId: number,
-  x: number,
-  y: number,
-  player: { map_id: number; x: number; y: number }
-): boolean {
-  if (mapId !== player.map_id) return false;
-  const halfCols = Math.floor(COLS / 2);
-  const halfRows = Math.floor(ROWS / 2);
-  return (
-    Math.abs(x - player.x) <= halfCols && Math.abs(y - player.y) <= halfRows
-  );
 }
 
 function describeEntityName(id: number): string {
@@ -74,130 +70,144 @@ function formatNameList(names: string[]): string {
   return `${head} and ${last}`;
 }
 
+function isInViewPos(ent: PosLike, player: PosLike | undefined): boolean {
+  if (!player) return false;
+  if (ent.map_id !== player.map_id) return false;
+  const halfCols = Math.floor(COLS / 2);
+  const halfRows = Math.floor(ROWS / 2);
+  return (
+    Math.abs(ent.x - player.x) <= halfCols &&
+    Math.abs(ent.y - player.y) <= halfRows
+  );
+}
+
+function sameTile(a: PosLike, b: PosLike): boolean {
+  return a.map_id === b.map_id && a.x === b.x && a.y === b.y;
+}
+
 let ws: WebSocket;
 const handlerMap = {
   msg: (body: Msg) => {
     postLine(body.text);
   },
-  pos: (body: Pos) => {
-    const state = useGameStore.getState() as any;
-    const entities = state.entities as Record<
+  pos: (newPos: Pos) => {
+    // We need both the 'before' and 'after' states to generate a message.
+    const beforeState = useGameStore.getState();
+    const beforeEntities = beforeState.entities as Record<
       number,
       { id: number; map_id: number; x: number; y: number }
     >;
-    const player = entities[PLAYER_ID];
-    const prev = entities[body.id];
 
-    const name = describeEntityName(body.id);
+    const playerId = PLAYER_ID; // Assuming PLAYER_ID is available in scope
+    const prevPos = beforeEntities[newPos.id];
+    const playerPrevPos = beforeEntities[playerId];
 
-    // ============================================================
-    // 1. PLAYER MOVEMENT  — handle “You see X here.”
-    // ============================================================
-    if (body.id === PLAYER_ID) {
-      const hadPrev = !!prev;
-      setPosition(body.id, body.mapId, body.x, body.y);
+    const entityName = describeEntityName(newPos.id);
+    // mutate:
+    setPosition(newPos.id, newPos.map_id, newPos.x, newPos.y);
 
-      if (!hadPrev) return; // first spawn, no narration
+    if (!playerPrevPos) return;
+    const afterState = useGameStore.getState();
+    const afterEntities = afterState.entities as Record<
+      number,
+      { id: number; map_id: number; x: number; y: number }
+    >;
+    const playerNewPos = afterEntities[playerId];
 
-      const after = useGameStore.getState().entities;
-
-      // collect all entities at player’s new tile
+    if (newPos.id === playerId) {
+      if (!prevPos) return;
+      const playerActuallyMoved = !sameTile(playerPrevPos, playerNewPos);
+      if (!playerActuallyMoved) return;
       const hereNames: string[] = [];
-      for (const e of Object.values(after)) {
-        if (e.id === PLAYER_ID) continue;
-        if (e.map_id === body.mapId && e.x === body.x && e.y === body.y) {
-          hereNames.push(describeEntityName(e.id));
+      for (const entity of Object.values(afterEntities)) {
+        if (entity.id === playerId) continue;
+        if (sameTile(entity, playerNewPos)) {
+          hereNames.push(describeEntityName(entity.id));
         }
       }
-
       if (hereNames.length > 0) {
         const list = formatNameList(hereNames);
         postLine(`You see ${list} here.`);
       }
-
       return;
     }
 
-    // ============================================================
-    // 2. NPC MOVEMENT  — handle ambient movement messages
-    // ============================================================
-    if (!player) {
-      setPosition(body.id, body.mapId, body.x, body.y);
+    const hadPrevPos = !!prevPos;
+    const hereBefore = hadPrevPos && sameTile(prevPos!, playerPrevPos);
+    const hereAfter = sameTile(newPos, playerNewPos);
+    const viewBefore = hadPrevPos && isInViewPos(prevPos!, playerPrevPos);
+    const viewAfter = isInViewPos(newPos, playerNewPos);
+
+    const deltaX = hadPrevPos ? newPos.x - prevPos!.x : 0;
+    const deltaY = hadPrevPos ? newPos.y - prevPos!.y : 0;
+    const moveDir = hadPrevPos ? cardinalFromDelta(deltaX, deltaY) : null;
+
+    const relPrev =
+      hadPrevPos && !hereBefore
+        ? cardinalFromDelta(
+            prevPos!.x - playerNewPos.x,
+            prevPos!.y - playerNewPos.y
+          )
+        : null;
+
+    const relNext = !hereAfter
+      ? cardinalFromDelta(newPos.x - playerNewPos.x, newPos.y - playerNewPos.y)
+      : null;
+
+    if (hadPrevPos && hereBefore && !hereAfter && moveDir) {
+      if (viewAfter) {
+        postLine(`${entityName} steps ${moveDir}.`);
+      } else {
+        postLine(`${entityName} leaves ${moveDir}.`);
+      }
       return;
     }
 
-    const prevAtPlayer =
-      prev &&
-      prev.map_id === player.map_id &&
-      prev.x === player.x &&
-      prev.y === player.y;
-
-    const newAtPlayer =
-      body.mapId === player.map_id &&
-      body.x === player.x &&
-      body.y === player.y;
-
-    const prevInView = prev
-      ? isInView(prev.map_id, prev.x, prev.y, player)
-      : false;
-    const newInView = isInView(body.mapId, body.x, body.y, player);
-
-    const moveDir = prev
-      ? cardinalFromDelta(body.x - prev.x, body.y - prev.y)
-      : null;
-
-    const fromPrevRelToPlayer = prev
-      ? cardinalFromDelta(prev.x - player.x, prev.y - player.y)
-      : null;
-    const fromNewRelToPlayer = cardinalFromDelta(
-      body.x - player.x,
-      body.y - player.y
-    );
-
-    // 1) Entity was on your tile and moved away: "Dzara steps west."
-    if (prev && prevAtPlayer && !newAtPlayer && moveDir) {
-      postLine(`${name} steps ${moveDir}.`);
-    }
-    // 2) Entity moved into your tile: "Dzara steps beside you from the east."
-    else if (prev && !prevAtPlayer && newAtPlayer) {
-      if (fromPrevRelToPlayer) {
-        postLine(`${name} steps beside you from the ${fromPrevRelToPlayer}.`);
+    if (!hereBefore && hereAfter) {
+      if (hadPrevPos && relPrev) {
+        postLine(`${entityName} steps beside you from the ${relPrev}.`);
       } else {
-        postLine(`${name} steps beside you here.`);
+        postLine(`${entityName} steps beside you here.`);
       }
+      return;
     }
-    // 3) Entity moves out of view: "Dzara leaves west."
-    else if (prev && prevInView && !newInView && moveDir) {
-      postLine(`${name} leaves ${moveDir}.`);
-    }
-    // 4) Entity moves into view (was offscreen before): "Dzara arrives from the north."
-    else if (prev && !prevInView && newInView) {
-      if (fromNewRelToPlayer) {
-        postLine(`${name} arrives from the ${fromNewRelToPlayer}.`);
+
+    if (hadPrevPos && viewBefore && !viewAfter && !hereAfter && moveDir) {
+      if (newPos.map_id == NONE_LEVEL_ID) {
+        postLine(`${entityName} leaves.`);
       } else {
-        postLine(`${name} arrives.`);
+        postLine(`${entityName} leaves ${moveDir}.`);
       }
+      return;
     }
-    // 5) First time we ever see this entity ...
-    else if (!prev && newInView) {
-      if (newAtPlayer) {
-        postLine(`You see ${name} here.`);
-      } else if (fromNewRelToPlayer) {
-        postLine(`You see ${name} to the ${fromNewRelToPlayer}.`);
+
+    if (hadPrevPos && !viewBefore && viewAfter && !hereAfter) {
+      if (relNext) {
+        postLine(`${entityName} arrives from the ${relNext}.`);
       } else {
-        postLine(`You see ${name} nearby.`);
+        postLine(`${entityName} arrives.`);
       }
+      return;
     }
-    setPosition(body.id, body.mapId, body.x, body.y);
+    if (!hadPrevPos && viewAfter) {
+      if (hereAfter) {
+        postLine(`You see ${entityName} here.`);
+      } else if (relNext) {
+        postLine(`You see ${entityName} to the ${relNext}.`);
+      } else {
+        postLine(`You see ${entityName} nearby.`);
+      }
+      return;
+    }
   },
   chip: (body: Chip) => {
     world.handleChip(body);
   },
   tile: (body: Tile) => {
-    world.handleTile(body.mapId, body.top, body.left, body.data);
+    world.handleTile(body.map_id, body.top, body.left, body.data);
   },
   gas: (body: Gas) => {
-    world.handleGas(body.id, body.mapId, body.x, body.y, body.v);
+    world.handleGas(body.id, body.map_id, body.x, body.y, body.v);
   },
 
   glyph: (body: Glyph) => {

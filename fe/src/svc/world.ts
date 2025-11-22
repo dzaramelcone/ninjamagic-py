@@ -42,22 +42,22 @@ class World {
   private gasFlushHandle: number | undefined;
   private gasClearTimer: number | undefined;
 
-  private getSeenSet(mapId: number): Set<string> {
-    let s = this.seen.get(mapId);
+  private getSeenSet(map_id: number): Set<string> {
+    let s = this.seen.get(map_id);
     if (!s) {
       s = new Set<string>();
-      this.seen.set(mapId, s);
+      this.seen.set(map_id, s);
     }
     return s;
   }
 
-  public markSeen(mapId: number, x: number, y: number): void {
-    const s = this.getSeenSet(mapId);
+  public markSeen(map_id: number, x: number, y: number): void {
+    const s = this.getSeenSet(map_id);
     s.add(makeCoordKey(x, y));
   }
 
-  public wasSeen(mapId: number, x: number, y: number): boolean {
-    const s = this.seen.get(mapId);
+  public wasSeen(map_id: number, x: number, y: number): boolean {
+    const s = this.seen.get(map_id);
     if (!s) return false;
     return s.has(makeCoordKey(x, y));
   }
@@ -68,8 +68,8 @@ class World {
     }
     // clear gas 0.6 s after last batch
     this.gasClearTimer = window.setTimeout(() => {
-      for (const [mapId, prevList] of this.gasPrevCoords.entries()) {
-        const map = this.maps[mapId];
+      for (const [map_id, prevList] of this.gasPrevCoords.entries()) {
+        const map = this.maps[map_id];
         if (!map || prevList.length === 0) continue;
 
         for (let i = 0; i < prevList.length; i++) {
@@ -83,17 +83,17 @@ class World {
 
   // Public API called by network handler, one cell at a time.
   // Note: coordinates are now *absolute* world coords, may be negative.
-  public handleGas(_: number, mapId: number, x: number, y: number, v: number) {
+  public handleGas(_: number, map_id: number, x: number, y: number, v: number) {
     // Ensure map exists
-    this.maps[mapId] || this.createMap(mapId);
+    this.maps[map_id] || this.createMap(map_id);
 
     // No toroidal wrap: world is sparse and unbounded.
     const key = makeCoordKey(x, y);
 
-    let stage = this.gasStaging.get(mapId);
+    let stage = this.gasStaging.get(map_id);
     if (!stage) {
       stage = new Map<CoordKey, number>();
-      this.gasStaging.set(mapId, stage);
+      this.gasStaging.set(map_id, stage);
     }
     stage.set(key, v);
 
@@ -105,10 +105,10 @@ class World {
       }, 0);
     }
   }
-  public isOpaque(mapId: number, x: number, y: number): boolean {
+  public isOpaque(map_id: number, x: number, y: number): boolean {
     // You can tune this to your glyphs. For now: typical wall chars.
     try {
-      const chip = this.getChipId(mapId, x, y);
+      const chip = this.getChipId(map_id, x, y);
       const ch = chip.char;
       // Adjust to your tileset: add/remove characters as needed.
       return ch === "#" || ch === "+" || ch === "|" || ch === "-" || ch === "X";
@@ -120,8 +120,8 @@ class World {
   // Cull previous batch and apply the newly staged batch for all maps.
   private flushGasBatches(): void {
     // Cull old
-    for (const [mapId, prevList] of this.gasPrevCoords.entries()) {
-      const map = this.maps[mapId];
+    for (const [map_id, prevList] of this.gasPrevCoords.entries()) {
+      const map = this.maps[map_id];
       if (!map || prevList.length === 0) continue;
 
       for (let i = 0; i < prevList.length; i++) {
@@ -131,8 +131,8 @@ class World {
     }
 
     // Write new & record coords for the next cull
-    for (const [mapId, stage] of this.gasStaging.entries()) {
-      const map = this.maps[mapId] || this.createMap(mapId);
+    for (const [map_id, stage] of this.gasStaging.entries()) {
+      const map = this.maps[map_id] || this.createMap(map_id);
       const nextPrev: CoordKey[] = [];
 
       for (const [coordKey, val] of stage.entries()) {
@@ -141,7 +141,7 @@ class World {
         nextPrev.push(coordKey);
       }
 
-      this.gasPrevCoords.set(mapId, nextPrev);
+      this.gasPrevCoords.set(map_id, nextPrev);
       stage.clear();
     }
 
@@ -179,39 +179,39 @@ class World {
 
   // ==========================================================================
 
-  private maps: { [mapId: number]: MapData } = {};
-  private chips: { [mapId: number]: ChipSet } = {};
+  private maps: { [map_id: number]: MapData } = {};
+  private chips: { [map_id: number]: ChipSet } = {};
 
-  public createMap(mapId: number): MapData {
+  public createMap(map_id: number): MapData {
     const data = new Map<TileKey, Uint8Array>();
     const gas = new Map<TileKey, Float32Array>();
 
-    this.maps[mapId] = {
-      id: mapId,
+    this.maps[map_id] = {
+      id: map_id,
       data,
       gas,
     };
     // Start with empty prev coords so first batch doesn't try to cull
-    this.gasPrevCoords.set(mapId, []);
-    return this.maps[mapId];
+    this.gasPrevCoords.set(map_id, []);
+    return this.maps[map_id];
   }
 
-  public hasMap(mapId: number): boolean {
-    return mapId in this.maps;
+  public hasMap(map_id: number): boolean {
+    return map_id in this.maps;
   }
 
-  public getMap(mapId: number): MapData {
-    const map = this.maps[mapId];
+  public getMap(map_id: number): MapData {
+    const map = this.maps[map_id];
     if (!map) {
       throw new Error(
-        `Attempted to access map #${mapId}, but it has not been initialized by the server.`
+        `Attempted to access map #${map_id}, but it has not been initialized by the server.`
       );
     }
     return map;
   }
 
-  public getChipId(mapId: number, globalX: number, globalY: number): ChipData {
-    const map = this.getMap(mapId);
+  public getChipId(map_id: number, globalX: number, globalY: number): ChipData {
+    const map = this.getMap(map_id);
 
     // No toroidal wrap anymore; coords may be negative or arbitrarily large.
     const x = globalX;
@@ -224,7 +224,7 @@ class World {
 
     if (!tile) {
       throw new Error(
-        `Fatal: Tile at [top=${tileTop}, left=${tileLeft}] on map #${mapId} is undefined (chip lookup for global [${globalX}, ${globalY}]).`
+        `Fatal: Tile at [top=${tileTop}, left=${tileLeft}] on map #${map_id} is undefined (chip lookup for global [${globalX}, ${globalY}]).`
       );
     }
 
@@ -235,19 +235,19 @@ class World {
 
     if (chipId === undefined) {
       throw new Error(
-        `Fatal: Chip at [${globalX}, ${globalY}] on map #${mapId} is undefined.`
+        `Fatal: Chip at [${globalX}, ${globalY}] on map #${map_id} is undefined.`
       );
     }
-    return this.getChip(mapId, chipId);
+    return this.getChip(map_id, chipId);
   }
 
-  public getChip(mapId: number, chipId: number): ChipData {
-    const chipDeck = this.chips[mapId];
+  public getChip(map_id: number, chipId: number): ChipData {
+    const chipDeck = this.chips[map_id];
     const chip = chipDeck?.[chipId];
 
     if (!chip) {
       throw new Error(
-        `Fatal: No chip data for ID "${chipId}" on map #${mapId}.`
+        `Fatal: No chip data for ID "${chipId}" on map #${map_id}.`
       );
     }
     return chip;
@@ -255,30 +255,30 @@ class World {
 
   public handleChip(chip: Chip): void {
     console.log(
-      `[World] Handling Chip: mapId=${chip.mapId}, chipId=${
+      `[World] Handling Chip: map_id=${chip.map_id}, chipId=${
         chip.id
       }, glyph='${String.fromCharCode(chip.glyph)}'`
     );
-    const { mapId, id } = chip;
-    if (!this.chips[mapId]) {
-      this.chips[mapId] = {};
+    const { map_id, id } = chip;
+    if (!this.chips[map_id]) {
+      this.chips[map_id] = {};
     }
-    this.chips[mapId][id] = {
+    this.chips[map_id][id] = {
       char: String.fromCharCode(chip.glyph),
       color: { h: chip.h, s: chip.s, v: chip.v },
     };
   }
 
   public handleTile(
-    mapId: number,
+    map_id: number,
     top: number,
     left: number,
     tileData: Uint8Array
   ): void {
     console.log(
-      `[World] Handling Tile: mapId=${mapId} at (${left}, ${top}) with ${tileData.length} bytes.`
+      `[World] Handling Tile: map_id=${map_id} at (${left}, ${top}) with ${tileData.length} bytes.`
     );
-    const map = this.maps[mapId] || this.createMap(mapId);
+    const map = this.maps[map_id] || this.createMap(map_id);
 
     if (tileData.length !== CHUNK_WIDTH * CHUNK_HEIGHT) {
       throw new Error(
@@ -295,8 +295,8 @@ class World {
   }
 
   // Optional: helper if you want gas reads symmetrical with getChipId.
-  public getGasAt(mapId: number, x: number, y: number): number {
-    const map = this.getMap(mapId);
+  public getGasAt(map_id: number, x: number, y: number): number {
+    const map = this.getMap(map_id);
     const tileTop = Math.floor(y / CHUNK_HEIGHT) * CHUNK_HEIGHT;
     const tileLeft = Math.floor(x / CHUNK_WIDTH) * CHUNK_WIDTH;
     const key = makeTileKey(tileTop, tileLeft);
