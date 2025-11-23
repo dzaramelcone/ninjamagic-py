@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 function protobufPlugin() {
   const pyCmd = `python -m grpc_tools.protoc --proto_path=.. --python_out=../ninjamagic/gen --mypy_out=../ninjamagic/gen ../messages.proto`;
-  const tsCmd = `npx protoc --ts_out=src/gen --proto_path=.. ../messages.proto`;
+  const tsCmd = `npx protoc --ts_out=src/gen --proto_path=.. ../messages.proto --ts_opt=use_proto_field_name`;
   let lastProtoHash = "";
   return {
     name: "vite-plugin-protobuf",
