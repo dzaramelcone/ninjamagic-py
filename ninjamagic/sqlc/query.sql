@@ -10,31 +10,35 @@ RETURNING owner_id;
 
 -- Characters
 
--- name: GetCharacters :many
-SELECT * FROM characters WHERE owner_id = $1 ORDER BY created_at DESC;
+-- name: GetCharacterBrief :one
+SELECT id, owner_id, name FROM characters WHERE owner_id = $1;
+
+-- name: GetCharacter :one
+SELECT * FROM characters c WHERE c.owner_id = $1;
 
 -- name: CreateCharacter :one
-INSERT INTO characters (owner_id, name) VALUES ($1, $2) RETURNING *;
+INSERT INTO characters (owner_id, name, pronoun) VALUES ($1, $2, $3) RETURNING *;
 
 -- name: DeleteCharacter :exec
 DELETE FROM characters WHERE id = $1;
 
-
--- Skills
-
--- name: GetSkillsByCharacter :many
-SELECT * FROM skills WHERE char_id = $1;
-
--- name: UpsertSkills :exec
-INSERT INTO skills (char_id, name, experience, pending)
-SELECT
-  $1::bigint,
-  n.name,
-  e.experience,
-  p.pending
-FROM unnest($2::citext[])  WITH ORDINALITY AS n(name, i)
-JOIN unnest($3::bigint[])  WITH ORDINALITY AS e(experience, i) USING (i)
-JOIN unnest($4::bigint[])  WITH ORDINALITY AS p(pending, i)    USING (i)
-ON CONFLICT (char_id, name) DO UPDATE
-SET experience = EXCLUDED.experience,
-    pending    = EXCLUDED.pending;
+-- name: UpdateCharacter :exec
+UPDATE characters
+SET
+  glyph = COALESCE($2, glyph),
+  pronoun = COALESCE($3, pronoun),
+  map_id = COALESCE($4, map_id),
+  x = COALESCE($5, x),
+  y = COALESCE($6, y),
+  health = COALESCE($7, health),
+  stance = COALESCE($8, stance),
+  condition = COALESCE($9, condition),
+  grace = COALESCE($10, grace),
+  grit = COALESCE($11, grit),
+  wit = COALESCE($12, wit),
+  rank_martial_arts = COALESCE($13, rank_martial_arts),
+  tnl_martial_arts = COALESCE($14, tnl_martial_arts),
+  rank_evasion = COALESCE($15, rank_evasion),
+  tnl_evasion = COALESCE($16, tnl_evasion),
+  updated_at = now()
+WHERE id = $1;

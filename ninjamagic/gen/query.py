@@ -2,15 +2,17 @@
 # versions:
 #   sqlc v1.30.0
 # source: query.sql
-from typing import AsyncIterator, List, Optional
+import pydantic
+from typing import Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
 
 from ninjamagic.gen import models
 
+
 CREATE_CHARACTER = """-- name: create_character \\:one
-INSERT INTO characters (owner_id, name) VALUES (:p1, :p2) RETURNING id, owner_id, name, created_at
+INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, map_id, x, y, health, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at
 """
 
 
@@ -19,16 +21,63 @@ DELETE FROM characters WHERE id = :p1
 """
 
 
-GET_CHARACTERS = """-- name: get_characters \\:many
-
-SELECT id, owner_id, name, created_at FROM characters WHERE owner_id = :p1 ORDER BY created_at DESC
+GET_CHARACTER = """-- name: get_character \\:one
+SELECT id, owner_id, name, pronoun, glyph, map_id, x, y, health, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
 """
 
 
-GET_SKILLS_BY_CHARACTER = """-- name: get_skills_by_character \\:many
+GET_CHARACTER_BRIEF = """-- name: get_character_brief \\:one
 
-SELECT id, char_id, name, experience, pending FROM skills WHERE char_id = :p1
+SELECT id, owner_id, name FROM characters WHERE owner_id = :p1
 """
+
+
+class GetCharacterBriefRow(pydantic.BaseModel):
+    id: int
+    owner_id: int
+    name: str
+
+
+UPDATE_CHARACTER = """-- name: update_character \\:exec
+UPDATE characters
+SET
+  glyph = COALESCE(:p2, glyph),
+  pronoun = COALESCE(:p3, pronoun),
+  map_id = COALESCE(:p4, map_id),
+  x = COALESCE(:p5, x),
+  y = COALESCE(:p6, y),
+  health = COALESCE(:p7, health),
+  stance = COALESCE(:p8, stance),
+  condition = COALESCE(:p9, condition),
+  grace = COALESCE(:p10, grace),
+  grit = COALESCE(:p11, grit),
+  wit = COALESCE(:p12, wit),
+  rank_martial_arts = COALESCE(:p13, rank_martial_arts),
+  tnl_martial_arts = COALESCE(:p14, tnl_martial_arts),
+  rank_evasion = COALESCE(:p15, rank_evasion),
+  tnl_evasion = COALESCE(:p16, tnl_evasion),
+  updated_at = now()
+WHERE id = :p1
+"""
+
+
+class UpdateCharacterParams(pydantic.BaseModel):
+    id: int
+    glyph: str
+    pronoun: models.Pronoun
+    map_id: int
+    x: int
+    y: int
+    health: float
+    stance: models.Stance
+    condition: models.Condition
+    grace: int
+    grit: int
+    wit: int
+    rank_martial_arts: int
+    tnl_martial_arts: float
+    rank_evasion: int
+    tnl_evasion: float
 
 
 UPSERT_IDENTITY = """-- name: upsert_identity \\:one
@@ -42,100 +91,99 @@ RETURNING owner_id
 """
 
 
-UPSERT_SKILLS = """-- name: upsert_skills \\:exec
-INSERT INTO skills (char_id, name, experience, pending)
-SELECT
-  :p1\\:\\:bigint,
-  n.name,
-  e.experience,
-  p.pending
-FROM unnest(:p2\\:\\:citext[])  WITH ORDINALITY AS n(name, i)
-JOIN unnest(:p3\\:\\:bigint[])  WITH ORDINALITY AS e(experience, i) USING (i)
-JOIN unnest(:p4\\:\\:bigint[])  WITH ORDINALITY AS p(pending, i)    USING (i)
-ON CONFLICT (char_id, name) DO UPDATE
-SET experience = EXCLUDED.experience,
-    pending    = EXCLUDED.pending
-"""
-
-
 class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def create_character(
-        self, *, owner_id: int, name: str
-    ) -> Optional[models.Character]:
-        row = (
-            await self._conn.execute(
-                sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name}
-            )
-        ).first()
+    async def create_character(self, *, owner_id: int, name: str, pronoun: models.Pronoun) -> Optional[models.Character]:
+        row = (await self._conn.execute(sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name, "p3": pronoun})).first()
         if row is None:
             return None
         return models.Character(
             id=row[0],
             owner_id=row[1],
             name=row[2],
-            created_at=row[3],
+            pronoun=row[3],
+            glyph=row[4],
+            map_id=row[5],
+            x=row[6],
+            y=row[7],
+            health=row[8],
+            stance=row[9],
+            condition=row[10],
+            grace=row[11],
+            grit=row[12],
+            wit=row[13],
+            rank_evasion=row[14],
+            tnl_evasion=row[15],
+            rank_martial_arts=row[16],
+            tnl_martial_arts=row[17],
+            created_at=row[18],
+            updated_at=row[19],
         )
 
     async def delete_character(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
 
-    async def get_characters(self, *, owner_id: int) -> AsyncIterator[models.Character]:
-        result = await self._conn.stream(
-            sqlalchemy.text(GET_CHARACTERS), {"p1": owner_id}
+    async def get_character(self, *, owner_id: int) -> Optional[models.Character]:
+        row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER), {"p1": owner_id})).first()
+        if row is None:
+            return None
+        return models.Character(
+            id=row[0],
+            owner_id=row[1],
+            name=row[2],
+            pronoun=row[3],
+            glyph=row[4],
+            map_id=row[5],
+            x=row[6],
+            y=row[7],
+            health=row[8],
+            stance=row[9],
+            condition=row[10],
+            grace=row[11],
+            grit=row[12],
+            wit=row[13],
+            rank_evasion=row[14],
+            tnl_evasion=row[15],
+            rank_martial_arts=row[16],
+            tnl_martial_arts=row[17],
+            created_at=row[18],
+            updated_at=row[19],
         )
-        async for row in result:
-            yield models.Character(
-                id=row[0],
-                owner_id=row[1],
-                name=row[2],
-                created_at=row[3],
-            )
 
-    async def get_skills_by_character(
-        self, *, char_id: int
-    ) -> AsyncIterator[models.Skill]:
-        result = await self._conn.stream(
-            sqlalchemy.text(GET_SKILLS_BY_CHARACTER), {"p1": char_id}
+    async def get_character_brief(self, *, owner_id: int) -> Optional[GetCharacterBriefRow]:
+        row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER_BRIEF), {"p1": owner_id})).first()
+        if row is None:
+            return None
+        return GetCharacterBriefRow(
+            id=row[0],
+            owner_id=row[1],
+            name=row[2],
         )
-        async for row in result:
-            yield models.Skill(
-                id=row[0],
-                char_id=row[1],
-                name=row[2],
-                experience=row[3],
-                pending=row[4],
-            )
 
-    async def upsert_identity(
-        self, *, provider: models.OauthProvider, subject: str, email: str
-    ) -> Optional[int]:
-        row = (
-            await self._conn.execute(
-                sqlalchemy.text(UPSERT_IDENTITY),
-                {"p1": provider, "p2": subject, "p3": email},
-            )
-        ).first()
+    async def update_character(self, arg: UpdateCharacterParams) -> None:
+        await self._conn.execute(sqlalchemy.text(UPDATE_CHARACTER), {
+            "p1": arg.id,
+            "p2": arg.glyph,
+            "p3": arg.pronoun,
+            "p4": arg.map_id,
+            "p5": arg.x,
+            "p6": arg.y,
+            "p7": arg.health,
+            "p8": arg.stance,
+            "p9": arg.condition,
+            "p10": arg.grace,
+            "p11": arg.grit,
+            "p12": arg.wit,
+            "p13": arg.rank_martial_arts,
+            "p14": arg.tnl_martial_arts,
+            "p15": arg.rank_evasion,
+            "p16": arg.tnl_evasion,
+        })
+
+    async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
+        row = (await self._conn.execute(sqlalchemy.text(UPSERT_IDENTITY), {"p1": provider, "p2": subject, "p3": email})).first()
         if row is None:
             return None
         return row[0]
-
-    async def upsert_skills(
-        self,
-        *,
-        dollar_1: int,
-        dollar_2: List[str],
-        dollar_3: List[int],
-        dollar_4: List[int],
-    ) -> None:
-        await self._conn.execute(
-            sqlalchemy.text(UPSERT_SKILLS),
-            {
-                "p1": dollar_1,
-                "p2": dollar_2,
-                "p3": dollar_3,
-                "p4": dollar_4,
-            },
-        )
