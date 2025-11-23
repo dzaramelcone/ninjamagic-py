@@ -1,6 +1,5 @@
 import logging
 import re
-from dataclasses import asdict
 from typing import Annotated, Literal
 
 import httpx
@@ -11,9 +10,9 @@ from sqlalchemy.exc import IntegrityError
 
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
-from ninjamagic.gen.models import OauthProvider
-from ninjamagic.gen.query import GetCharacterBriefRow
-from ninjamagic.util import CHARGEN_HTML, LOGIN_HTML, OWNER_SESSION_KEY, TEST_SETUP_KEY
+from ninjamagic.gen.models import OauthProvider, Pronoun
+from ninjamagic.gen.query import GetCharacterBriefRow, UpdateCharacterParams
+from ninjamagic.util import CHARGEN_HTML, LOGIN_HTML, OWNER_SESSION_KEY
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
@@ -194,12 +193,38 @@ if settings.allow_local_auth:
         q: Repository,
         body: FakeUserSetup,
     ):
-        account = await q.upsert_identity(
+        owner_id = await q.upsert_identity(
             provider=OauthProvider.DISCORD,
             subject=body.subj,
             email=body.email,
         )
-        req.session[OWNER_SESSION_KEY] = account
-        req.session[TEST_SETUP_KEY] = asdict(body)
+        char = await q.get_character_brief(owner_id=owner_id)
+        if not char:
+            char = await q.create_character(
+                owner_id=owner_id,
+                name=body.noun.value,
+                pronoun=Pronoun(body.noun.pronoun.they),
+            )
+        await q.update_character(
+            arg=UpdateCharacterParams(
+                id=char.id,
+                glyph=body.glyph,
+                pronoun=Pronoun(body.noun.pronoun.they),
+                map_id=body.transform.map_id,
+                x=body.transform.x,
+                y=body.transform.y,
+                health=body.health.cur,
+                stance=body.stance.cur,
+                condition=body.health.condition,
+                grace=body.stats.grace,
+                grit=body.stats.grit,
+                wit=body.stats.wit,
+                rank_martial_arts=body.skills.martial_arts.rank,
+                tnl_martial_arts=body.skills.martial_arts.tnl,
+                rank_evasion=body.skills.evasion.rank,
+                tnl_evasion=body.skills.evasion.tnl,
+            )
+        )
+        req.session[OWNER_SESSION_KEY] = owner_id
 
         return RedirectResponse(url="/", status_code=303)

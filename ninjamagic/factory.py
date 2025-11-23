@@ -15,7 +15,6 @@ from ninjamagic.component import (
     Transform,
     transform,
 )
-from ninjamagic.config import settings
 from ninjamagic.gen.models import Character
 from ninjamagic.gen.query import UpdateCharacterParams
 from ninjamagic.util import Pronouns
@@ -104,11 +103,6 @@ def create(entity: EntityId):
     esper.add_component(entity, Stance())
     esper.add_component(entity, Skills())
     esper.add_component(entity, Stats())
-    if settings.allow_local_auth:
-        from tests.util import setup_test_entity
-
-        setup_test_entity(entity)
-
     move_into_world(entity)
 
 

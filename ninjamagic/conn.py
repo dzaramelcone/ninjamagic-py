@@ -15,10 +15,7 @@ def process():
     for c in bus.iter(bus.Connected):
         log.info("%s:%s connected.", c.client, c.source)
         esper.add_component(c.source, c.client, Connection)
-        if c.char:
-            factory.load(c.source, c.char)
-        else:  # TODO get rid of this branch -- tests need to update by qparams
-            factory.create(c.source)
+        factory.load(c.source, c.char)
 
     for d in bus.iter(bus.Disconnected):
         log.info("%s:%s disconnected.", d.client, d.source)

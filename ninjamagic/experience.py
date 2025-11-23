@@ -42,17 +42,17 @@ def process():
             ranks_gained += 1
             skill.tnl -= 1
             skill.tnl *= 0.68
-        bus.pulse(
-            bus.OutboundSkill(
-                to=sig.source, name=skill.name, rank=skill.ranl, tnl=skill.tnl
-            )
-        )
-        # TODO this can be removed now and performed clientside
         if ranks_gained > 0:
             skill.rank += ranks_gained
+            # TODO this can be removed now and performed clientside
             bus.pulse(
                 bus.Outbound(
                     to=sig.source,
                     text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
                 )
             )
+        bus.pulse(
+            bus.OutboundSkill(
+                to=sig.source, name=skill.name, rank=skill.rank, tnl=skill.tnl
+            )
+        )
