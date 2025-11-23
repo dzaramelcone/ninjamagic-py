@@ -89,6 +89,20 @@ class Pronouns:
     THESE = Pronoun("these", "these", "their", "theirs", "themselves", PLURAL)
     THOSE = Pronoun("those", "those", "their", "theirs", "themselves", PLURAL)
 
+    @staticmethod
+    def from_str(lit: str) -> "Pronoun":
+        match lit:
+            case "she":
+                return Pronouns.SHE
+            case "he":
+                return Pronouns.HE
+            case "they":
+                return Pronouns.THEY
+            case "it":
+                return Pronouns.IT
+            case _:
+                return Pronouns.IT
+
 
 def clamp(x: float, lo: float, hi: float) -> float:
     return max(min(x, hi), lo)
@@ -187,13 +201,14 @@ def serial(counter=itertools.count(1)) -> int:
 
 
 OWNER_SESSION_KEY = "user"
-TEST_SETUP_KEY = "testsetup"
 TILE_STRIDE_H, TILE_STRIDE_W = TILE_STRIDE = (16, 16)
 VIEW_STRIDE_H, VIEW_STRIDE_W = VIEW_STRIDE = (6, 6)
 
 VITE_HTML = open("ninjamagic/static/vite/index.html").read()
 BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
+CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
+
 MELEE_DELAY: float = 3.0
 loop: asyncio.AbstractEventLoop | None = None
 Walltime = float

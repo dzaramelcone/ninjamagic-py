@@ -15,14 +15,14 @@ def process():
         for eid, comps in clients:
             _, pos = comps
 
-            if sig.source == eid and sig.text:
-                bus.pulse(bus.Outbound(to=eid, text=sig.text))
+            if sig.source == eid and sig.make_source_sig:
+                bus.pulse(sig.make_source_sig(to=eid))
                 continue
 
-            if sig.target == eid and sig.target_text:
-                if sig.force_send_to_target or origin and sig.range(origin, pos):
-                    bus.pulse(bus.Outbound(to=eid, text=sig.target_text))
+            if sig.target == eid and sig.make_target_sig:
+                if sig.force_send_to_target or origin and sig.reach(origin, pos):
+                    bus.pulse(sig.make_target_sig(to=eid))
                 continue
 
-            if sig.otext and origin and sig.range(origin, pos):
-                bus.pulse(bus.Outbound(to=eid, text=sig.otext))
+            if sig.make_other_sig and origin and sig.reach(origin, pos):
+                bus.pulse(sig.make_other_sig(to=eid))

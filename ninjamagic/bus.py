@@ -1,12 +1,11 @@
 import asyncio
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass as signal, field
 from typing import TypeVar, cast
 
 from fastapi import WebSocket
 
-from ninjamagic import reach
 from ninjamagic.component import (
     AABB,
     ActId,
@@ -17,6 +16,8 @@ from ninjamagic.component import (
     Stances,
     Transform,
 )
+from ninjamagic.gen.models import Character
+from ninjamagic.reach import Selector, adjacent
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
 from ninjamagic.world.state import ChipSet
 
@@ -36,6 +37,7 @@ class Connected(Signal):
 
     source: EntityId
     client: WebSocket
+    char: Character
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -166,18 +168,14 @@ class Interrupt(Signal):
 
 @signal(frozen=True, slots=True, kw_only=True)
 class Echo(Signal):
-    """Send `text` to `source`.
-
-    If `otext`, send `otext` to entities within `range`.
-
-    If `target` and `target_text`, send `target_text` to `target` instead."""
+    """Broadcasts a signal to a set of targets."""
 
     source: EntityId
-    text: str
-    range: reach.Selector = reach.adjacent
-    otext: str = ""
     target: EntityId = 0
-    target_text: str = ""
+    reach: Selector = adjacent
+    make_source_sig: Callable[[EntityId], Signal] | None = None
+    make_target_sig: Callable[[EntityId], Signal] | None = None
+    make_other_sig: Callable[[EntityId], Signal] | None = None
     force_send_to_target: bool = False
 
 
@@ -239,12 +237,21 @@ class OutboundNoun(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class OutboundCondition(Signal):
+    """An outbound condition update."""
+
+    to: EntityId
+    source: EntityId
+    condition: Conditions
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class OutboundStance(Signal):
     """An outbound stance update."""
 
     to: EntityId
     source: EntityId
-    stance: str
+    stance: Stances
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -264,6 +271,16 @@ class OutboundMove(Signal):
     map_id: EntityId
     x: int
     y: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundSkill(Signal):
+    """An outbound skill update."""
+
+    to: EntityId
+    name: str
+    rank: int
+    tnl: float
 
 
 def is_empty[T: Signal](cls: type[T]) -> bool:
