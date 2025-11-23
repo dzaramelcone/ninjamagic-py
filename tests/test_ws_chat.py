@@ -155,6 +155,7 @@ async def test_combat_and_exp(golden, client_factory):
     async with asyncio.timeout(0.25):
         await bob.send("west")
         golden("bob", await bob.recv())
+
     # alice fights back!
     async with asyncio.timeout(0.25):
         await alice.send("att bob")
@@ -163,7 +164,6 @@ async def test_combat_and_exp(golden, client_factory):
 
     # bob hits alice!
     # alice goes into shock!
-    # TODO: fix ordering here
     async with asyncio.timeout(get_melee_delay() + 0.25):
         golden("bob", await bob.recv())
         golden("alice", await alice.recv())
