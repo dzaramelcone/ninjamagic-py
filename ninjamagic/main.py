@@ -1,4 +1,7 @@
+import asyncio
+import contextlib
 import logging
+from weakref import WeakValueDictionary
 
 import esper
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -8,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus, factory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
-from ninjamagic.component import OwnerId
+from ninjamagic.component import EntityId, OwnerId
 from ninjamagic.config import settings
 from ninjamagic.db import get_repository_factory
 from ninjamagic.state import State
@@ -31,38 +34,114 @@ async def index(_: CharChallengeDep):
     return HTMLResponse(BUILD_HTML)
 
 
+owner_locks: WeakValueDictionary[OwnerId, asyncio.Lock] = WeakValueDictionary()
+active: dict[OwnerId, WebSocket] = {}
+active_save_loops: dict[OwnerId, int] = {}
+
+
 @app.websocket("/ws")
 async def ws_main(ws: WebSocket) -> None:
     if not (owner_id := ws.session.get(OWNER_SESSION_KEY, None)):
         await ws.close(code=4401, reason="Unauthorized")
         return
-    async with get_repository_factory() as q:
-        char = await q.get_character(owner_id=owner_id)
-        if not char:
-            await ws.close(code=4401, reason="No character")
-
-    log.info("loaded %s", char.model_dump_json())
-
-    await ws.accept()
+    lock = owner_locks.setdefault(owner_id, asyncio.Lock())
+    if old_ws := active.get(owner_id):
+        with contextlib.suppress(WebSocketDisconnect, RuntimeError):
+            log.info(f"Dual login for {owner_id}, kicking old connection.")
+            await old_ws.close(code=4000, reason="Logged in from another location.")
+    try:
+        await asyncio.wait_for(lock.acquire(), timeout=5.0)
+    except TimeoutError:
+        log.error(f"Login failed for {owner_id}: Previous session execution is stuck.")
+        await ws.close(code=4000, reason="Session handover timed out. Please retry.")
+        return
 
     try:
+        async with get_repository_factory() as q:
+            char = await q.get_character(owner_id=owner_id)
+            if not char:
+                log.info(f"Login failed for {owner_id}, no character.")
+                await ws.close(code=4401, reason="No character")
+                return
+        await ws.accept()
+
+        active[owner_id] = ws
+
+        save_gen = active_save_loops.get(owner_id, 0) + 1
+        active_save_loops[owner_id] = save_gen
+
         host, port = ws.client.host, ws.client.port
         entity_id = esper.create_entity()
         esper.add_component(entity_id, owner_id, OwnerId)
-        log.info("%s:%s - [%s] WS/LOGIN", host, port, owner_id)
+
+        log.info(
+            "%s:%s WS/LOGIN - [%s:%s->%s]: %s",
+            host,
+            port,
+            owner_id,
+            entity_id,
+            char.id,
+            char.name,
+        )
 
         bus.pulse(bus.Connected(source=entity_id, client=ws, char=char))
-        while True:
-            text = await ws.receive_text()
-            log.info("%s:%s - [%s] WS/RECV: %s", host, port, owner_id, text)
-            # TODO: preprocessor for input cleanup and user-defined aliases
-            if text[0] == "'":
-                text = f"say {text[1:]}"
-            bus.pulse(bus.Inbound(source=entity_id, text=text))
-    except WebSocketDisconnect:
-        pass
+        asyncio.create_task(save_loop(owner_id, entity_id, save_gen))
+
+        try:
+            while True:
+                text = await ws.receive_text()
+                log.info(
+                    "%s:%s WS/RECV - [%s:%s->%s]: %s: %s",
+                    host,
+                    port,
+                    owner_id,
+                    entity_id,
+                    char.id,
+                    char.name,
+                    text,
+                )
+                # TODO: Preprocessor / Aliases
+                if text and text[0] == "'":
+                    text = f"say {text[1:]}"
+                bus.pulse(bus.Inbound(source=entity_id, text=text))
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            log.error(f"Unexpected WS error for {owner_id}: {e}", exc_info=True)
+        finally:
+            log.info(
+                "%s:%s WS/LOGOUT - [%s:%s->%s]: %s",
+                host,
+                port,
+                owner_id,
+                entity_id,
+                char.id,
+                char.name,
+            )
+            bus.pulse(bus.Disconnected(source=entity_id, client=ws))
+            if active_save_loops.get(owner_id) == save_gen:
+                active_save_loops.pop(owner_id)
+            if active.get(owner_id) is ws:
+                active.pop(owner_id)
+            await save(entity_id)
+
     finally:
-        log.info("%s:%s - WS/LOGOUT [%s]", host, port, owner_id)
-        bus.pulse(bus.Disconnected(source=entity_id, client=ws))
-        async with get_repository_factory() as q:
-            await q.update_character(factory.dump(entity_id))
+        lock.release()
+
+
+async def save(entity_id: EntityId):
+    save_dump = factory.dump(entity_id)
+    log.info("saving entity %s", save_dump.model_dump_json(indent=1))
+    async with get_repository_factory() as q:
+        await q.update_character(save_dump)
+        log.info("%s saved.", entity_id)
+
+
+async def save_loop(owner_id: OwnerId, entity_id: EntityId, generation: int):
+    await asyncio.sleep(settings.save_character_rate)
+    while (
+        esper.entity_exists(entity_id)
+        and active_save_loops.get(owner_id, 0) == generation
+    ):
+        await save(entity_id)
+        await asyncio.sleep(settings.save_character_rate)
