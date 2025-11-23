@@ -37,7 +37,7 @@ class Connected(Signal):
 
     source: EntityId
     client: WebSocket
-    char: Character | None
+    char: Character
 
 
 @signal(frozen=True, slots=True, kw_only=True)
