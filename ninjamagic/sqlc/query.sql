@@ -10,31 +10,35 @@ RETURNING owner_id;
 
 -- Characters
 
--- name: GetCharacters :many
-SELECT * FROM characters WHERE owner_id = $1 ORDER BY created_at DESC;
+-- name: GetCharacterBrief :one
+SELECT id, owner_id, name FROM characters WHERE owner_id = $1;
+
+-- name: GetCharacter :one
+SELECT * FROM characters c WHERE c.owner_id = $1;
 
 -- name: CreateCharacter :one
-INSERT INTO characters (owner_id, name) VALUES ($1, $2) RETURNING *;
+INSERT INTO characters (owner_id, name, pronoun) VALUES ($1, $2, $3) RETURNING *;
 
 -- name: DeleteCharacter :exec
 DELETE FROM characters WHERE id = $1;
 
-
--- Skills
-
--- name: GetSkillsByCharacter :many
-SELECT * FROM skills WHERE char_id = $1;
-
--- name: UpsertSkills :exec
-INSERT INTO skills (char_id, name, experience, pending)
-SELECT
-  $1::bigint,
-  n.name,
-  e.experience,
-  p.pending
-FROM unnest($2::citext[])  WITH ORDINALITY AS n(name, i)
-JOIN unnest($3::bigint[])  WITH ORDINALITY AS e(experience, i) USING (i)
-JOIN unnest($4::bigint[])  WITH ORDINALITY AS p(pending, i)    USING (i)
-ON CONFLICT (char_id, name) DO UPDATE
-SET experience = EXCLUDED.experience,
-    pending    = EXCLUDED.pending;
+-- name: UpdateCharacter :exec
+UPDATE characters
+SET
+  glyph = $2,
+  pronoun = $3,
+  map_id = $4,
+  x = $5,
+  y = $6,
+  health = $7,
+  stance = $8,
+  condition = $9,
+  grace = $10,
+  grit = $11,
+  wit = $12,
+  rank_martial_arts = $13,
+  tnl_martial_arts = $14,
+  rank_evasion = $15,
+  tnl_evasion = $16,
+  updated_at = now()
+WHERE id = $1;

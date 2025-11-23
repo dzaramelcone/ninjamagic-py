@@ -172,6 +172,36 @@ export interface Stance {
     text: string;
 }
 /**
+ * @generated from protobuf message ninjamagic.Condition
+ */
+export interface Condition {
+    /**
+     * @generated from protobuf field: uint32 id = 1
+     */
+    id: number;
+    /**
+     * @generated from protobuf field: string text = 2
+     */
+    text: string;
+}
+/**
+ * @generated from protobuf message ninjamagic.Skill
+ */
+export interface Skill {
+    /**
+     * @generated from protobuf field: string name = 1
+     */
+    name: string;
+    /**
+     * @generated from protobuf field: uint32 rank = 2
+     */
+    rank: number;
+    /**
+     * @generated from protobuf field: float tnl = 3
+     */
+    tnl: number;
+}
+/**
  * A wrapper that can contain any of our specific message types.
  *
  * @generated from protobuf message ninjamagic.Kind
@@ -234,6 +264,12 @@ export interface Kind {
          * @generated from protobuf field: ninjamagic.Stance stance = 9
          */
         stance: Stance;
+    } | {
+        oneofKind: "condition";
+        /**
+         * @generated from protobuf field: ninjamagic.Condition condition = 10
+         */
+        condition: Condition;
     } | {
         oneofKind: undefined;
     };
@@ -833,6 +869,124 @@ class Stance$Type extends MessageType<Stance> {
  */
 export const Stance = new Stance$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class Condition$Type extends MessageType<Condition> {
+    constructor() {
+        super("ninjamagic.Condition", [
+            { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "text", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Condition>): Condition {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = 0;
+        message.text = "";
+        if (value !== undefined)
+            reflectionMergePartial<Condition>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Condition): Condition {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 id */ 1:
+                    message.id = reader.uint32();
+                    break;
+                case /* string text */ 2:
+                    message.text = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Condition, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 id = 1; */
+        if (message.id !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.id);
+        /* string text = 2; */
+        if (message.text !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.text);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Condition
+ */
+export const Condition = new Condition$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Skill$Type extends MessageType<Skill> {
+    constructor() {
+        super("ninjamagic.Skill", [
+            { no: 1, name: "name", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "rank", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 3, name: "tnl", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Skill>): Skill {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.name = "";
+        message.rank = 0;
+        message.tnl = 0;
+        if (value !== undefined)
+            reflectionMergePartial<Skill>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Skill): Skill {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string name */ 1:
+                    message.name = reader.string();
+                    break;
+                case /* uint32 rank */ 2:
+                    message.rank = reader.uint32();
+                    break;
+                case /* float tnl */ 3:
+                    message.tnl = reader.float();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Skill, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string name = 1; */
+        if (message.name !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.name);
+        /* uint32 rank = 2; */
+        if (message.rank !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.rank);
+        /* float tnl = 3; */
+        if (message.tnl !== 0)
+            writer.tag(3, WireType.Bit32).float(message.tnl);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Skill
+ */
+export const Skill = new Skill$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class Kind$Type extends MessageType<Kind> {
     constructor() {
         super("ninjamagic.Kind", [
@@ -844,7 +998,8 @@ class Kind$Type extends MessageType<Kind> {
             { no: 6, name: "glyph", kind: "message", oneof: "body", T: () => Glyph },
             { no: 7, name: "noun", kind: "message", oneof: "body", T: () => Noun },
             { no: 8, name: "health", kind: "message", oneof: "body", T: () => Health },
-            { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance }
+            { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance },
+            { no: 10, name: "condition", kind: "message", oneof: "body", T: () => Condition }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -913,6 +1068,12 @@ class Kind$Type extends MessageType<Kind> {
                         stance: Stance.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).stance)
                     };
                     break;
+                case /* ninjamagic.Condition condition */ 10:
+                    message.body = {
+                        oneofKind: "condition",
+                        condition: Condition.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).condition)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -952,6 +1113,9 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Stance stance = 9; */
         if (message.body.oneofKind === "stance")
             Stance.internalBinaryWrite(message.body.stance, writer.tag(9, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Condition condition = 10; */
+        if (message.body.oneofKind === "condition")
+            Condition.internalBinaryWrite(message.body.condition, writer.tag(10, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

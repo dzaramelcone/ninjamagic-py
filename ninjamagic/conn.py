@@ -9,10 +9,13 @@ log = logging.getLogger(__name__)
 
 
 def process():
+    # TODO reconceptualize
+    # this binds a connection to a character in the world
+    # connections are handled in main.py:ws
     for c in bus.iter(bus.Connected):
         log.info("%s:%s connected.", c.client, c.source)
         esper.add_component(c.source, c.client, Connection)
-        factory.create(c.source)
+        factory.load(c.source, c.char)
 
     for d in bus.iter(bus.Disconnected):
         log.info("%s:%s disconnected.", d.client, d.source)

@@ -1,16 +1,18 @@
 import logging
-from dataclasses import asdict
-from typing import Annotated
+import re
+from typing import Annotated, Literal
 
 import httpx
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.exc import IntegrityError
 
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
-from ninjamagic.gen.models import OauthProvider
-from ninjamagic.util import LOGIN_HTML, OWNER_SESSION_KEY, TEST_SETUP_KEY
+from ninjamagic.gen.models import OauthProvider, Pronoun
+from ninjamagic.gen.query import GetCharacterBriefRow, UpdateCharacterParams
+from ninjamagic.util import CHARGEN_HTML, LOGIN_HTML, OWNER_SESSION_KEY
 
 oauth = OAuth()
 router = APIRouter(prefix="/auth")
@@ -35,32 +37,81 @@ discord = oauth.register(
 )
 
 
-def get_account_owner(request: Request) -> str:
+async def get_owner_id(request: Request) -> str:
     return request.session.get(OWNER_SESSION_KEY, "")
 
 
-OwnerDep = Annotated[str, Depends(get_account_owner)]
+OwnerDep = Annotated[str, Depends(get_owner_id)]
 
 
-def owner_challenge(user: OwnerDep) -> str:
-    if not user:
+async def owner_challenge(owner: OwnerDep) -> str:
+    if not owner:
         raise HTTPException(status_code=303, headers={"location": "/auth/"})
-    return user
+    return owner
 
 
-ChallengeDep = Annotated[str, Depends(owner_challenge)]
+OwnerChallengeDep = Annotated[str, Depends(owner_challenge)]
 
 
-def admin_owner_challenge(req: Request, user: ChallengeDep) -> str:
-    if user != 1:
-        log.warning("User %s failed an admin challenge.", user)
-        req.session.clear()
-        raise HTTPException(status_code=303, headers={"location": "/auth/"})
-    return user
+async def get_character(owner: OwnerDep, q: Repository) -> GetCharacterBriefRow | None:
+    return await q.get_character_brief(owner_id=owner)
+
+
+CharacterDep = Annotated[GetCharacterBriefRow | None, Depends(get_character)]
+
+
+async def character_challenge(
+    owner: OwnerDep, char: CharacterDep
+) -> GetCharacterBriefRow:
+    log.info("Character challenge for %s", owner)
+    log.info("Got %s", char)
+    if not char:
+        raise HTTPException(status_code=303, headers={"location": "/auth/chargen/"})
+    return char
+
+
+CharChallengeDep = Annotated[GetCharacterBriefRow, Depends(character_challenge)]
+
+
+@router.get("/chargen")
+async def get_chargen(_: OwnerChallengeDep, char: CharacterDep):
+    if char:
+        return RedirectResponse(url="/", status_code=303)
+    return HTMLResponse(CHARGEN_HTML)
+
+
+@router.post("/chargen")
+async def post_chargen(
+    owner_id: OwnerChallengeDep,
+    q: Repository,
+    char_name: Annotated[str, Form()],
+    pronoun: Annotated[Literal["she", "he", "it", "they"], Form()],
+):
+    name = char_name.strip().capitalize()
+
+    name_pattern = re.compile(r"^[a-zA-Z]{3,20}$")
+    if not name_pattern.match(name):
+        err = f"The name '{name}' is invalid."
+        return RedirectResponse(url=f"chargen/?error={err}", status_code=303)
+
+    try:
+        new = await q.create_character(owner_id=owner_id, name=name, pronoun=pronoun)
+    except IntegrityError:
+        err = f"The name '{name}' is taken."
+        return RedirectResponse(url=f"chargen/?error={err}", status_code=303)
+
+    log.info(
+        "New character created for owner %s: %s %s",
+        owner_id,
+        new.name,
+        pronoun,
+    )
+
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/", include_in_schema=False)
-async def login(req: Request, owner: OwnerDep):
+async def login(owner: OwnerDep):
     if owner:
         return RedirectResponse(url="/", status_code=303)
     return HTMLResponse(LOGIN_HTML)
@@ -85,12 +136,12 @@ async def auth_via_google(req: Request, q: Repository):
 
     token = await google.authorize_access_token(req)
     usr = token["userinfo"]
-    account = await q.upsert_identity(
+    owner_id = await q.upsert_identity(
         provider=OauthProvider.GOOGLE,
         subject=usr.get("sub"),
         email=usr.get("email"),
     )
-    req.session[OWNER_SESSION_KEY] = account
+    req.session[OWNER_SESSION_KEY] = owner_id
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -122,12 +173,12 @@ async def auth_via_discord(req: Request, q: Repository):
     )
     usr = resp.json()
 
-    account = await q.upsert_identity(
+    owner_id = await q.upsert_identity(
         provider=OauthProvider.DISCORD,
         subject=usr.get("id"),
         email=usr.get("email"),
     )
-    req.session[OWNER_SESSION_KEY] = account
+    req.session[OWNER_SESSION_KEY] = owner_id
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -142,12 +193,38 @@ if settings.allow_local_auth:
         q: Repository,
         body: FakeUserSetup,
     ):
-        account = await q.upsert_identity(
+        owner_id = await q.upsert_identity(
             provider=OauthProvider.DISCORD,
             subject=body.subj,
             email=body.email,
         )
-        req.session[OWNER_SESSION_KEY] = account
-        req.session[TEST_SETUP_KEY] = asdict(body)
+        char = await q.get_character_brief(owner_id=owner_id)
+        if not char:
+            char = await q.create_character(
+                owner_id=owner_id,
+                name=body.noun.value,
+                pronoun=Pronoun(body.noun.pronoun.they),
+            )
+        await q.update_character(
+            arg=UpdateCharacterParams(
+                id=char.id,
+                glyph=body.glyph,
+                pronoun=Pronoun(body.noun.pronoun.they),
+                map_id=body.transform.map_id,
+                x=body.transform.x,
+                y=body.transform.y,
+                health=body.health.cur,
+                stance=body.stance.cur,
+                condition=body.health.condition,
+                grace=body.stats.grace,
+                grit=body.stats.grit,
+                wit=body.stats.wit,
+                rank_martial_arts=body.skills.martial_arts.rank,
+                tnl_martial_arts=body.skills.martial_arts.tnl,
+                rank_evasion=body.skills.evasion.rank,
+                tnl_evasion=body.skills.evasion.tnl,
+            )
+        )
+        req.session[OWNER_SESSION_KEY] = owner_id
 
         return RedirectResponse(url="/", status_code=303)

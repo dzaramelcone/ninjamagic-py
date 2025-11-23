@@ -1,3 +1,5 @@
+from functools import partial
+
 import esper
 
 from ninjamagic import bus, reach, story, util
@@ -111,11 +113,31 @@ def process():
 
     for sig in bus.iter(bus.ConditionChanged):
         health(sig.source).condition = sig.condition
+        ctor = partial(
+            bus.OutboundCondition, source=sig.source, condition=sig.condition
+        )
+        bus.pulse(
+            bus.Echo(
+                source=sig.source,
+                reach=reach.visible,
+                make_source_sig=ctor,
+                make_other_sig=ctor,
+            )
+        )
         if sig.condition in ("unconscious", "in shock", "dead"):
             skills(sig.source).generation += 1
 
     for sig in bus.iter(bus.StanceChanged):
         stance(sig.source).cur = sig.stance
+        ctor = partial(bus.OutboundStance, source=sig.source, stance=sig.stance)
+        bus.pulse(
+            bus.Echo(
+                source=sig.source,
+                reach=reach.visible,
+                make_source_sig=ctor,
+                make_other_sig=ctor,
+            )
+        )
         if sig.echo:
             match sig.stance:
                 case "kneeling":

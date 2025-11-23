@@ -36,6 +36,8 @@ def process():
         bus.OutboundNoun,
         bus.OutboundHealth,
         bus.OutboundStance,
+        bus.OutboundCondition,
+        bus.OutboundSkill,
     ):
         for signal in bus.iter(type):
             mailbag[signal.to].append(signal)
@@ -93,6 +95,11 @@ def try_insert(
             stance.id = 0 if to == sig.source else sig.source
             stance.text = sig.stance
             return True
+        case bus.OutboundCondition():
+            condition = envelope.add().condition
+            condition.id = 0 if to == sig.source else sig.source
+            condition.text = sig.condition
+            return True
         case bus.OutboundGlyph():
             glyph = envelope.add().glyph
             glyph.id = 0 if to == sig.source else sig.source
@@ -139,5 +146,11 @@ def try_insert(
             gas.x = sig.x
             gas.y = sig.y
             gas.v = sig.v
+            return True
+        case bus.OutboundSkill():
+            skill = envelope.add().skill
+            skill.name = sig.name
+            skill.rank = sig.rank
+            skill.tnl = sig.tnl
             return True
     return False

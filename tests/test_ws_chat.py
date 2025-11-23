@@ -17,7 +17,7 @@ def alice_setup() -> FakeUserSetup:
     return FakeUserSetup(
         subj="alice",
         email="alice@x.test",
-        noun=Noun(value="Alice", pronouns=Pronouns.SHE),
+        noun=Noun(value="Alice", pronoun=Pronouns.SHE),
     )
 
 
@@ -26,7 +26,7 @@ def bob_setup() -> FakeUserSetup:
     return FakeUserSetup(
         subj="bob",
         email="bob@x.test",
-        noun=Noun(value="Bob", pronouns=Pronouns.HE),
+        noun=Noun(value="Bob", pronoun=Pronouns.HE),
     )
 
 
@@ -69,7 +69,7 @@ async def test_moves(golden, client_factory):
             subj="alice",
             email="alice@x.test",
             transform=Transform(map_id=TEST, x=6, y=6),
-            noun=Noun(value="Alice", pronouns=Pronouns.SHE),
+            noun=Noun(value="Alice", pronoun=Pronouns.SHE),
         ),
     )
 
@@ -78,7 +78,7 @@ async def test_moves(golden, client_factory):
             subj="bob",
             email="bob@x.test",
             transform=Transform(map_id=TEST, x=6 + OUTSIDE, y=6 + OUTSIDE),
-            noun=Noun(value="Bob", pronouns=Pronouns.HE),
+            noun=Noun(value="Bob", pronoun=Pronouns.HE),
         ),
     )
 
@@ -128,7 +128,7 @@ async def test_combat_and_exp(golden, client_factory):
                 martial_arts=Skill(name="Martial Arts", tnl=4.0),
                 evasion=Skill(name="Evasion", tnl=4.0),
             ),
-            noun=Noun(value="Alice", pronouns=Pronouns.SHE),
+            noun=Noun(value="Alice", pronoun=Pronouns.SHE),
         ),
     )
 
@@ -136,7 +136,7 @@ async def test_combat_and_exp(golden, client_factory):
         FakeUserSetup(
             subj="bob",
             email="bob@x.test",
-            noun=Noun(value="Bob", pronouns=Pronouns.HE),
+            noun=Noun(value="Bob", pronoun=Pronouns.HE),
             skills=Skills(
                 martial_arts=Skill(name="Martial Arts", tnl=4.0),
                 evasion=Skill(name="Evasion", tnl=4.0),
@@ -155,6 +155,7 @@ async def test_combat_and_exp(golden, client_factory):
     async with asyncio.timeout(0.25):
         await bob.send("west")
         golden("bob", await bob.recv())
+
     # alice fights back!
     async with asyncio.timeout(0.25):
         await alice.send("att bob")
@@ -163,7 +164,6 @@ async def test_combat_and_exp(golden, client_factory):
 
     # bob hits alice!
     # alice goes into shock!
-    # TODO: fix ordering here
     async with asyncio.timeout(get_melee_delay() + 0.25):
         golden("bob", await bob.recv())
         golden("alice", await alice.recv())
