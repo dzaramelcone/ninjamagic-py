@@ -1,7 +1,7 @@
 from string import Formatter
 
 from ninjamagic import bus, reach
-from ninjamagic.component import YOU, EntityId, client, noun
+from ninjamagic.component import YOU, EntityId, noun
 from ninjamagic.util import RNG, auto_cap
 
 FMT = Formatter()
@@ -38,25 +38,23 @@ def echo(
     range: reach.Selector = reach.adjacent,
     **kwargs,
 ):
-    source = target = 0
-    text = target_text = ""
+    def render_for_source(to: EntityId) -> bus.Outbound:
+        return bus.Outbound(to=to, text=vrender(story, args, kwargs, first_person=to))
 
-    if len(args) > 0 and client(args[0]):
-        source = args[0]
-        text = vrender(story, args, kwargs, first_person=source)
+    def render_for_target(to: EntityId) -> bus.Outbound:
+        return bus.Outbound(to=to, text=vrender(story, args, kwargs, first_person=to))
 
-    if len(args) > 1 and client(args[1]):
-        target = args[1]
-        target_text = vrender(story, args, kwargs, first_person=target)
+    def render_for_other(to: EntityId) -> bus.Outbound:
+        return bus.Outbound(to=to, text=vrender(story, args, kwargs))
 
     bus.pulse(
         bus.Echo(
-            source=source,
-            text=text,
-            range=range,
-            otext=vrender(story, args, kwargs),
-            target=target,
-            target_text=target_text,
+            source=args[0] if args else 0,
+            target=args[1] if len(args) > 1 else 0,
+            reach=range,
+            make_source_sig=render_for_source,
+            make_other_sig=render_for_other,
+            make_target_sig=render_for_target,
         ),
     )
 
