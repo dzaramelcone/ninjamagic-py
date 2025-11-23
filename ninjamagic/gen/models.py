@@ -3,14 +3,34 @@
 #   sqlc v1.30.0
 import datetime
 import enum
+import pydantic
 from typing import Optional
 
-import pydantic
+
+class Condition(enum.StrEnum):
+    NORMAL = "normal"
+    UNCONSCIOUS = "unconscious"
+    INSHOCK = "in shock"
+    DEAD = "dead"
 
 
 class OauthProvider(enum.StrEnum):
     GOOGLE = "google"
     DISCORD = "discord"
+
+
+class Pronoun(enum.StrEnum):
+    SHE = "she"
+    HE = "he"
+    THEY = "they"
+    IT = "it"
+
+
+class Stance(enum.StrEnum):
+    STANDING = "standing"
+    KNEELING = "kneeling"
+    SITTING = "sitting"
+    LYINGPRONE = "lying prone"
 
 
 class Account(pydantic.BaseModel):
@@ -27,12 +47,28 @@ class Character(pydantic.BaseModel):
     id: int
     owner_id: int
     name: str
+    pronoun: Pronoun
+    glyph: str
+    map_id: int
+    x: int
+    y: int
+    health: float
+    stance: Stance
+    condition: Condition
+    grace: int
+    grit: int
+    wit: int
+    rank_evasion: int
+    tnl_evasion: float
+    rank_martial_arts: int
+    tnl_martial_arts: float
     created_at: datetime.datetime
+    updated_at: datetime.datetime
 
 
 class Skill(pydantic.BaseModel):
     id: int
     char_id: int
     name: str
-    experience: int
-    pending: int
+    rank: int
+    tnl: float

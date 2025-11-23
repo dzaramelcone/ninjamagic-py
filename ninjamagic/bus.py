@@ -17,6 +17,7 @@ from ninjamagic.component import (
     Stances,
     Transform,
 )
+from ninjamagic.gen.models import Character
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
 from ninjamagic.world.state import ChipSet
 
@@ -36,6 +37,7 @@ class Connected(Signal):
 
     source: EntityId
     client: WebSocket
+    char: Character | None
 
 
 @signal(frozen=True, slots=True, kw_only=True)

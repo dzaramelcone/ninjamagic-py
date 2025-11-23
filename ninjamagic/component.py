@@ -11,6 +11,7 @@ MAX_HEALTH = 100.0
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
+CharId = int
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
@@ -100,7 +101,7 @@ class AABB:
 @component(slots=True, frozen=True)
 class Noun:
     value: str = "thing"
-    pronouns: Pronoun = Pronouns.IT
+    pronoun: Pronoun = Pronouns.IT
     num: Num = util.SINGULAR
     hypernyms: list[str] | None = None  # list of nouns?
 
@@ -141,13 +142,13 @@ class Noun:
                 return util.possessive(f"the {util.RNG.choice(self.hypernyms)}")
             return util.possessive(self.definite())
 
-        if pronoun := getattr(self.pronouns, format_spec, ""):
+        if pronoun := getattr(self.pronoun, format_spec, ""):
             return pronoun
 
         return util.conjugate(format_spec, self.num)
 
 
-YOU = Noun(value="you", pronouns=Pronouns.YOU, num=util.PLURAL)
+YOU = Noun(value="you", pronoun=Pronouns.YOU, num=util.PLURAL)
 T = TypeVar("T")
 
 
