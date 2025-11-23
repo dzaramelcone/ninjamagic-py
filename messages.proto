@@ -59,6 +59,17 @@ message Stance {
   string text = 2;
 }
 
+message Condition {
+  uint32 id = 1;
+  string text = 2;
+}
+
+message Skill {
+  string name = 1;
+  uint32 rank = 2;
+  float tnl = 3;
+}
+
 
 // A wrapper that can contain any of our specific message types.
 message Kind {
@@ -72,6 +83,8 @@ message Kind {
     Noun noun = 7;
     Health health = 8;
     Stance stance = 9;
+    Condition condition = 10;
+    Skill skill = 11;
   }
 }
 

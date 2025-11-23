@@ -273,6 +273,16 @@ class OutboundMove(Signal):
     y: int
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundSkill(Signal):
+    """An outbound skill update."""
+
+    to: EntityId
+    name: str
+    rank: int
+    tnl: float
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
