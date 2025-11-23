@@ -41,21 +41,21 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 UPDATE_CHARACTER = """-- name: update_character \\:exec
 UPDATE characters
 SET
-  glyph = COALESCE(:p2, glyph),
-  pronoun = COALESCE(:p3, pronoun),
-  map_id = COALESCE(:p4, map_id),
-  x = COALESCE(:p5, x),
-  y = COALESCE(:p6, y),
-  health = COALESCE(:p7, health),
-  stance = COALESCE(:p8, stance),
-  condition = COALESCE(:p9, condition),
-  grace = COALESCE(:p10, grace),
-  grit = COALESCE(:p11, grit),
-  wit = COALESCE(:p12, wit),
-  rank_martial_arts = COALESCE(:p13, rank_martial_arts),
-  tnl_martial_arts = COALESCE(:p14, tnl_martial_arts),
-  rank_evasion = COALESCE(:p15, rank_evasion),
-  tnl_evasion = COALESCE(:p16, tnl_evasion),
+  glyph = :p2,
+  pronoun = :p3,
+  map_id = :p4,
+  x = :p5,
+  y = :p6,
+  health = :p7,
+  stance = :p8,
+  condition = :p9,
+  grace = :p10,
+  grit = :p11,
+  wit = :p12,
+  rank_martial_arts = :p13,
+  tnl_martial_arts = :p14,
+  rank_evasion = :p15,
+  tnl_evasion = :p16,
   updated_at = now()
 WHERE id = :p1
 """
