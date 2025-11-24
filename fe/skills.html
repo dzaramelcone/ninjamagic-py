@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lit TUI Skills Component Preview</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      background-color: #050505;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #9e9e9e;
+    }
+  </style>
+</head>
+<body>
+
+  <tui-skills></tui-skills>
+
+  <script type="module">
+    // Import the component (which registers the custom elements)
+    import './src/ui/skills.ts';
+    // Import the store (to drive the simulation)
+    import { useGameStore } from './src/state.ts';
+
+    // 1. Seed initial data
+    useGameStore.setState({
+      skills: [
+        { name: "Swordsmanship", rank: 25, tnl: 0.85 },
+        { name: "Unlearned", rank: 0, tnl: 0.00 },
+        { name: "Mastered", rank: 100, tnl: 1.00 },
+        { name: "Heavy Armor", rank: 8, tnl: 0.95 },
+        { name: "Meditation", rank: 99, tnl: 0.21 },
+        { name: "Alchemy", rank: 12, tnl: 0.05 },
+        { name: "Stealth", rank: 4, tnl: 0.75 },
+        { name: "Athletics", rank: 33, tnl: 0.39 },
+        { name: "Cooking", rank: 115, tnl: 0.88 },
+        { name: "Smithing", rank: 2, tnl: 0.09 },
+        { name: "Enchanting", rank: 55, tnl: 0.88 }
+      ]
+    });
+
+    // 2. Start Simulation Loop
+    setInterval(() => {
+      const state = useGameStore.getState();
+      const newSkills = state.skills.map(s => {
+        if (Math.random() > 0.3) return s; 
+        
+        let inc = 0.02 + Math.random() * 0.05;
+        if (Math.random() > 0.95) inc = 0.25; 
+
+        let nextTnl = s.tnl + inc;
+        let nextRank = s.rank;
+        
+        if (nextTnl >= 1.0) {
+          nextTnl = nextTnl - 1.0; 
+          nextRank++;
+        }
+        return { ...s, tnl: nextTnl, rank: nextRank };
+      });
+      
+      useGameStore.setState({ skills: newSkills });
+    }, 1500);
+
+  </script>
+</body>
+</html>
