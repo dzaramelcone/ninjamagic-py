@@ -4,6 +4,8 @@ import { initMap } from "./ui/map";
 import { initChat } from "./ui/chat";
 import { initNearby } from "./ui/nearby";
 
+import "./ui/tui-skills";
+
 function startApp() {
   function getElement<T extends HTMLElement>(
     id: string,
