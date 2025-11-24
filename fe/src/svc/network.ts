@@ -13,14 +13,22 @@ import {
   Noun,
   Health,
   Stance,
+  Skill,
 } from "../gen/messages";
 import { COLS, ROWS } from "../ui/map";
 
 const PLAYER_ID = 0;
 const NONE_LEVEL_ID = 1;
 type PosLike = { id: number; map_id: number; x: number; y: number };
-const { setPosition, cullPositions, setGlyph, setNoun, setHealth, setStance } =
-  useGameStore.getState();
+const {
+  setPosition,
+  cullPositions,
+  setGlyph,
+  setNoun,
+  setHealth,
+  setStance,
+  setSkill,
+} = useGameStore.getState();
 
 function cardinalFromDelta(dx: number, dy: number): string | null {
   if (dx === 0 && dy === 0) return null;
@@ -224,6 +232,10 @@ const handlerMap = {
   stance: (body: Stance) => {
     setStance(body.id, body.text);
   },
+
+  skill: (body: Skill) => {
+    setSkill(body.name, body.rank, body.tnl);
+  },
 };
 
 export function initializeNetwork() {
@@ -264,8 +276,12 @@ export function initializeNetwork() {
         case "stance":
           handlerMap.stance(body.stance);
           break;
+        case "skill":
+          handlerMap.skill(body.skill);
+          break;
       }
     }
+
     for (const kind of packet.envelope) {
       const { body } = kind;
 
