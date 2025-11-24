@@ -56,7 +56,7 @@ class State:
 
     async def aclose(self):
         log.info("Ending state.")
-        await self.http.aclose()
+        await self.client.aclose()
         log.info("Ended state.")
 
     async def step(self) -> None:
