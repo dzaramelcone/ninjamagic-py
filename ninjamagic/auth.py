@@ -2,7 +2,6 @@ import logging
 import re
 from typing import Annotated, Literal
 
-import httpx
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +11,7 @@ from ninjamagic.config import settings
 from ninjamagic.db import Repository
 from ninjamagic.gen.models import OauthProvider, Pronoun
 from ninjamagic.gen.query import GetCharacterBriefRow, UpdateCharacterParams
+from ninjamagic.state import ClientDep
 from ninjamagic.util import CHARGEN_HTML, LOGIN_HTML, OWNER_SESSION_KEY
 
 oauth = OAuth()
@@ -159,7 +159,7 @@ async def login_via_discord(req: Request, owner: OwnerDep):
 
 
 @router.get("/discord")
-async def auth_via_discord(req: Request, q: Repository):
+async def auth_via_discord(req: Request, q: Repository, client: ClientDep):
     if req.query_params.get("error"):
         return await discord.authorize_redirect(
             req,
@@ -168,7 +168,6 @@ async def auth_via_discord(req: Request, q: Repository):
 
     token = await discord.authorize_access_token(req)
     token = token["access_token"]
-    client = httpx.AsyncClient()
     resp = await client.get(
         "https://discord.com/api/users/@me",
         headers={"Authorization": f"Bearer {token}"},
