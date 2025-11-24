@@ -53,7 +53,9 @@ async def owner_challenge(owner: OwnerDep) -> str:
 OwnerChallengeDep = Annotated[str, Depends(owner_challenge)]
 
 
-async def get_character(owner: OwnerDep, q: Repository) -> GetCharacterBriefRow | None:
+async def get_character(
+    owner: OwnerChallengeDep, q: Repository
+) -> GetCharacterBriefRow | None:
     return await q.get_character_brief(owner_id=owner)
 
 
