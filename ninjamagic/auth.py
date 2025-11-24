@@ -85,10 +85,14 @@ async def get_chargen(_: OwnerChallengeDep, char: CharacterDep):
 @router.post("/chargen")
 async def post_chargen(
     owner_id: OwnerChallengeDep,
+    char: CharacterDep,
     q: Repository,
     char_name: Annotated[str, Form()],
     pronoun: Annotated[Literal["she", "he", "it", "they"], Form()],
 ):
+    if char:
+        return RedirectResponse(url="/", status_code=303)
+
     name = char_name.strip().capitalize()
 
     name_pattern = re.compile(r"^[a-zA-Z]{3,20}$")
