@@ -2,8 +2,11 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import esper
+import httpx
+from fastapi import Depends, Request
 
 import ninjamagic.bus as bus
 from ninjamagic import (
@@ -46,12 +49,14 @@ class State:
 
     async def aopen(self):
         log.info("Starting state.")
+        self.client = httpx.AsyncClient()
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())
         log.info("Started state.")
 
     async def aclose(self):
         log.info("Ending state.")
+        await self.http.aclose()
         log.info("Ended state.")
 
     async def step(self) -> None:
@@ -107,3 +112,12 @@ class State:
             if current_sec % HALF_LIFE_SECONDS == 0 and current_sec != last_logged_sec:
                 log.info("jitter_ema=%.6f", jitter_ema)
                 last_logged_sec = current_sec
+
+
+async def get_http_client(request: Request) -> httpx.AsyncClient:
+    if not hasattr(request.app.state, "client"):
+        raise RuntimeError("App state is not initialized with http client")
+    return request.app.state.client
+
+
+ClientDep = Annotated[httpx.AsyncClient, Depends(get_http_client)]
