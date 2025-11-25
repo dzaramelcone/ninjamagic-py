@@ -15,11 +15,10 @@ import { sharedStyles } from "./tui-styles";
 export class TuiTabSelector extends LitElement {
   @state() private _labels: string[] = [];
 
-  // Internal index used for animation/layout; we keep it but try
-  // to drive it from selectedLabel so the external API is label-based.
+  // Internal index used for animation/layout
   @property({ type: Number }) selectedIndex = 0;
 
-  // 🔹 New: label-based selection API
+  // Label-based external API
   @property({ type: String }) selectedLabel: string | null = null;
 
   // "top" (default) or "bottom" for the indicator track position
@@ -72,8 +71,8 @@ export class TuiTabSelector extends LitElement {
       }
       :host([indicator-position="bottom"]) .content-area {
         order: 0;
-        display: flex;
-        flex-direction: column-reverse;
+        // display: flex;
+        // flex-direction: column-reverse;
       }
       :host([indicator-position="bottom"]) .track {
         order: 1;
@@ -170,7 +169,6 @@ export class TuiTabSelector extends LitElement {
   }
 
   protected updated(changedProps: PropertyValues) {
-    // 🔹 When labels change, ensure selectedLabel is valid and sync index
     if (changedProps.has("_labels")) {
       this._ensureSelectedLabel();
       this._syncSelectedIndexFromLabel();
@@ -181,17 +179,20 @@ export class TuiTabSelector extends LitElement {
       });
     }
 
-    // 🔹 When label changes externally or via click, sync index + visuals
     if (changedProps.has("selectedLabel")) {
       this._syncSelectedIndexFromLabel();
       this._updateBar(true);
       this._updateContentVisibility();
-    }
+      const index = this.selectedIndex;
+      const label = this.selectedLabel;
 
-    // Keep existing behavior if something else touches selectedIndex directly
-    if (changedProps.has("selectedIndex")) {
-      this._updateBar(true);
-      this._updateContentVisibility();
+      this.dispatchEvent(
+        new CustomEvent("tui-tab-changed", {
+          detail: { index, label },
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
 
     if (changedProps.has("indicatorPosition")) {
@@ -223,7 +224,6 @@ export class TuiTabSelector extends LitElement {
     });
   }
 
-  // Ensure selectedLabel is always a valid label when we have any
   private _ensureSelectedLabel() {
     if (!this._labels.length) return;
 
@@ -234,7 +234,6 @@ export class TuiTabSelector extends LitElement {
     }
   }
 
-  // Drive selectedIndex from selectedLabel, but only when needed
   private _syncSelectedIndexFromLabel() {
     if (!this._labels.length || !this.selectedLabel) return;
 
@@ -263,38 +262,8 @@ export class TuiTabSelector extends LitElement {
     });
   }
 
-  private _select(index: number) {
-    if (index === this.selectedIndex) return;
-    const label = this._labels[index];
-    if (!label) return;
-
-    // 🔹 Drive everything through the label
-    this.selectedLabel = label;
-
-    // Legacy event
-    this.dispatchEvent(
-      new CustomEvent("select", {
-        detail: { index, label },
-        bubbles: true,
-        composed: true,
-      })
-    );
-
-    // 🔹 New, explicit label-based event
-    this.dispatchEvent(
-      new CustomEvent("tui-tab-changed", {
-        detail: { index, label },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
-  // 🔹 Public API: select by label instead of index
   public selectLabel(label: string) {
     if (!this._labels.length) {
-      // If labels not ready yet, just set the property;
-      // updated() + _ensureSelectedLabel() will handle it later.
       this.selectedLabel = label;
       return;
     }
@@ -303,12 +272,6 @@ export class TuiTabSelector extends LitElement {
     this.selectedLabel = label;
   }
 
-  /**
-   * Clamp:
-   *   - content-area minHeight to tallest panel
-   *   - host minHeight to tallest panel + track + tabs
-   *   - width to max( labels width sum, widest panel )
-   */
   private _updateBounds() {
     if (!this._contentArea || !this._slot) return;
 
@@ -327,7 +290,6 @@ export class TuiTabSelector extends LitElement {
         hidden: el.hasAttribute("hidden"),
       }));
 
-      // Show all panels to measure intrinsic size
       panels.forEach((el) => {
         el.style.display = "";
         el.removeAttribute("hidden");
@@ -339,7 +301,6 @@ export class TuiTabSelector extends LitElement {
         maxPanelWidth = Math.max(maxPanelWidth, rect.width);
       });
 
-      // Restore
       savedStates.forEach(({ el, display, hidden }) => {
         el.style.display = display;
         if (hidden) el.setAttribute("hidden", "");
@@ -347,7 +308,6 @@ export class TuiTabSelector extends LitElement {
       });
     }
 
-    // Sum label widths to get an intrinsic width for the header row
     let labelsWidth = 0;
     if (labels && labels.length) {
       labels.forEach((el) => {
@@ -358,14 +318,12 @@ export class TuiTabSelector extends LitElement {
 
     const maxWidth = Math.max(maxPanelWidth, labelsWidth);
 
-    // Clamp widths: widget and content share the same minimum width
     if (maxWidth > 0) {
       const w = Math.round(maxWidth);
       this._contentArea.style.minWidth = `${w}px`;
       this.style.minWidth = `${w}px`;
     }
 
-    // **Hard clamp** content height to tallest panel
     if (maxPanelHeight > 0) {
       const panelH = Math.round(maxPanelHeight);
       this._contentArea.style.height = `${panelH}px`;
@@ -403,10 +361,8 @@ export class TuiTabSelector extends LitElement {
 
     const desiredGap = gapSize;
 
-    // Base cursor extents
     const baseCursorLeft = cursorLeft;
 
-    // Left gap region: [gapLeftStart, baseCursorLeft)
     const gapLeftStart = Math.max(0, baseCursorLeft - desiredGap);
 
     const leftSegLeft = 0;
@@ -420,7 +376,6 @@ export class TuiTabSelector extends LitElement {
     );
     const cursorRightFinal = cursorLeftFinal + cursorWidthFinal;
 
-    // Right gap region: [cursorRightFinal, gapRightEnd)
     const gapRightEnd = Math.min(trackWidth, cursorRightFinal + desiredGap);
 
     const rightSegLeft = gapRightEnd;
@@ -462,19 +417,17 @@ export class TuiTabSelector extends LitElement {
       duration,
       ease,
     });
-
-    if (animate) {
-      gsap.fromTo(
-        this._cursorSeg,
-        { backgroundColor: "#ffffff", boxShadow: "0 0 12px #ffffff" },
-        {
-          backgroundColor: "var(--c-mid)",
-          boxShadow: "none",
-          duration: 2.0,
-          ease: "expo.out",
-        }
-      );
-    }
+    const moveDuration = animate ? 2.0 : 0;
+    gsap.fromTo(
+      this._cursorSeg,
+      { backgroundColor: "#ffffff", boxShadow: "0 0 12px #ffffff" },
+      {
+        backgroundColor: "var(--c-mid)",
+        boxShadow: "none",
+        duration: moveDuration,
+        ease: "expo.out",
+      }
+    );
   }
 
   render() {
@@ -488,10 +441,10 @@ export class TuiTabSelector extends LitElement {
         </div>
         <div class="tabs-row">
           ${this._labels.map(
-            (label, index) => html`
+            (label) => html`
               <div
-                class="tab ${index === this.selectedIndex ? "active" : ""}"
-                @click=${() => this._select(index)}
+                class="tab ${label === this.selectedLabel ? "active" : ""}"
+                @click=${() => this.selectLabel(label)}
               >
                 <span class="label-text">${label}</span>
               </div>
