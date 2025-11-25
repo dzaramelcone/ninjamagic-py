@@ -2,9 +2,11 @@ import "./main.css";
 import { initializeNetwork } from "./svc/network";
 import { initMap } from "./ui/map";
 import { initChat } from "./ui/chat";
-import { initNearby } from "./ui/nearby";
 
+import "./ui/tui-nearby";
 import "./ui/tui-skills";
+import "./ui/tui-stress-bar";
+import "./ui/tui-tab-selector";
 
 function startApp() {
   function getElement<T extends HTMLElement>(
@@ -24,11 +26,9 @@ function startApp() {
     const mapElement = getElement("mapBox", HTMLElement);
     const chatElement = getElement("chat", HTMLElement);
     const inputElement = getElement("cmd", HTMLInputElement);
-    const nearbyElement = getElement("nearby", HTMLElement);
 
     initMap(mapElement);
     initChat(chatElement, inputElement);
-    initNearby(nearbyElement);
   } catch (error) {
     console.error(error);
   }

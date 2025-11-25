@@ -10,13 +10,18 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <pre id="nearby"></pre>
+    <tui-nearby></tui-nearby>
     <div id="card">
       <div id="mapBox"></div>
-      <div id="chat"></div>
-      <div id="prompt">
-        <input id="cmd" autocomplete="off" />
-      </div>
+      <tui-tab-selector indicator-position="bottom">
+        <div label="chat" class=panel-content>
+          <div id="chat"></div>
+          <div id="prompt"><input id="cmd" autocomplete="off" /></div>
+        </div>
+        <div label="skills" class=panel-content>
+          <tui-skills></tui-skills>
+        </div>
+      </tui-tab-selector>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
