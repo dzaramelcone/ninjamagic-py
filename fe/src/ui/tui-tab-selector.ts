@@ -14,7 +14,13 @@ import { sharedStyles } from "./tui-styles";
 @customElement("tui-tab-selector")
 export class TuiTabSelector extends LitElement {
   @state() private _labels: string[] = [];
+
+  // Internal index used for animation/layout; we keep it but try
+  // to drive it from selectedLabel so the external API is label-based.
   @property({ type: Number }) selectedIndex = 0;
+
+  // 🔹 New: label-based selection API
+  @property({ type: String }) selectedLabel: string | null = null;
 
   // "top" (default) or "bottom" for the indicator track position
   @property({ type: String, attribute: "indicator-position", reflect: true })
@@ -74,8 +80,6 @@ export class TuiTabSelector extends LitElement {
       }
       :host([indicator-position="bottom"]) .tabs-row {
         order: 2;
-      }
-      :host([indicator-position="bottom"]) .content-area {
       }
 
       .track {
@@ -155,7 +159,6 @@ export class TuiTabSelector extends LitElement {
 
   protected firstUpdated() {
     this._measureGapSize();
-
     this._updateBounds();
     this._updateBar(false);
     window.addEventListener("resize", this._onResize);
@@ -167,12 +170,10 @@ export class TuiTabSelector extends LitElement {
   }
 
   protected updated(changedProps: PropertyValues) {
-    if (changedProps.has("selectedIndex")) {
-      this._updateBar(true);
-      this._updateContentVisibility();
-    }
-
+    // 🔹 When labels change, ensure selectedLabel is valid and sync index
     if (changedProps.has("_labels")) {
+      this._ensureSelectedLabel();
+      this._syncSelectedIndexFromLabel();
       this.updateComplete.then(() => {
         this._updateBounds();
         this._updateBar(false);
@@ -180,8 +181,20 @@ export class TuiTabSelector extends LitElement {
       });
     }
 
+    // 🔹 When label changes externally or via click, sync index + visuals
+    if (changedProps.has("selectedLabel")) {
+      this._syncSelectedIndexFromLabel();
+      this._updateBar(true);
+      this._updateContentVisibility();
+    }
+
+    // Keep existing behavior if something else touches selectedIndex directly
+    if (changedProps.has("selectedIndex")) {
+      this._updateBar(true);
+      this._updateContentVisibility();
+    }
+
     if (changedProps.has("indicatorPosition")) {
-      // Re-clamp bounds when the layout order changes
       this.updateComplete.then(() => {
         this._updateBounds();
         this._updateBar(false);
@@ -202,10 +215,35 @@ export class TuiTabSelector extends LitElement {
     this._labels = elements.map((el) => el.getAttribute("label") || "Untitled");
 
     this.updateComplete.then(() => {
+      this._ensureSelectedLabel();
+      this._syncSelectedIndexFromLabel();
       this._updateBounds();
       this._updateBar(false);
       this._updateContentVisibility();
     });
+  }
+
+  // Ensure selectedLabel is always a valid label when we have any
+  private _ensureSelectedLabel() {
+    if (!this._labels.length) return;
+
+    if (!this.selectedLabel || !this._labels.includes(this.selectedLabel)) {
+      const fallback =
+        this._labels[this.selectedIndex] ?? this._labels[0] ?? null;
+      this.selectedLabel = fallback;
+    }
+  }
+
+  // Drive selectedIndex from selectedLabel, but only when needed
+  private _syncSelectedIndexFromLabel() {
+    if (!this._labels.length || !this.selectedLabel) return;
+
+    const idx = this._labels.indexOf(this.selectedLabel);
+    const clamped = idx >= 0 ? idx : 0;
+
+    if (this.selectedIndex !== clamped) {
+      this.selectedIndex = clamped;
+    }
   }
 
   private _updateContentVisibility() {
@@ -227,15 +265,42 @@ export class TuiTabSelector extends LitElement {
 
   private _select(index: number) {
     if (index === this.selectedIndex) return;
-    this.selectedIndex = index;
+    const label = this._labels[index];
+    if (!label) return;
 
+    // 🔹 Drive everything through the label
+    this.selectedLabel = label;
+
+    // Legacy event
     this.dispatchEvent(
       new CustomEvent("select", {
-        detail: { index, label: this._labels[index] },
+        detail: { index, label },
         bubbles: true,
         composed: true,
       })
     );
+
+    // 🔹 New, explicit label-based event
+    this.dispatchEvent(
+      new CustomEvent("tui-tab-changed", {
+        detail: { index, label },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  // 🔹 Public API: select by label instead of index
+  public selectLabel(label: string) {
+    if (!this._labels.length) {
+      // If labels not ready yet, just set the property;
+      // updated() + _ensureSelectedLabel() will handle it later.
+      this.selectedLabel = label;
+      return;
+    }
+
+    if (!this._labels.includes(label)) return;
+    this.selectedLabel = label;
   }
 
   /**
@@ -312,11 +377,6 @@ export class TuiTabSelector extends LitElement {
     return this._gapSize || 0;
   }
 
-  /**
-   * Update the segmented bar based on the active label.
-   * Uses absolute positioning so it cannot affect layout.
-   * Gaps are now *true* empty regions with no overlay/mask.
-   */
   private _updateBar(animate: boolean = true) {
     if (!this._track || !this._tabsRow) return;
 
@@ -353,6 +413,7 @@ export class TuiTabSelector extends LitElement {
     const leftSegWidth = Math.max(0, gapLeftStart - leftSegLeft);
 
     const cursorLeftFinal = baseCursorLeft;
+
     const cursorWidthFinal = Math.max(
       0,
       Math.min(cursorWidth, trackWidth - cursorLeftFinal)
