@@ -114,7 +114,9 @@ body {
 }
 
 #chat {
-  width: 100%;
+  width: calc(60ch);
+  max-width: calc(60ch);
+  min-width: calc(60ch);
   height: calc(var(--row-h) * 8);
   flex: 0 0 calc(var(--row-h) * 8);
   display: flex;
