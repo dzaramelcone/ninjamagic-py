@@ -22,6 +22,7 @@ type EntityMetaFromStore = {
   noun?: string;
   stance?: string;
   healthPct?: number;
+  stressPct?: number;
   hsva?: NearbyHsva;
 };
 
@@ -98,6 +99,7 @@ export class TuiNearby extends LitElement {
         noun: meta.noun,
         stance: meta.stance,
         healthPct: meta.healthPct,
+        stressPct: meta.stressPct,
         hsva: meta.hsva,
       });
     }
@@ -132,14 +134,34 @@ export class TuiNearby extends LitElement {
     const hsva = ent.hsva ?? { h: 0, s: 0, v: 1, a: 1 };
 
     const health = ent.healthPct;
+    const stress = ent.stressPct;
+    const lines = [
+      html`<tui-entity-title
+        glyph=${ent.glyph ?? "@"}
+        name=${ent.noun ?? "unknown"}
+        direction=${dir}
+        .isPlayer=${isPlayer}
+        .h=${hsva.h}
+        .s=${hsva.s}
+        .v=${hsva.v}
+        .a=${hsva.a}
+      ></tui-entity-title>`,
+    ];
+
+    if (health !== undefined) {
+      lines.push(html`<tui-health-bar .value=${health}></tui-health-bar>`);
+    }
+
+    if (stress !== undefined) {
+      lines.push(html`<tui-stress-bar .value=${stress}></tui-stress-bar>`);
+    }
+
+    if (ent.stance) {
+      lines.push(html`<tui-label-line text=${ent.stance}></tui-label-line>`);
+    }
+
     // prettier-ignore
-    return html`
-      <div class="entity-block">
-        <tui-entity-title glyph=${ent.glyph ?? "@"} name=${ent.noun ?? "unknown"} direction=${dir} .isPlayer=${isPlayer} .h=${hsva.h} .s=${hsva.s} .v=${hsva.v} .a=${hsva.a}></tui-entity-title>
-        ${health !== undefined ? html`<tui-health-bar .value=${health}></tui-health-bar>`: null}
-        ${ent.stance ? html`<tui-label-line text=${ent.stance}></tui-label-line>` : null}
-      </div>
-    `;
+    return html`<div class="entity-block">${lines}</div>`;
   }
 
   render() {

@@ -12,7 +12,7 @@ from ninjamagic.gen import models
 
 
 CREATE_CHARACTER = """-- name: create_character \\:one
-INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, map_id, x, y, health, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at
+INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at
 """
 
 
@@ -22,7 +22,7 @@ DELETE FROM characters WHERE id = :p1
 
 
 GET_CHARACTER = """-- name: get_character \\:one
-SELECT id, owner_id, name, pronoun, glyph, map_id, x, y, health, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
+SELECT id, owner_id, name, pronoun, glyph, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
 """
 
 
@@ -41,21 +41,23 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 UPDATE_CHARACTER = """-- name: update_character \\:exec
 UPDATE characters
 SET
-  glyph = :p2,
-  pronoun = :p3,
-  map_id = :p4,
-  x = :p5,
-  y = :p6,
-  health = :p7,
-  stance = :p8,
-  condition = :p9,
-  grace = :p10,
-  grit = :p11,
-  wit = :p12,
-  rank_martial_arts = :p13,
-  tnl_martial_arts = :p14,
-  rank_evasion = :p15,
-  tnl_evasion = :p16,
+  glyph = coalesce(:p2, glyph),
+  pronoun = coalesce(:p3, pronoun),
+  map_id = coalesce(:p4, map_id),
+  x = coalesce(:p5, x),
+  y = coalesce(:p6, y),
+  health = coalesce(:p7, health),
+  stress = coalesce(:p8, stress),
+  aggravated_stress = coalesce(:p9, aggravated_stress),
+  stance = coalesce(:p10, stance),
+  condition = coalesce(:p11, condition),
+  grace = coalesce(:p12, grace),
+  grit = coalesce(:p13, grit),
+  wit = coalesce(:p14, wit),
+  rank_martial_arts = coalesce(:p15, rank_martial_arts),
+  tnl_martial_arts = coalesce(:p16, tnl_martial_arts),
+  rank_evasion = coalesce(:p17, rank_evasion),
+  tnl_evasion = coalesce(:p18, tnl_evasion),
   updated_at = now()
 WHERE id = :p1
 """
@@ -63,21 +65,23 @@ WHERE id = :p1
 
 class UpdateCharacterParams(pydantic.BaseModel):
     id: int
-    glyph: str
-    pronoun: models.Pronoun
-    map_id: int
-    x: int
-    y: int
-    health: float
-    stance: models.Stance
-    condition: models.Condition
-    grace: int
-    grit: int
-    wit: int
-    rank_martial_arts: int
-    tnl_martial_arts: float
-    rank_evasion: int
-    tnl_evasion: float
+    glyph: Optional[str]
+    pronoun: Optional[models.Pronoun]
+    map_id: Optional[int]
+    x: Optional[int]
+    y: Optional[int]
+    health: Optional[float]
+    stress: Optional[float]
+    aggravated_stress: Optional[float]
+    stance: Optional[models.Stance]
+    condition: Optional[models.Condition]
+    grace: Optional[int]
+    grit: Optional[int]
+    wit: Optional[int]
+    rank_martial_arts: Optional[int]
+    tnl_martial_arts: Optional[float]
+    rank_evasion: Optional[int]
+    tnl_evasion: Optional[float]
 
 
 UPSERT_IDENTITY = """-- name: upsert_identity \\:one
@@ -109,17 +113,19 @@ class AsyncQuerier:
             x=row[6],
             y=row[7],
             health=row[8],
-            stance=row[9],
-            condition=row[10],
-            grace=row[11],
-            grit=row[12],
-            wit=row[13],
-            rank_evasion=row[14],
-            tnl_evasion=row[15],
-            rank_martial_arts=row[16],
-            tnl_martial_arts=row[17],
-            created_at=row[18],
-            updated_at=row[19],
+            stress=row[9],
+            aggravated_stress=row[10],
+            stance=row[11],
+            condition=row[12],
+            grace=row[13],
+            grit=row[14],
+            wit=row[15],
+            rank_evasion=row[16],
+            tnl_evasion=row[17],
+            rank_martial_arts=row[18],
+            tnl_martial_arts=row[19],
+            created_at=row[20],
+            updated_at=row[21],
         )
 
     async def delete_character(self, *, id: int) -> None:
@@ -139,17 +145,19 @@ class AsyncQuerier:
             x=row[6],
             y=row[7],
             health=row[8],
-            stance=row[9],
-            condition=row[10],
-            grace=row[11],
-            grit=row[12],
-            wit=row[13],
-            rank_evasion=row[14],
-            tnl_evasion=row[15],
-            rank_martial_arts=row[16],
-            tnl_martial_arts=row[17],
-            created_at=row[18],
-            updated_at=row[19],
+            stress=row[9],
+            aggravated_stress=row[10],
+            stance=row[11],
+            condition=row[12],
+            grace=row[13],
+            grit=row[14],
+            wit=row[15],
+            rank_evasion=row[16],
+            tnl_evasion=row[17],
+            rank_martial_arts=row[18],
+            tnl_martial_arts=row[19],
+            created_at=row[20],
+            updated_at=row[21],
         )
 
     async def get_character_brief(self, *, owner_id: int) -> Optional[GetCharacterBriefRow]:
@@ -171,15 +179,17 @@ class AsyncQuerier:
             "p5": arg.x,
             "p6": arg.y,
             "p7": arg.health,
-            "p8": arg.stance,
-            "p9": arg.condition,
-            "p10": arg.grace,
-            "p11": arg.grit,
-            "p12": arg.wit,
-            "p13": arg.rank_martial_arts,
-            "p14": arg.tnl_martial_arts,
-            "p15": arg.rank_evasion,
-            "p16": arg.tnl_evasion,
+            "p8": arg.stress,
+            "p9": arg.aggravated_stress,
+            "p10": arg.stance,
+            "p11": arg.condition,
+            "p12": arg.grace,
+            "p13": arg.grit,
+            "p14": arg.wit,
+            "p15": arg.rank_martial_arts,
+            "p16": arg.tnl_martial_arts,
+            "p17": arg.rank_evasion,
+            "p18": arg.tnl_evasion,
         })
 
     async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:

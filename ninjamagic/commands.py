@@ -84,7 +84,8 @@ class Attack(Command):
                 source=root.source,
                 delay=get_melee_delay(),
                 then=bus.Melee(source=root.source, target=target),
-            )
+            ),
+            bus.HealthChanged(source=root.source, stress_change=1.0),
         )
         return OK
 
@@ -184,6 +185,19 @@ class Fart(Command):
         return OK
 
 
+class Stress(Command):
+    text: str = "stress"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        try:
+            amount = int(root.text.strip().split()[-1])
+        except ValueError:
+            amount = 2
+
+        bus.pulse(bus.HealthChanged(source=root.source, stress_change=amount))
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -196,4 +210,5 @@ commands: list[Command] = [
     Kneel(),
     Block(),
     Fart(),
+    Stress(),
 ]

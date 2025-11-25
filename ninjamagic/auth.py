@@ -219,6 +219,8 @@ if settings.allow_local_auth:
                 x=body.transform.x,
                 y=body.transform.y,
                 health=body.health.cur,
+                stress=body.health.stress,
+                aggravated_stress=body.health.aggravated_stress,
                 stance=body.stance.cur,
                 condition=body.health.condition,
                 grace=body.stats.grace,

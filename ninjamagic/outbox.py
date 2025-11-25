@@ -5,6 +5,7 @@ from typing import Protocol
 from weakref import WeakKeyDictionary
 
 import esper
+from fastapi import WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 
 from ninjamagic import bus
@@ -68,6 +69,8 @@ async def deliver(ws: Connection, out: bytes) -> None:
     try:
         if ws.client_state == WebSocketState.CONNECTED:
             await ws.send_bytes(out)
+    except WebSocketDisconnect:
+        log.info("Skipping send for %s due to their disconnecting.")
     except RuntimeError as e:
         log.exception("Skipping send for %s due to exception:\n%s", ws, str(e))
 
@@ -89,6 +92,7 @@ def try_insert(
             health = envelope.add().health
             health.id = 0 if to == sig.source else sig.source
             health.pct = sig.pct
+            health.stress_pct = sig.stress_pct
             return True
         case bus.OutboundStance():
             stance = envelope.add().stance
