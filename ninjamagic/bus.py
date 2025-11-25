@@ -110,6 +110,15 @@ class GasUpdated(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class HealthChanged(Signal):
+    "An entity's health or stress changed."
+
+    source: EntityId
+    health_change: float = 0.0
+    stress_change: float = 0.0
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class StanceChanged(Signal):
     "An entity's stance changed."
 
@@ -173,6 +182,7 @@ class Echo(Signal):
     source: EntityId
     target: EntityId = 0
     reach: Selector = adjacent
+    make_sig: Callable[[EntityId], Signal] | None = None
     make_source_sig: Callable[[EntityId], Signal] | None = None
     make_target_sig: Callable[[EntityId], Signal] | None = None
     make_other_sig: Callable[[EntityId], Signal] | None = None
@@ -216,6 +226,7 @@ class OutboundHealth(Signal):
     to: EntityId
     source: EntityId
     pct: float
+    stress_pct: float
 
 
 @signal(frozen=True, slots=True, kw_only=True)

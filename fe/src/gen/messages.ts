@@ -157,6 +157,10 @@ export interface Health {
      * @generated from protobuf field: float pct = 2
      */
     pct: number;
+    /**
+     * @generated from protobuf field: float stress_pct = 3
+     */
+    stress_pct: number;
 }
 /**
  * @generated from protobuf message ninjamagic.Stance
@@ -769,13 +773,15 @@ class Health$Type extends MessageType<Health> {
     constructor() {
         super("ninjamagic.Health", [
             { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 2, name: "pct", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
+            { no: 2, name: "pct", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ },
+            { no: 3, name: "stress_pct", kind: "scalar", localName: "stress_pct", T: 2 /*ScalarType.FLOAT*/ }
         ]);
     }
     create(value?: PartialMessage<Health>): Health {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.id = 0;
         message.pct = 0;
+        message.stress_pct = 0;
         if (value !== undefined)
             reflectionMergePartial<Health>(this, message, value);
         return message;
@@ -790,6 +796,9 @@ class Health$Type extends MessageType<Health> {
                     break;
                 case /* float pct */ 2:
                     message.pct = reader.float();
+                    break;
+                case /* float stress_pct */ 3:
+                    message.stress_pct = reader.float();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -809,6 +818,9 @@ class Health$Type extends MessageType<Health> {
         /* float pct = 2; */
         if (message.pct !== 0)
             writer.tag(2, WireType.Bit32).float(message.pct);
+        /* float stress_pct = 3; */
+        if (message.stress_pct !== 0)
+            writer.tag(3, WireType.Bit32).float(message.stress_pct);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

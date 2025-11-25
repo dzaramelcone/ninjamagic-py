@@ -59,7 +59,10 @@ def notify_movement(sig: bus.PositionChanged):
         if sig_health:
             bus.pulse(
                 bus.OutboundHealth(
-                    to=sig.source, source=sig.source, pct=sig_health.cur / 100.0
+                    to=sig.source,
+                    source=sig.source,
+                    pct=sig_health.cur / 100.0,
+                    stress_pct=sig_health.stress / 200.0,
                 )
             )
         if sig_noun:
@@ -121,7 +124,10 @@ def notify_movement(sig: bus.PositionChanged):
             if sig_health:
                 bus.pulse(
                     bus.OutboundHealth(
-                        to=o_id, source=sig.source, pct=sig_health.cur / 100.0
+                        to=o_id,
+                        source=sig.source,
+                        pct=sig_health.cur / 100.0,
+                        stress_pct=sig_health.stress / 200.0,
                     )
                 )
             if sig_noun:
@@ -151,7 +157,10 @@ def notify_movement(sig: bus.PositionChanged):
             if o_health:
                 bus.pulse(
                     bus.OutboundHealth(
-                        to=sig.source, source=o_id, pct=o_health.cur / 100.0
+                        to=sig.source,
+                        source=o_id,
+                        pct=o_health.cur / 100.0,
+                        stress_pct=o_health.stress / 200.0,
                     )
                 )
             if o_noun:
@@ -181,7 +190,10 @@ def notify_movement(sig: bus.PositionChanged):
             if sig_health:
                 bus.pulse(
                     bus.OutboundHealth(
-                        to=o_id, source=sig.source, pct=sig_health.cur / 100.0
+                        to=o_id,
+                        source=sig.source,
+                        pct=sig_health.cur / 100.0,
+                        stress_pct=sig_health.stress / 200.0,
                     )
                 )
             if sig_noun:
