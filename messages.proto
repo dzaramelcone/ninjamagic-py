@@ -52,6 +52,7 @@ message Noun {
 message Health {
   uint32 id = 1;
   float pct = 2;
+  float stress_pct = 3;
 }
 
 message Stance {

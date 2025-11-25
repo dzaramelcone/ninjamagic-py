@@ -1,11 +1,18 @@
 # client: bob
-# len: 33 B
-0a1f0a1d0a1b416c696365206472617773206261636b2068657220666973742e2e
+# len: 49 B
+0a1f0a1d0a1b416c696365206472617773206261636b2068657220666973742e2e0a0e420c0808150ad7233d1d0ad7a33b
 {
   "envelope": [
     {
       "msg": {
         "text": "Alice draws back her fist.."
+      }
+    },
+    {
+      "health": {
+        "id": 8,
+        "pct": 0.04,
+        "stress_pct": 0.005
       }
     }
   ]

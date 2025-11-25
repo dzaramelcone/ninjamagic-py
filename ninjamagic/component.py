@@ -28,6 +28,8 @@ Stamina = float
 @component(slots=True)
 class Health:
     cur: float = 100.0
+    stress: float = 0.0
+    aggravated_stress: float = 0.0
     condition: Conditions = "normal"
 
 

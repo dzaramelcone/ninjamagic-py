@@ -81,6 +81,8 @@ def dump(entity: EntityId) -> UpdateCharacterParams:
         x=pos.x,
         y=pos.y,
         health=health.cur,
+        stress=health.stress,
+        aggravated_stress=health.aggravated_stress,
         condition=health.condition,
         stance=stance.cur,
         grace=stats.grace,

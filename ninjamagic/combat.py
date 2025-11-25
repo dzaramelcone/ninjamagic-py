@@ -13,7 +13,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.util import contest, get_melee_delay
+from ninjamagic.util import RNG, contest, get_melee_delay
 
 A, B, MODE = settings.learn_abmode
 
@@ -45,6 +45,11 @@ def process():
                 sig.source,
                 sig.target,
             )
+            bus.pulse(
+                bus.HealthChanged(
+                    source=sig.source, stress_change=RNG.choice([1.0, 2.0, 3.0])
+                )
+            )
             continue
 
         source_skills = skills(sig.source)
@@ -56,22 +61,20 @@ def process():
         skill_mult, _, _ = contest(attack.rank, defend.rank)
 
         damage = skill_mult * source_pain_mult * 10.0
-        target_health = health(sig.target)
-        target_health.cur -= damage
+
+        bus.pulse(
+            bus.HealthChanged(
+                source=sig.target,
+                health_change=-damage,
+                stress_change=RNG.choice([4.0, 5.0, 6.0]),
+            )
+        )
 
         story.echo(
             "{0} {0:hits} {1} for {damage:.1f}% damage!",
             sig.source,
             sig.target,
             damage=damage,
-        )
-        bus.pulse(
-            bus.OutboundHealth(
-                to=sig.source, source=sig.target, pct=target_health.cur / 100.0
-            ),
-            bus.OutboundHealth(
-                to=sig.target, source=sig.target, pct=target_health.cur / 100.0
-            ),
         )
 
         bus.pulse_in(
@@ -92,20 +95,46 @@ def process():
             ),
         )
 
-        if target_health.cur <= 0 and target_health.condition == "normal":
+    # mutate
+    for sig in bus.iter(bus.HealthChanged):
+        src_health = health(sig.source)
+        src_health.cur += sig.health_change
+        src_health.stress += sig.stress_change
+
+        if sig.stress_change > 0:
+            src_health.aggravated_stress += sig.stress_change * 0.25
+
+    for sig in bus.iter(bus.HealthChanged):
+        src_health = health(sig.source)
+        if src_health.cur <= 0 and src_health.condition == "normal":
             bus.pulse(
-                bus.StanceChanged(source=sig.target, stance="lying prone"),
-                bus.ConditionChanged(source=sig.target, condition="in shock"),
+                bus.StanceChanged(source=sig.source, stance="lying prone"),
+                bus.ConditionChanged(source=sig.source, condition="in shock"),
             )
-            story.echo("{0} {0:falls} to the ground in shock!", sig.target)
+            story.echo("{0} {0:falls} to the ground in shock!", sig.source)
             bus.pulse_in(
                 util.pert(0.0, 5.0, 2.0),
                 bus.Act(
-                    source=sig.target,
+                    source=sig.source,
                     delay=get_melee_delay(),
-                    then=bus.Die(source=sig.target),
+                    then=bus.Die(source=sig.source),
                 ),
             )
+
+    for source in {sig.source for sig in bus.iter(bus.HealthChanged)}:
+        src_health = health(source)
+        bus.pulse(
+            bus.Echo(
+                source=source,
+                reach=reach.visible,
+                make_sig=partial(
+                    bus.OutboundHealth,
+                    source=source,
+                    pct=src_health.cur / 100.0,
+                    stress=src_health.stress / 200.0,
+                ),
+            )
+        )
 
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
@@ -113,15 +142,13 @@ def process():
 
     for sig in bus.iter(bus.ConditionChanged):
         health(sig.source).condition = sig.condition
-        ctor = partial(
-            bus.OutboundCondition, source=sig.source, condition=sig.condition
-        )
         bus.pulse(
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_source_sig=ctor,
-                make_other_sig=ctor,
+                make_sig=partial(
+                    bus.OutboundCondition, source=sig.source, condition=sig.condition
+                ),
             )
         )
         if sig.condition in ("unconscious", "in shock", "dead"):
@@ -129,13 +156,13 @@ def process():
 
     for sig in bus.iter(bus.StanceChanged):
         stance(sig.source).cur = sig.stance
-        ctor = partial(bus.OutboundStance, source=sig.source, stance=sig.stance)
         bus.pulse(
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_source_sig=ctor,
-                make_other_sig=ctor,
+                make_sig=partial(
+                    bus.OutboundStance, source=sig.source, stance=sig.stance
+                ),
             )
         )
         if sig.echo:

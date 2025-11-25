@@ -53,6 +53,8 @@ class Character(pydantic.BaseModel):
     x: int
     y: int
     health: float
+    stress: float
+    aggravated_stress: float
     stance: Stance
     condition: Condition
     grace: int

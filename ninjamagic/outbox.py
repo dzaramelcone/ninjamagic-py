@@ -89,6 +89,7 @@ def try_insert(
             health = envelope.add().health
             health.id = 0 if to == sig.source else sig.source
             health.pct = sig.pct
+            health.stress_pct = sig.stress
             return True
         case bus.OutboundStance():
             stance = envelope.add().stance

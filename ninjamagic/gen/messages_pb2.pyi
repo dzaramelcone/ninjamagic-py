@@ -177,15 +177,18 @@ class Health(google.protobuf.message.Message):
 
     ID_FIELD_NUMBER: builtins.int
     PCT_FIELD_NUMBER: builtins.int
+    STRESS_PCT_FIELD_NUMBER: builtins.int
     id: builtins.int
     pct: builtins.float
+    stress_pct: builtins.float
     def __init__(
         self,
         *,
         id: builtins.int = ...,
         pct: builtins.float = ...,
+        stress_pct: builtins.float = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "pct", b"pct"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "pct", b"pct", "stress_pct", b"stress_pct"]) -> None: ...
 
 global___Health = Health
 

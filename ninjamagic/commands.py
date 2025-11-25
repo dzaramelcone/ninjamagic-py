@@ -84,7 +84,8 @@ class Attack(Command):
                 source=root.source,
                 delay=get_melee_delay(),
                 then=bus.Melee(source=root.source, target=target),
-            )
+            ),
+            bus.HealthChanged(source=root.source, stress_change=1.0),
         )
         return OK
 
