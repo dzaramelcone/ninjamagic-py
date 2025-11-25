@@ -44,8 +44,8 @@ export class TuiTabSelector extends LitElement {
       :host {
         display: block;
         width: 100%;
-        font-family: monospace;
-        --bar-height: 1em;
+        font: 300 19px IBM Plex Mono, monospace;
+        --bar-height: 1ch;
         --tui-gap: 1ch;
       }
 
@@ -75,7 +75,7 @@ export class TuiTabSelector extends LitElement {
         order: 2;
       }
       .content-area {
-        padding-bottom: calc(var(--bar-height) + 1ch);
+        padding-bottom: calc(var(--bar-height));
       }
       .track {
         position: relative;

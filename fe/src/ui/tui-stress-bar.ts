@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import type { PropertyValues } from "lit";
-import { customElement, property, query, queryAll } from "lit/decorators.js";
+import { customElement, property, queryAll } from "lit/decorators.js";
 import gsap from "gsap";
 import { sharedStyles } from "./tui-styles";
 
@@ -19,7 +19,6 @@ interface Counts {
 export class TuiStressBar extends LitElement {
   @property({ type: Number }) value = 0; // 0.0 to 1.0
 
-  @query(".container") private _container!: HTMLElement;
   @queryAll(".seg") private _segs!: NodeListOf<HTMLElement>;
 
   static styles = [

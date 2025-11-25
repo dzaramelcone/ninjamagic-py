@@ -1,7 +1,5 @@
-import { LitElement, html, css, unsafeCSS } from "lit";
-import type { PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import gsap from "gsap";
+import { LitElement, html, css } from "lit";
+import { customElement, property } from "lit/decorators.js";
 import type { SkillState } from "../state";
 import { sharedStyles, COL_WIDTH } from "./tui-styles";
 
