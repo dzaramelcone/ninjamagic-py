@@ -9,6 +9,7 @@
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
   "[html]": {
+    "editor.formatOnSave": true,
     "editor.defaultFormatter": "vscode.html-language-features",
     "editor.suggest.insertMode": "replace",
     "editor.codeActionsOnSave": {
