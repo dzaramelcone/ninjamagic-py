@@ -2,6 +2,7 @@ import "./main.css";
 import { initializeNetwork } from "./svc/network";
 import { initMap } from "./ui/map";
 import { initChat } from "./ui/chat";
+import { setupInputModes } from "./input/setup-input-modes";
 
 import "./ui/tui-nearby";
 import "./ui/tui-skills";
@@ -35,5 +36,6 @@ function startApp() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  setupInputModes();
   startApp();
 });
