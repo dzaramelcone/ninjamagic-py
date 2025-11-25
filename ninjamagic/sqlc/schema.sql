@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS characters (
     
     -- Health Component
     health      REAL        NOT NULL DEFAULT 100.0,
+    stress      REAL        NOT NULL DEFAULT 0.0,
+    aggravated_stress  REAL NOT NULL DEFAULT 0.0,
     
     -- State Components
     stance      stance      NOT NULL DEFAULT 'standing',
