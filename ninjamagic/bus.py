@@ -226,7 +226,7 @@ class OutboundHealth(Signal):
     to: EntityId
     source: EntityId
     pct: float
-    stress: float
+    stress_pct: float
 
 
 @signal(frozen=True, slots=True, kw_only=True)

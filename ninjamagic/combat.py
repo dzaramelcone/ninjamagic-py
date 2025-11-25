@@ -131,7 +131,7 @@ def process():
                     bus.OutboundHealth,
                     source=source,
                     pct=src_health.cur / 100.0,
-                    stress=src_health.stress / 200.0,
+                    stress_pct=src_health.stress / 200.0,
                 ),
             )
         )

@@ -46,7 +46,15 @@ def load(entity: EntityId, row: Character) -> EntityId:
     )
     esper.add_component(entity, row.glyph, Glyph)
     esper.add_component(entity, Transform(map_id=row.map_id, x=row.x, y=row.y))
-    esper.add_component(entity, Health(cur=row.health, condition=row.condition))
+    esper.add_component(
+        entity,
+        Health(
+            cur=row.health,
+            condition=row.condition,
+            stress=row.stress,
+            aggravated_stress=row.aggravated_stress,
+        ),
+    )
     esper.add_component(entity, Stance(cur=row.stance))
     esper.add_component(entity, Stats(grace=row.grace, grit=row.grit, wit=row.wit))
     esper.add_component(
