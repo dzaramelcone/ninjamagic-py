@@ -1,29 +1,45 @@
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUD</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/static/gen/assets/main-DGX7USsc.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/gen/assets/main-DO3gTB_l.css">
-  </head>
-  <body>
-    <tui-nearby></tui-nearby>
-    <div id="card">
-      <div id="mapBox"></div>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MUD</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700&display=swap"
+    rel="stylesheet">
+  <script type="module" crossorigin src="/static/gen/assets/main-Ce0hIa7G.js"></script>
+  <link rel="stylesheet" crossorigin href="/static/gen/assets/main-CDB270qA.css">
+</head>
+
+<body>
+  <div id="bento">
+    <div class="bento-nearby">
+      <tui-nearby></tui-nearby>
+    </div>
+    <div class="bento-map" id="mapBox"></div>
+    <div class="bento-tabs">
       <tui-tab-selector indicator-position="bottom">
-        <div label="chat" class=panel-content>
+        <div label="cmd" class="panel-content">
           <div id="chat"></div>
-          <div id="prompt"><input id="cmd" autocomplete="off" /></div>
+          <div id="prompt">
+            <input id="cmd" autocomplete="off" />
+          </div>
         </div>
-        <div label="skills" class=panel-content>
+        <div label="skills" class="panel-content">
           <tui-skills></tui-skills>
+        </div>
+        <div label="inv" class="panel-content">
+          coming soon
+        </div>
+        <div label="info" class="panel-content">
+          coming soon
         </div>
       </tui-tab-selector>
     </div>
-  </body>
+  </div>
+</body>
+
 </html>

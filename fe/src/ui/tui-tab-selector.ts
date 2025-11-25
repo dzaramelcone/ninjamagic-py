@@ -24,16 +24,16 @@ export class TuiTabSelector extends LitElement {
   @query(".segment.left") private _leftSeg!: HTMLElement;
   @query(".segment.cursor") private _cursorSeg!: HTMLElement;
   @query(".segment.right") private _rightSeg!: HTMLElement;
-  @query(".gap.left") private _leftGap!: HTMLElement;
-  @query(".gap.right") private _rightGap!: HTMLElement;
   @query(".tabs-row") private _tabsRow!: HTMLElement;
   @query(".content-area") private _contentArea!: HTMLElement;
   @queryAll(".label-text") private _labelEls!: NodeListOf<HTMLElement>;
   @query("slot") private _slot!: HTMLSlotElement;
+  @query(".gap-probe") private _gapProbe!: HTMLElement;
 
   private _gapSize = 0;
 
   private readonly _onResize = () => {
+    this._measureGapSize();
     this._updateBounds();
     this._updateBar(false);
   };
@@ -42,7 +42,6 @@ export class TuiTabSelector extends LitElement {
     sharedStyles,
     css`
       :host {
-        display: block;
         width: 100%;
         font: 300 19px IBM Plex Mono, monospace;
         --bar-height: 1ch;
@@ -67,6 +66,8 @@ export class TuiTabSelector extends LitElement {
       }
       :host([indicator-position="bottom"]) .content-area {
         order: 0;
+        display: flex;
+        flex-direction: column-reverse;
       }
       :host([indicator-position="bottom"]) .track {
         order: 1;
@@ -74,9 +75,9 @@ export class TuiTabSelector extends LitElement {
       :host([indicator-position="bottom"]) .tabs-row {
         order: 2;
       }
-      .content-area {
-        padding-bottom: calc(var(--bar-height));
+      :host([indicator-position="bottom"]) .content-area {
       }
+
       .track {
         position: relative;
         width: 100%;
@@ -94,14 +95,6 @@ export class TuiTabSelector extends LitElement {
         top: 0;
         height: 100%;
         border-radius: 2px;
-      }
-
-      .gap {
-        position: absolute;
-        top: 0;
-        height: 100%;
-        width: var(--tui-gap);
-        background-color: var(--c-bg);
       }
 
       .segment.left,
@@ -138,23 +131,30 @@ export class TuiTabSelector extends LitElement {
 
       .label-text {
         transition: color 0.3s;
+        color: var(--c-low);
       }
 
       .tab.active .label-text {
-        color: var(--c-high);
+        color: var(--c-mid);
       }
 
       .content-area {
         position: relative;
         width: 100%;
       }
+
+      .gap-probe {
+        position: absolute;
+        visibility: hidden;
+        pointer-events: none;
+        height: 0;
+        width: var(--tui-gap);
+      }
     `,
   ];
 
   protected firstUpdated() {
-    if (this._leftGap) {
-      this._gapSize = this._leftGap.clientWidth || 0;
-    }
+    this._measureGapSize();
 
     this._updateBounds();
     this._updateBar(false);
@@ -186,6 +186,12 @@ export class TuiTabSelector extends LitElement {
         this._updateBounds();
         this._updateBar(false);
       });
+    }
+  }
+
+  private _measureGapSize() {
+    if (this._gapProbe) {
+      this._gapSize = this._gapProbe.clientWidth || 0;
     }
   }
 
@@ -297,12 +303,9 @@ export class TuiTabSelector extends LitElement {
     // **Hard clamp** content height to tallest panel
     if (maxPanelHeight > 0) {
       const panelH = Math.round(maxPanelHeight);
-      this._contentArea.style.height = `${panelH}px`; // <— key change
-      this._contentArea.style.minHeight = `${panelH}px`; // optional belt-and-suspenders
+      this._contentArea.style.height = `${panelH}px`;
+      this._contentArea.style.minHeight = `${panelH}px`;
     }
-
-    // Note: we no longer set this.style.minHeight.
-    // Overall widget height = content fixed height + fixed track height + fixed tabs height.
   }
 
   private _getGapWidth(): number {
@@ -312,6 +315,7 @@ export class TuiTabSelector extends LitElement {
   /**
    * Update the segmented bar based on the active label.
    * Uses absolute positioning so it cannot affect layout.
+   * Gaps are now *true* empty regions with no overlay/mask.
    */
   private _updateBar(animate: boolean = true) {
     if (!this._track || !this._tabsRow) return;
@@ -337,43 +341,36 @@ export class TuiTabSelector extends LitElement {
     cursorLeft = Math.max(0, Math.min(cursorLeft, trackWidth));
     cursorWidth = Math.max(0, Math.min(cursorWidth, trackWidth - cursorLeft));
 
-    // Layout: [leftSeg][leftGap][cursor][rightGap][rightSeg]
     const desiredGap = gapSize;
 
-    let leftGapLeft = cursorLeft - desiredGap;
-    if (leftGapLeft < 0) leftGapLeft = 0;
-    let leftGapWidth = cursorLeft - leftGapLeft;
-    if (leftGapWidth < 0) leftGapWidth = 0;
+    // Base cursor extents
+    const baseCursorLeft = cursorLeft;
 
-    const cursorLeftFinal = leftGapLeft + leftGapWidth;
-    const cursorRight = cursorLeftFinal + cursorWidth;
-
-    let rightGapLeft = cursorRight;
-    let rightGapRight = rightGapLeft + desiredGap;
-    if (rightGapRight > trackWidth) rightGapRight = trackWidth;
-    let rightGapWidth = rightGapRight - rightGapLeft;
-    if (rightGapWidth < 0) {
-      rightGapWidth = 0;
-      rightGapLeft = trackWidth;
-      rightGapRight = trackWidth;
-    }
+    // Left gap region: [gapLeftStart, baseCursorLeft)
+    const gapLeftStart = Math.max(0, baseCursorLeft - desiredGap);
 
     const leftSegLeft = 0;
-    const leftSegWidth = Math.max(0, leftGapLeft - leftSegLeft);
+    const leftSegWidth = Math.max(0, gapLeftStart - leftSegLeft);
 
-    const rightSegLeft = rightGapRight;
+    const cursorLeftFinal = baseCursorLeft;
+    const cursorWidthFinal = Math.max(
+      0,
+      Math.min(cursorWidth, trackWidth - cursorLeftFinal)
+    );
+    const cursorRightFinal = cursorLeftFinal + cursorWidthFinal;
+
+    // Right gap region: [cursorRightFinal, gapRightEnd)
+    const gapRightEnd = Math.min(trackWidth, cursorRightFinal + desiredGap);
+
+    const rightSegLeft = gapRightEnd;
     const rightSegWidth = Math.max(0, trackWidth - rightSegLeft);
 
     const r = (n: number) => Math.round(n);
 
     const LSegLeft = r(leftSegLeft);
     const LSegWidth = r(leftSegWidth);
-    const LGLeft = r(leftGapLeft);
-    const LGWidth = r(leftGapWidth);
     const CLeft = r(cursorLeftFinal);
-    const CWidth = r(cursorWidth);
-    const RGLeft = r(rightGapLeft);
-    const RGWidth = r(rightGapWidth);
+    const CWidth = r(cursorWidthFinal);
     const RSegLeft = r(rightSegLeft);
     const RSegWidth = r(rightSegWidth);
 
@@ -381,9 +378,7 @@ export class TuiTabSelector extends LitElement {
     const ease = "expo.out";
 
     gsap.killTweensOf(this._leftSeg);
-    gsap.killTweensOf(this._leftGap);
     gsap.killTweensOf(this._cursorSeg);
-    gsap.killTweensOf(this._rightGap);
     gsap.killTweensOf(this._rightSeg);
 
     gsap.to(this._leftSeg, {
@@ -393,23 +388,9 @@ export class TuiTabSelector extends LitElement {
       ease,
     });
 
-    gsap.to(this._leftGap, {
-      left: LGLeft,
-      width: LGWidth,
-      duration,
-      ease,
-    });
-
     gsap.to(this._cursorSeg, {
       left: CLeft,
       width: CWidth,
-      duration,
-      ease,
-    });
-
-    gsap.to(this._rightGap, {
-      left: RGLeft,
-      width: RGWidth,
       duration,
       ease,
     });
@@ -427,7 +408,7 @@ export class TuiTabSelector extends LitElement {
         { backgroundColor: "#ffffff", boxShadow: "0 0 12px #ffffff" },
         {
           backgroundColor: "var(--c-mid)",
-          boxShadow: "0 0 8px var(--c-mid)",
+          boxShadow: "none",
           duration: 2.0,
           ease: "expo.out",
         }
@@ -438,11 +419,10 @@ export class TuiTabSelector extends LitElement {
   render() {
     return html`
       <div class="container">
+        <div class="gap-probe" aria-hidden="true"></div>
         <div class="track">
           <div class="segment left"></div>
-          <div class="gap left"></div>
           <div class="segment cursor"></div>
-          <div class="gap right"></div>
           <div class="segment right"></div>
         </div>
         <div class="tabs-row">

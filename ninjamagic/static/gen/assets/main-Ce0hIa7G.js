@@ -375,9 +375,8 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
       .outline-empty {
         display: none;
       }
-    `]}getCounts(e){let t=Math.max(0,Math.min(e,1)),n=t>=.99,r=0;r=t>=.5?Oc:Math.floor(t/.5*Oc);let i=0;return i=t<.5?0:n?Oc:Math.floor((t-.5)/.5*Oc),{outlineCount:r,solidCount:i}}getSegmentState(e,t){return e<t.solidCount?2:e<t.outlineCount?1:0}updated(e){if(!e.has(`value`))return;let t=e.get(`value`),n=typeof t==`number`?t:0,r=(getComputedStyle(this).getPropertyValue(`--tui-monotonic`)||`auto`).trim(),i=n;r===`increase`&&this.value<n&&(i=0);let a=this.getCounts(this.value),o=this.getCounts(i);!this._segs||this._segs.length===0||this._segs.forEach((e,t)=>{let n=this.getSegmentState(t,o),r=this.getSegmentState(t,a);if($.killTweensOf(e),r<=n){r<n&&e.removeAttribute(`style`);return}$.fromTo(e,{color:`#ffffff`,textShadow:`0 0 10px #ffffff, 0 0 20px #ffffff`},{color:`var(--c-high)`,textShadow:`none`,duration:.8,ease:`power2.out`})})}render(){let{outlineCount:e,solidCount:t}=this.getCounts(this.value),n=Array.from({length:Oc},(n,r)=>{let i=Dc,a=`outline-empty`;return r<t?(i=Ec,a=`solid`):r<e&&(i=Dc,a=`outline-active`),H`<span class="seg ${a}">${i}</span>`});return H`<span class="container">${n}</span>`}};W([U({type:Number})],kc.prototype,`value`,void 0),W([er(`.seg`)],kc.prototype,`_segs`,void 0),kc=W([qn(`tui-stress-bar`)],kc);var Ac=class extends Gn{constructor(...e){super(...e),this._labels=[],this.selectedIndex=0,this.indicatorPosition=`top`,this._gapSize=0,this._onResize=()=>{this._updateBounds(),this._updateBar(!1)}}static{this.styles=[tr,Vt`
+    `]}getCounts(e){let t=Math.max(0,Math.min(e,1)),n=t>=.99,r=0;r=t>=.5?Oc:Math.floor(t/.5*Oc);let i=0;return i=t<.5?0:n?Oc:Math.floor((t-.5)/.5*Oc),{outlineCount:r,solidCount:i}}getSegmentState(e,t){return e<t.solidCount?2:e<t.outlineCount?1:0}updated(e){if(!e.has(`value`))return;let t=e.get(`value`),n=typeof t==`number`?t:0,r=(getComputedStyle(this).getPropertyValue(`--tui-monotonic`)||`auto`).trim(),i=n;r===`increase`&&this.value<n&&(i=0);let a=this.getCounts(this.value),o=this.getCounts(i);!this._segs||this._segs.length===0||this._segs.forEach((e,t)=>{let n=this.getSegmentState(t,o),r=this.getSegmentState(t,a);if($.killTweensOf(e),r<=n){r<n&&e.removeAttribute(`style`);return}$.fromTo(e,{color:`#ffffff`,textShadow:`0 0 10px #ffffff, 0 0 20px #ffffff`},{color:`var(--c-high)`,textShadow:`none`,duration:.8,ease:`power2.out`})})}render(){let{outlineCount:e,solidCount:t}=this.getCounts(this.value),n=Array.from({length:Oc},(n,r)=>{let i=Dc,a=`outline-empty`;return r<t?(i=Ec,a=`solid`):r<e&&(i=Dc,a=`outline-active`),H`<span class="seg ${a}">${i}</span>`});return H`<span class="container">${n}</span>`}};W([U({type:Number})],kc.prototype,`value`,void 0),W([er(`.seg`)],kc.prototype,`_segs`,void 0),kc=W([qn(`tui-stress-bar`)],kc);var Ac=class extends Gn{constructor(...e){super(...e),this._labels=[],this.selectedIndex=0,this.indicatorPosition=`top`,this._gapSize=0,this._onResize=()=>{this._measureGapSize(),this._updateBounds(),this._updateBar(!1)}}static{this.styles=[tr,Vt`
       :host {
-        display: block;
         width: 100%;
         font: 300 19px IBM Plex Mono, monospace;
         --bar-height: 1ch;
@@ -402,6 +401,8 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
       }
       :host([indicator-position="bottom"]) .content-area {
         order: 0;
+        display: flex;
+        flex-direction: column-reverse;
       }
       :host([indicator-position="bottom"]) .track {
         order: 1;
@@ -409,9 +410,9 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
       :host([indicator-position="bottom"]) .tabs-row {
         order: 2;
       }
-      .content-area {
-        padding-bottom: calc(var(--bar-height));
+      :host([indicator-position="bottom"]) .content-area {
       }
+
       .track {
         position: relative;
         width: 100%;
@@ -429,14 +430,6 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
         top: 0;
         height: 100%;
         border-radius: 2px;
-      }
-
-      .gap {
-        position: absolute;
-        top: 0;
-        height: 100%;
-        width: var(--tui-gap);
-        background-color: var(--c-bg);
       }
 
       .segment.left,
@@ -473,23 +466,31 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
 
       .label-text {
         transition: color 0.3s;
+        color: var(--c-low);
       }
 
       .tab.active .label-text {
-        color: var(--c-high);
+        color: var(--c-mid);
       }
 
       .content-area {
         position: relative;
         width: 100%;
       }
-    `]}firstUpdated(){this._leftGap&&(this._gapSize=this._leftGap.clientWidth||0),this._updateBounds(),this._updateBar(!1),window.addEventListener(`resize`,this._onResize)}disconnectedCallback(){window.removeEventListener(`resize`,this._onResize),super.disconnectedCallback()}updated(e){e.has(`selectedIndex`)&&(this._updateBar(!0),this._updateContentVisibility()),e.has(`_labels`)&&this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1),this._updateContentVisibility()}),e.has(`indicatorPosition`)&&this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1)})}_handleSlotChange(){this._labels=this._slot.assignedElements({flatten:!0}).map(e=>e.getAttribute(`label`)||`Untitled`),this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1),this._updateContentVisibility()})}_updateContentVisibility(){let e=this._slot?.assignedElements({flatten:!0});e&&e.forEach((e,t)=>{t===this.selectedIndex?(e.removeAttribute(`hidden`),e.style.display=``):(e.setAttribute(`hidden`,``),e.style.display=`none`)})}_select(e){e!==this.selectedIndex&&(this.selectedIndex=e,this.dispatchEvent(new CustomEvent(`select`,{detail:{index:e,label:this._labels[e]},bubbles:!0,composed:!0})))}_updateBounds(){if(!this._contentArea||!this._slot)return;let e=this._slot.assignedElements({flatten:!0}),t=this._labelEls,n=0,r=0;if(e.length){let t=e.map(e=>({el:e,display:e.style.display,hidden:e.hasAttribute(`hidden`)}));e.forEach(e=>{e.style.display=``,e.removeAttribute(`hidden`)}),e.forEach(e=>{let t=e.getBoundingClientRect();n=Math.max(n,t.height),r=Math.max(r,t.width)}),t.forEach(({el:e,display:t,hidden:n})=>{e.style.display=t,n?e.setAttribute(`hidden`,``):e.removeAttribute(`hidden`)})}let i=0;t&&t.length&&t.forEach(e=>{let t=e.getBoundingClientRect();i+=t.width});let a=Math.max(r,i);if(a>0){let e=Math.round(a);this._contentArea.style.minWidth=`${e}px`,this.style.minWidth=`${e}px`}if(n>0){let e=Math.round(n);this._contentArea.style.height=`${e}px`,this._contentArea.style.minHeight=`${e}px`}}_getGapWidth(){return this._gapSize||0}_updateBar(e=!0){if(!this._track||!this._tabsRow)return;let t=this._labelEls?.[this.selectedIndex];if(!t)return;let n=this._track.clientWidth,r=this._tabsRow.getBoundingClientRect(),i=t.getBoundingClientRect();if(!n||!r.width||!i.width)return;let a=this._getGapWidth(),o=(i.left-r.left)/r.width,s=i.width/r.width,c=o*n,l=s*n;c=Math.max(0,Math.min(c,n)),l=Math.max(0,Math.min(l,n-c));let u=a,d=c-u;d<0&&(d=0);let f=c-d;f<0&&(f=0);let p=d+f,m=p+l,h=m+u;h>n&&(h=n);let g=h-m;g<0&&(g=0,m=n,h=n);let _=Math.max(0,d-0),v=h,y=Math.max(0,n-v),b=e=>Math.round(e),x=b(0),S=b(_),C=b(d),w=b(f),T=b(p),E=b(l),D=b(m),O=b(g),k=b(v),A=b(y),j=e?.66:0,M=`expo.out`;$.killTweensOf(this._leftSeg),$.killTweensOf(this._leftGap),$.killTweensOf(this._cursorSeg),$.killTweensOf(this._rightGap),$.killTweensOf(this._rightSeg),$.to(this._leftSeg,{left:x,width:S,duration:j,ease:M}),$.to(this._leftGap,{left:C,width:w,duration:j,ease:M}),$.to(this._cursorSeg,{left:T,width:E,duration:j,ease:M}),$.to(this._rightGap,{left:D,width:O,duration:j,ease:M}),$.to(this._rightSeg,{left:k,width:A,duration:j,ease:M}),e&&$.fromTo(this._cursorSeg,{backgroundColor:`#ffffff`,boxShadow:`0 0 12px #ffffff`},{backgroundColor:`var(--c-mid)`,boxShadow:`0 0 8px var(--c-mid)`,duration:2,ease:`expo.out`})}render(){return H`
+
+      .gap-probe {
+        position: absolute;
+        visibility: hidden;
+        pointer-events: none;
+        height: 0;
+        width: var(--tui-gap);
+      }
+    `]}firstUpdated(){this._measureGapSize(),this._updateBounds(),this._updateBar(!1),window.addEventListener(`resize`,this._onResize)}disconnectedCallback(){window.removeEventListener(`resize`,this._onResize),super.disconnectedCallback()}updated(e){e.has(`selectedIndex`)&&(this._updateBar(!0),this._updateContentVisibility()),e.has(`_labels`)&&this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1),this._updateContentVisibility()}),e.has(`indicatorPosition`)&&this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1)})}_measureGapSize(){this._gapProbe&&(this._gapSize=this._gapProbe.clientWidth||0)}_handleSlotChange(){this._labels=this._slot.assignedElements({flatten:!0}).map(e=>e.getAttribute(`label`)||`Untitled`),this.updateComplete.then(()=>{this._updateBounds(),this._updateBar(!1),this._updateContentVisibility()})}_updateContentVisibility(){let e=this._slot?.assignedElements({flatten:!0});e&&e.forEach((e,t)=>{t===this.selectedIndex?(e.removeAttribute(`hidden`),e.style.display=``):(e.setAttribute(`hidden`,``),e.style.display=`none`)})}_select(e){e!==this.selectedIndex&&(this.selectedIndex=e,this.dispatchEvent(new CustomEvent(`select`,{detail:{index:e,label:this._labels[e]},bubbles:!0,composed:!0})))}_updateBounds(){if(!this._contentArea||!this._slot)return;let e=this._slot.assignedElements({flatten:!0}),t=this._labelEls,n=0,r=0;if(e.length){let t=e.map(e=>({el:e,display:e.style.display,hidden:e.hasAttribute(`hidden`)}));e.forEach(e=>{e.style.display=``,e.removeAttribute(`hidden`)}),e.forEach(e=>{let t=e.getBoundingClientRect();n=Math.max(n,t.height),r=Math.max(r,t.width)}),t.forEach(({el:e,display:t,hidden:n})=>{e.style.display=t,n?e.setAttribute(`hidden`,``):e.removeAttribute(`hidden`)})}let i=0;t&&t.length&&t.forEach(e=>{let t=e.getBoundingClientRect();i+=t.width});let a=Math.max(r,i);if(a>0){let e=Math.round(a);this._contentArea.style.minWidth=`${e}px`,this.style.minWidth=`${e}px`}if(n>0){let e=Math.round(n);this._contentArea.style.height=`${e}px`,this._contentArea.style.minHeight=`${e}px`}}_getGapWidth(){return this._gapSize||0}_updateBar(e=!0){if(!this._track||!this._tabsRow)return;let t=this._labelEls?.[this.selectedIndex];if(!t)return;let n=this._track.clientWidth,r=this._tabsRow.getBoundingClientRect(),i=t.getBoundingClientRect();if(!n||!r.width||!i.width)return;let a=this._getGapWidth(),o=(i.left-r.left)/r.width,s=i.width/r.width,c=o*n,l=s*n;c=Math.max(0,Math.min(c,n)),l=Math.max(0,Math.min(l,n-c));let u=a,d=c,f=Math.max(0,d-u),p=Math.max(0,f-0),m=d,h=Math.max(0,Math.min(l,n-m)),g=m+h,_=Math.min(n,g+u),v=Math.max(0,n-_),y=e=>Math.round(e),b=y(0),x=y(p),S=y(m),C=y(h),w=y(_),T=y(v),E=e?.66:0,D=`expo.out`;$.killTweensOf(this._leftSeg),$.killTweensOf(this._cursorSeg),$.killTweensOf(this._rightSeg),$.to(this._leftSeg,{left:b,width:x,duration:E,ease:D}),$.to(this._cursorSeg,{left:S,width:C,duration:E,ease:D}),$.to(this._rightSeg,{left:w,width:T,duration:E,ease:D}),e&&$.fromTo(this._cursorSeg,{backgroundColor:`#ffffff`,boxShadow:`0 0 12px #ffffff`},{backgroundColor:`var(--c-mid)`,boxShadow:`none`,duration:2,ease:`expo.out`})}render(){return H`
       <div class="container">
+        <div class="gap-probe" aria-hidden="true"></div>
         <div class="track">
           <div class="segment left"></div>
-          <div class="gap left"></div>
           <div class="segment cursor"></div>
-          <div class="gap right"></div>
           <div class="segment right"></div>
         </div>
         <div class="tabs-row">
@@ -506,4 +507,4 @@ var cr={autoSleep:120,force3D:`auto`,nullTargetWarn:1,units:{lineHeight:``}},lr=
           <slot @slotchange=${this._handleSlotChange}></slot>
         </div>
       </div>
-    `}};W([Xn()],Ac.prototype,`_labels`,void 0),W([U({type:Number})],Ac.prototype,`selectedIndex`,void 0),W([U({type:String,attribute:`indicator-position`,reflect:!0})],Ac.prototype,`indicatorPosition`,void 0),W([Qn(`.track`)],Ac.prototype,`_track`,void 0),W([Qn(`.segment.left`)],Ac.prototype,`_leftSeg`,void 0),W([Qn(`.segment.cursor`)],Ac.prototype,`_cursorSeg`,void 0),W([Qn(`.segment.right`)],Ac.prototype,`_rightSeg`,void 0),W([Qn(`.gap.left`)],Ac.prototype,`_leftGap`,void 0),W([Qn(`.gap.right`)],Ac.prototype,`_rightGap`,void 0),W([Qn(`.tabs-row`)],Ac.prototype,`_tabsRow`,void 0),W([Qn(`.content-area`)],Ac.prototype,`_contentArea`,void 0),W([er(`.label-text`)],Ac.prototype,`_labelEls`,void 0),W([Qn(`slot`)],Ac.prototype,`_slot`,void 0),Ac=W([qn(`tui-tab-selector`)],Ac);function jc(){function e(e,t){let n=document.getElementById(e);if(!n)throw Error(`Fatal Error: Element #${e} not found.`);if(!(n instanceof t))throw Error(`Fatal: #${e} is not a ${t.name}.`);return n}try{Nt();let t=e(`mapBox`,HTMLElement),n=e(`chat`,HTMLElement),r=e(`cmd`,HTMLInputElement);T(t),j(n,r)}catch(e){console.error(e)}}window.addEventListener(`DOMContentLoaded`,()=>{jc()});
+    `}};W([Xn()],Ac.prototype,`_labels`,void 0),W([U({type:Number})],Ac.prototype,`selectedIndex`,void 0),W([U({type:String,attribute:`indicator-position`,reflect:!0})],Ac.prototype,`indicatorPosition`,void 0),W([Qn(`.track`)],Ac.prototype,`_track`,void 0),W([Qn(`.segment.left`)],Ac.prototype,`_leftSeg`,void 0),W([Qn(`.segment.cursor`)],Ac.prototype,`_cursorSeg`,void 0),W([Qn(`.segment.right`)],Ac.prototype,`_rightSeg`,void 0),W([Qn(`.tabs-row`)],Ac.prototype,`_tabsRow`,void 0),W([Qn(`.content-area`)],Ac.prototype,`_contentArea`,void 0),W([er(`.label-text`)],Ac.prototype,`_labelEls`,void 0),W([Qn(`slot`)],Ac.prototype,`_slot`,void 0),W([Qn(`.gap-probe`)],Ac.prototype,`_gapProbe`,void 0),Ac=W([qn(`tui-tab-selector`)],Ac);function jc(){function e(e,t){let n=document.getElementById(e);if(!n)throw Error(`Fatal Error: Element #${e} not found.`);if(!(n instanceof t))throw Error(`Fatal: #${e} is not a ${t.name}.`);return n}try{Nt();let t=e(`mapBox`,HTMLElement),n=e(`chat`,HTMLElement),r=e(`cmd`,HTMLInputElement);T(t),j(n,r)}catch(e){console.error(e)}}window.addEventListener(`DOMContentLoaded`,()=>{jc()});
