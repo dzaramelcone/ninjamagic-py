@@ -226,7 +226,7 @@ const handlerMap = {
   },
 
   health: (body: Health) => {
-    setHealth(body.id, body.pct);
+    setHealth(body.id, body.pct, body.stress_pct);
   },
 
   stance: (body: Stance) => {

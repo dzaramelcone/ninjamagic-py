@@ -4,8 +4,8 @@ import { customElement, property, queryAll } from "lit/decorators.js";
 import gsap from "gsap";
 import { sharedStyles } from "./tui-styles";
 
-const CHAR_SOLID = "▪";
-const CHAR_OUTLINE = "▫";
+const CHAR_SOLID = "■";
+const CHAR_OUTLINE = "□";
 const SEGMENT_COUNT = 10 as const;
 
 type SegmentState = 0 | 1 | 2;
@@ -26,13 +26,17 @@ export class TuiStressBar extends LitElement {
     css`
       :host {
         display: inline-block;
-        margin-left: 1ch;
+        margin-left: 1.5ch;
+        min-width: 22ch;
         vertical-align: middle;
-        --tui-monotonic: auto;
+        font: 300 16px "IBM Plex Mono", monospace;
+        --tui-monotonic: increase;
       }
+
       .seg {
         overflow: visible;
         display: inline-block;
+        padding-right: 1ch;
         transition: none;
       }
       .solid {
@@ -76,7 +80,6 @@ export class TuiStressBar extends LitElement {
     if (index < counts.outlineCount) return 1;
     return 0;
   }
-
   protected updated(changedProps: PropertyValues) {
     if (!changedProps.has("value")) return;
 
@@ -124,7 +127,7 @@ export class TuiStressBar extends LitElement {
           textShadow: "0 0 10px #ffffff, 0 0 20px #ffffff",
         },
         {
-          color: "var(--c-high)",
+          color: "var(--c-mid)",
           textShadow: "none",
           duration: 0.8,
           ease: "power2.out",
