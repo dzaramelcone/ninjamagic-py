@@ -2,7 +2,7 @@ import { send } from "../svc/network";
 
 let chatContainer: HTMLElement;
 const MAX_MESSAGES = 8;
-
+const RESERVED = ["exp", ""];
 export function initChat(
   container: HTMLElement,
   commandInput: HTMLInputElement
@@ -12,8 +12,10 @@ export function initChat(
   commandInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && commandInput.value.trim()) {
       const command = commandInput.value;
-      postLine(command); // Show your own message
-      send(command);
+      if (!RESERVED.includes(command.toLowerCase())) {
+        postLine(command); // Show your own message
+        send(command);
+      }
       commandInput.value = "";
     }
   });
