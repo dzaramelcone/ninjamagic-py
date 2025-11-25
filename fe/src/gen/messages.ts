@@ -271,6 +271,12 @@ export interface Kind {
          */
         condition: Condition;
     } | {
+        oneofKind: "skill";
+        /**
+         * @generated from protobuf field: ninjamagic.Skill skill = 11
+         */
+        skill: Skill;
+    } | {
         oneofKind: undefined;
     };
 }
@@ -999,7 +1005,8 @@ class Kind$Type extends MessageType<Kind> {
             { no: 7, name: "noun", kind: "message", oneof: "body", T: () => Noun },
             { no: 8, name: "health", kind: "message", oneof: "body", T: () => Health },
             { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance },
-            { no: 10, name: "condition", kind: "message", oneof: "body", T: () => Condition }
+            { no: 10, name: "condition", kind: "message", oneof: "body", T: () => Condition },
+            { no: 11, name: "skill", kind: "message", oneof: "body", T: () => Skill }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -1074,6 +1081,12 @@ class Kind$Type extends MessageType<Kind> {
                         condition: Condition.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).condition)
                     };
                     break;
+                case /* ninjamagic.Skill skill */ 11:
+                    message.body = {
+                        oneofKind: "skill",
+                        skill: Skill.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).skill)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1116,6 +1129,9 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Condition condition = 10; */
         if (message.body.oneofKind === "condition")
             Condition.internalBinaryWrite(message.body.condition, writer.tag(10, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Skill skill = 11; */
+        if (message.body.oneofKind === "skill")
+            Skill.internalBinaryWrite(message.body.skill, writer.tag(11, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

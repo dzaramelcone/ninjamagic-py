@@ -17,10 +17,17 @@ type EntityMeta = {
   healthPct?: number; // from Health.pct (0..1)
 };
 
+export type SkillState = {
+  name: string;
+  rank: number;
+  tnl: number;
+};
+
 type GameStore = {
   entities: Record<number, EntityPosition>;
   entityMeta: Record<number, EntityMeta>;
   messages: string[];
+  skills: SkillState[];
 
   getPlayer: () => EntityPosition;
   setPosition: (id: number, map_id: number, x: number, y: number) => void;
@@ -30,13 +37,14 @@ type GameStore = {
   setNoun: (id: number, text: string) => void;
   setHealth: (id: number, pct: number) => void;
   setStance: (id: number, text: string) => void;
+  setSkill: (name: string, rank: number, tnl: number) => void;
 };
 
 export const useGameStore = createStore<GameStore>((set, get) => ({
   entities: {},
   entityMeta: {},
   messages: [],
-
+  skills: [],
   getPlayer: () => {
     return get().entities[PLAYER_ID];
   },
@@ -141,4 +149,19 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         },
       },
     })),
+
+  setSkill: (name, rank, tnl) =>
+    set((state) => {
+      const existingIdx = state.skills.findIndex((s) => s.name === name);
+
+      if (existingIdx !== -1) {
+        // Update existing skill
+        const newSkills = [...state.skills];
+        newSkills[existingIdx] = { name, rank, tnl };
+        return { skills: newSkills };
+      } else {
+        // Add new skill
+        return { skills: [...state.skills, { name, rank, tnl }] };
+      }
+    }),
 }));

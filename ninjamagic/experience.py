@@ -3,7 +3,18 @@ import math
 import esper
 
 from ninjamagic import bus, util
-from ninjamagic.component import skills
+from ninjamagic.component import EntityId, skills
+
+
+def send_skills(entity: EntityId):
+    bus.pulse(
+        *[
+            bus.OutboundSkill(
+                to=entity, name=skill.name, rank=skill.rank, tnl=skill.tnl
+            )
+            for skill in skills(entity)
+        ]
+    )
 
 
 def get_award(

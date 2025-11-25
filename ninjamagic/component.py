@@ -1,4 +1,4 @@
-from dataclasses import dataclass as component, field
+from dataclasses import dataclass as component, field, fields
 from typing import Literal, TypeVar
 
 import esper
@@ -59,6 +59,9 @@ class Skills:
     martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
     generation: int = 0
+
+    def __iter__(self):
+        yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
 
 
 @component(slots=True, kw_only=True)

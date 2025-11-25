@@ -1,23 +1,44 @@
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUD</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <pre id="nearby"></pre>
-    <div id="card">
-      <div id="mapBox"></div>
-      <div id="chat"></div>
-      <div id="prompt">
-        <input id="cmd" autocomplete="off" />
-      </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MUD</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <div id="bento">
+    <div class="bento-nearby">
+      <tui-nearby></tui-nearby>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+    <div class="bento-map" id="mapBox"></div>
+    <div class="bento-tabs">
+      <tui-tab-selector indicator-position="bottom">
+        <div label="cmd" class="panel-content">
+          <div id="chat"></div>
+          <div id="prompt">
+            <input id="cmd" autocomplete="off" />
+          </div>
+        </div>
+        <div label="skills" class="panel-content">
+          <tui-skills></tui-skills>
+        </div>
+        <div label="inv" class="panel-content">
+          coming soon
+        </div>
+        <div label="info" class="panel-content">
+          coming soon
+        </div>
+      </tui-tab-selector>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>
