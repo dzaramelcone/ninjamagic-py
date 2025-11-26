@@ -29,6 +29,10 @@ NIGHTS_PER_DAY: int = int(round(_cycles))
 SECONDS_PER_NIGHT_HOUR: float = SECONDS_PER_NIGHT / HOURS_PER_NIGHT
 
 
+def now():
+    return datetime.now(tz=EST)
+
+
 class NightClock:
     """Stateless, injective mapping from real-world EST timestamp to game time."""
 
@@ -220,8 +224,7 @@ class NightClock:
 
     @property
     def brightness_index(self) -> int:
-        """
-        0-7 brightness index.
+        """0-7 brightness index.
 
         - Nightstorm: 0 (full dark).
         - Deep night: ~1.

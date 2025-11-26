@@ -13,7 +13,9 @@ import {
   Noun,
   Health,
   Stance,
+  Condition,
   Skill,
+  Datetime,
 } from "../gen/messages";
 import { COLS, ROWS } from "../ui/map";
 
@@ -28,6 +30,8 @@ const {
   setHealth,
   setStance,
   setSkill,
+  setCondition,
+  setServerTime,
 } = useGameStore.getState();
 
 function cardinalFromDelta(dx: number, dy: number): string | null {
@@ -92,121 +96,123 @@ function isInViewPos(ent: PosLike, player: PosLike | undefined): boolean {
 function sameTile(a: PosLike, b: PosLike): boolean {
   return a.map_id === b.map_id && a.x === b.x && a.y === b.y;
 }
+function handlePos(newPos: Pos) {
+  // We need both the 'before' and 'after' states to generate a message.
+  const beforeState = useGameStore.getState();
+  const beforeEntities = beforeState.entities as Record<
+    number,
+    { id: number; map_id: number; x: number; y: number }
+  >;
 
+  const playerId = PLAYER_ID; // Assuming PLAYER_ID is available in scope
+  const prevPos = beforeEntities[newPos.id];
+  const playerPrevPos = beforeEntities[playerId];
+
+  const entityName = describeEntityName(newPos.id);
+  // mutate:
+  setPosition(newPos.id, newPos.map_id, newPos.x, newPos.y);
+
+  if (!playerPrevPos) return;
+  const afterState = useGameStore.getState();
+  const afterEntities = afterState.entities as Record<
+    number,
+    { id: number; map_id: number; x: number; y: number }
+  >;
+  const playerNewPos = afterEntities[playerId];
+
+  if (newPos.id === playerId) {
+    if (!prevPos) return;
+    const playerActuallyMoved = !sameTile(playerPrevPos, playerNewPos);
+    if (!playerActuallyMoved) return;
+    const hereNames: string[] = [];
+    for (const entity of Object.values(afterEntities)) {
+      if (entity.id === playerId) continue;
+      if (sameTile(entity, playerNewPos)) {
+        hereNames.push(describeEntityName(entity.id));
+      }
+    }
+    if (hereNames.length > 0) {
+      const list = formatNameList(hereNames);
+      postLine(`You see ${list} here.`);
+    }
+    return;
+  }
+
+  const hadPrevPos = !!prevPos;
+  const hereBefore = hadPrevPos && sameTile(prevPos!, playerPrevPos);
+  const hereAfter = sameTile(newPos, playerNewPos);
+  const viewBefore = hadPrevPos && isInViewPos(prevPos!, playerPrevPos);
+  const viewAfter = isInViewPos(newPos, playerNewPos);
+
+  const deltaX = hadPrevPos ? newPos.x - prevPos!.x : 0;
+  const deltaY = hadPrevPos ? newPos.y - prevPos!.y : 0;
+  const moveDir = hadPrevPos ? cardinalFromDelta(deltaX, deltaY) : null;
+
+  const relPrev =
+    hadPrevPos && !hereBefore
+      ? cardinalFromDelta(
+          prevPos!.x - playerNewPos.x,
+          prevPos!.y - playerNewPos.y
+        )
+      : null;
+
+  const relNext = !hereAfter
+    ? cardinalFromDelta(newPos.x - playerNewPos.x, newPos.y - playerNewPos.y)
+    : null;
+
+  if (hadPrevPos && hereBefore && !hereAfter && moveDir) {
+    if (viewAfter) {
+      postLine(`${entityName} steps ${moveDir}.`);
+    } else {
+      postLine(`${entityName} leaves ${moveDir}.`);
+    }
+    return;
+  }
+
+  if (!hereBefore && hereAfter) {
+    if (hadPrevPos && relPrev) {
+      postLine(`${entityName} steps beside you from the ${relPrev}.`);
+    } else {
+      postLine(`${entityName} steps beside you here.`);
+    }
+    return;
+  }
+
+  if (hadPrevPos && viewBefore && !viewAfter && !hereAfter && moveDir) {
+    if (newPos.map_id == NONE_LEVEL_ID) {
+      postLine(`${entityName} leaves.`);
+    } else {
+      postLine(`${entityName} leaves ${moveDir}.`);
+    }
+    return;
+  }
+
+  if (hadPrevPos && !viewBefore && viewAfter && !hereAfter) {
+    if (relNext) {
+      postLine(`${entityName} arrives from the ${relNext}.`);
+    } else {
+      postLine(`${entityName} arrives.`);
+    }
+    return;
+  }
+  if (!hadPrevPos && viewAfter) {
+    if (hereAfter) {
+      postLine(`You see ${entityName} here.`);
+    } else if (relNext) {
+      postLine(`You see ${entityName} to the ${relNext}.`);
+    } else {
+      postLine(`You see ${entityName} nearby.`);
+    }
+    return;
+  }
+}
 let ws: WebSocket;
 const handlerMap = {
   msg: (body: Msg) => {
     postLine(body.text);
   },
   pos: (newPos: Pos) => {
-    // We need both the 'before' and 'after' states to generate a message.
-    const beforeState = useGameStore.getState();
-    const beforeEntities = beforeState.entities as Record<
-      number,
-      { id: number; map_id: number; x: number; y: number }
-    >;
-
-    const playerId = PLAYER_ID; // Assuming PLAYER_ID is available in scope
-    const prevPos = beforeEntities[newPos.id];
-    const playerPrevPos = beforeEntities[playerId];
-
-    const entityName = describeEntityName(newPos.id);
-    // mutate:
-    setPosition(newPos.id, newPos.map_id, newPos.x, newPos.y);
-
-    if (!playerPrevPos) return;
-    const afterState = useGameStore.getState();
-    const afterEntities = afterState.entities as Record<
-      number,
-      { id: number; map_id: number; x: number; y: number }
-    >;
-    const playerNewPos = afterEntities[playerId];
-
-    if (newPos.id === playerId) {
-      if (!prevPos) return;
-      const playerActuallyMoved = !sameTile(playerPrevPos, playerNewPos);
-      if (!playerActuallyMoved) return;
-      const hereNames: string[] = [];
-      for (const entity of Object.values(afterEntities)) {
-        if (entity.id === playerId) continue;
-        if (sameTile(entity, playerNewPos)) {
-          hereNames.push(describeEntityName(entity.id));
-        }
-      }
-      if (hereNames.length > 0) {
-        const list = formatNameList(hereNames);
-        postLine(`You see ${list} here.`);
-      }
-      return;
-    }
-
-    const hadPrevPos = !!prevPos;
-    const hereBefore = hadPrevPos && sameTile(prevPos!, playerPrevPos);
-    const hereAfter = sameTile(newPos, playerNewPos);
-    const viewBefore = hadPrevPos && isInViewPos(prevPos!, playerPrevPos);
-    const viewAfter = isInViewPos(newPos, playerNewPos);
-
-    const deltaX = hadPrevPos ? newPos.x - prevPos!.x : 0;
-    const deltaY = hadPrevPos ? newPos.y - prevPos!.y : 0;
-    const moveDir = hadPrevPos ? cardinalFromDelta(deltaX, deltaY) : null;
-
-    const relPrev =
-      hadPrevPos && !hereBefore
-        ? cardinalFromDelta(
-            prevPos!.x - playerNewPos.x,
-            prevPos!.y - playerNewPos.y
-          )
-        : null;
-
-    const relNext = !hereAfter
-      ? cardinalFromDelta(newPos.x - playerNewPos.x, newPos.y - playerNewPos.y)
-      : null;
-
-    if (hadPrevPos && hereBefore && !hereAfter && moveDir) {
-      if (viewAfter) {
-        postLine(`${entityName} steps ${moveDir}.`);
-      } else {
-        postLine(`${entityName} leaves ${moveDir}.`);
-      }
-      return;
-    }
-
-    if (!hereBefore && hereAfter) {
-      if (hadPrevPos && relPrev) {
-        postLine(`${entityName} steps beside you from the ${relPrev}.`);
-      } else {
-        postLine(`${entityName} steps beside you here.`);
-      }
-      return;
-    }
-
-    if (hadPrevPos && viewBefore && !viewAfter && !hereAfter && moveDir) {
-      if (newPos.map_id == NONE_LEVEL_ID) {
-        postLine(`${entityName} leaves.`);
-      } else {
-        postLine(`${entityName} leaves ${moveDir}.`);
-      }
-      return;
-    }
-
-    if (hadPrevPos && !viewBefore && viewAfter && !hereAfter) {
-      if (relNext) {
-        postLine(`${entityName} arrives from the ${relNext}.`);
-      } else {
-        postLine(`${entityName} arrives.`);
-      }
-      return;
-    }
-    if (!hadPrevPos && viewAfter) {
-      if (hereAfter) {
-        postLine(`You see ${entityName} here.`);
-      } else if (relNext) {
-        postLine(`You see ${entityName} to the ${relNext}.`);
-      } else {
-        postLine(`You see ${entityName} nearby.`);
-      }
-      return;
-    }
+    handlePos(newPos);
   },
   chip: (body: Chip) => {
     world.handleChip(body);
@@ -235,6 +241,13 @@ const handlerMap = {
 
   skill: (body: Skill) => {
     setSkill(body.name, body.rank, body.tnl);
+  },
+
+  datetime: (body: Datetime) => {
+    setServerTime(body.seconds);
+  },
+  condition: (body: Condition) => {
+    setCondition(body.id, body.text);
   },
 };
 
@@ -278,6 +291,12 @@ export function initializeNetwork() {
           break;
         case "skill":
           handlerMap.skill(body.skill);
+          break;
+        case "datetime":
+          handlerMap.datetime(body.datetime);
+          break;
+        case "condition":
+          handlerMap.condition(body.condition);
           break;
       }
     }
