@@ -7,15 +7,77 @@ export const HOURS_PER_NIGHT = 20;
 
 export const BASE_NIGHTYEAR = 200;
 export const SECONDS_PER_DAY = 86400;
-const EPOCH = new Date(Date.UTC(2025, 11, 1, 5, 0, 0));
+
+export const EPOCH = new Date(Date.UTC(2025, 11, 1, 5, 0, 0));
 
 const _cycles = SECONDS_PER_DAY / SECONDS_PER_NIGHT;
 if (Math.abs(_cycles - Math.round(_cycles)) > 1e-9) {
-  throw new Error(`got ${_cycles} cycles per real day.`);
+  throw new Error(
+    `SECONDS_PER_NIGHT=${SECONDS_PER_NIGHT} does not divide 86400 cleanly; got ${_cycles} cycles per real day.`
+  );
 }
 
 export const NIGHTS_PER_DAY = Math.round(_cycles);
 export const SECONDS_PER_NIGHT_HOUR = SECONDS_PER_NIGHT / HOURS_PER_NIGHT;
+
+const EST_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hour12: false,
+});
+
+type ESTParts = {
+  year: number; // e.g. 2025
+  month: number; // 1-12
+  day: number; // 1-31
+  hour: number; // 0-23
+  minute: number; // 0-59
+  second: number; // 0-59
+};
+
+function getESTParts(date: Date): ESTParts {
+  const parts = EST_PARTS_FORMATTER.formatToParts(date);
+  let year = 0,
+    month = 0,
+    day = 0,
+    hour = 0,
+    minute = 0,
+    second = 0;
+
+  for (const p of parts) {
+    const v = Number(p.value);
+    switch (p.type) {
+      case "year":
+        year = v;
+        break;
+      case "month":
+        month = v;
+        break;
+      case "day":
+        day = v;
+        break;
+      case "hour":
+        hour = v;
+        break;
+      case "minute":
+        minute = v;
+        break;
+      case "second":
+        second = v;
+        break;
+    }
+  }
+  return { year, month, day, hour, minute, second };
+}
+
+function daysInMonth(year: number, month1Based: number): number {
+  return new Date(Date.UTC(year, month1Based, 0)).getUTCDate();
+}
 
 export class NightClock {
   readonly dt: Date;
@@ -29,67 +91,18 @@ export class NightClock {
     }
   }
 
-  private get _realMonthStart(): Date {
-    const year = this.dt.getFullYear();
-    const month = this.dt.getMonth(); // 0-based
-    return new Date(year, month, 1, 0, 0, 0, 0);
-  }
-
-  private get _nextRealMonthStart(): Date {
-    const year = this.dt.getFullYear();
-    const month = this.dt.getMonth();
-    if (month === 11) {
-      return new Date(year + 1, 0, 1, 0, 0, 0, 0);
-    } else {
-      return new Date(year, month + 1, 1, 0, 0, 0, 0);
-    }
-  }
-
   private get _secondsSinceDtMidnight(): number {
-    const year = this.dt.getFullYear();
-    const month = this.dt.getMonth();
-    const day = this.dt.getDate();
-    const midnight = new Date(year, month, day, 0, 0, 0, 0);
-    return (this.dt.getTime() - midnight.getTime()) / 1000;
+    const { hour, minute, second } = getESTParts(this.dt);
+    return hour * 3600 + minute * 60 + second;
   }
 
   get nightsSinceDtMidnight(): number {
     return Math.floor(this._secondsSinceDtMidnight / SECONDS_PER_NIGHT);
   }
 
-  get nightyears(): number {
-    const year = this.dt.getFullYear();
-    const monthIndex = this.dt.getMonth();
-    const monthsSinceEpoch = (year - 2025) * 12 + (monthIndex - 11);
-    return BASE_NIGHTYEAR + monthsSinceEpoch;
-  }
-
-  get moons(): number {
-    return this.dt.getDate();
-  }
-
   get elapsedPct(): number {
     const sec = this.seconds;
     return sec / SECONDS_PER_NIGHT;
-  }
-
-  get hours(): number {
-    const hourIndex = Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) / 60;
-    let hour24 = 6 + Math.floor(hourIndex); // 6->25
-    if (hour24 >= 24) hour24 -= 24;
-    return hour24;
-  }
-
-  get hoursFloat(): number {
-    const totalNightMinutes = this.elapsedPct * HOURS_PER_NIGHT * 60.0;
-    const hourOffset = totalNightMinutes / 60.0; // 0..20
-    let h = 6.0 + hourOffset; // 6..26
-    if (h >= 24.0) h -= 24.0;
-    return h;
-  }
-
-  get minutes(): number {
-    return Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) % 60;
   }
 
   get seconds(): number {
@@ -109,17 +122,50 @@ export class NightClock {
     return SECONDS_PER_NIGHT - this.seconds;
   }
 
+  // Nightyear / calendar
+
+  get nightyears(): number {
+    const { year, month } = getESTParts(this.dt);
+    const monthsSinceEpoch = (year - 2025) * 12 + (month - 12);
+    return BASE_NIGHTYEAR + monthsSinceEpoch;
+  }
+
+  get moons(): number {
+    const { day } = getESTParts(this.dt);
+    return day;
+  }
+
   get nightyearElapsedPct(): number {
-    const start = this._realMonthStart;
-    const end = this._nextRealMonthStart;
-    const dur = (end.getTime() - start.getTime()) / 1000;
-    if (dur <= 0) return 0;
-    const elapsed = (this.dt.getTime() - start.getTime()) / 1000;
-    return elapsed / dur;
+    const { year, month, day, hour, minute, second } = getESTParts(this.dt);
+    const dim = daysInMonth(year, month); // month is 1..12
+
+    const secondsSinceMonthStart =
+      (day - 1) * SECONDS_PER_DAY + hour * 3600 + minute * 60 + second;
+
+    return secondsSinceMonthStart / (dim * SECONDS_PER_DAY);
+  }
+
+  get hours(): number {
+    const hourIndex = Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) / 60;
+    let hour24 = 6 + Math.floor(hourIndex); // 6 -> 25
+    if (hour24 >= 24) hour24 -= 24;
+    return hour24;
+  }
+
+  get hoursFloat(): number {
+    const totalNightMinutes = this.elapsedPct * HOURS_PER_NIGHT * 60.0;
+    const hourOffset = totalNightMinutes / 60.0; // 0..20
+    let h = 6.0 + hourOffset; // 6..26
+    if (h >= 24.0) h -= 24.0;
+    return h;
+  }
+
+  get minutes(): number {
+    return Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) % 60;
   }
 
   get dawn(): number {
-    const s = this.nightyearElapsedPct;
+    const s = this.nightyearElapsedPct; // 0..1
     const angle = 2 * Math.PI * s;
 
     const avgDaylen = 13.25;
@@ -185,10 +231,26 @@ export class NightClock {
   }
 
   get nightsThisNightyear(): number {
-    const start = this._realMonthStart;
-    const secondsSinceEpochAtStart = (start.getTime() - EPOCH.getTime()) / 1000;
+    const { year, month } = getESTParts(this.dt);
+    const startYear = year;
+    const startMonth = month; // 1..12
+
+    const startParts = {
+      year: startYear,
+      month: startMonth,
+      day: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+    };
+
+    const monthsSinceEpoch =
+      (startParts.year - 2025) * 12 + (startParts.month - 12);
+    const secondsSinceEpochAtStartMonth =
+      monthsSinceEpoch * 30 * SECONDS_PER_DAY; // approximate; structure only
+
     const moonsSinceStart = Math.floor(
-      secondsSinceEpochAtStart / SECONDS_PER_DAY
+      secondsSinceEpochAtStartMonth / SECONDS_PER_DAY
     );
     const cyclesBeforeYearStart = moonsSinceStart * NIGHTS_PER_DAY;
     const current = this.nightsSinceEpoch;
@@ -199,8 +261,8 @@ export class NightClock {
     if (this.inNightstorm) return 0;
 
     const h = this.hoursFloat; // 0..24
-    const sunrise = this.dawn;
-    const sunset = this.dusk;
+    const sunrise = this.dawn; // between ~6 and 7
+    const sunset = this.dusk; // between ~17.5 and 22
 
     let brightnessNorm: number;
 
@@ -212,7 +274,7 @@ export class NightClock {
       const d = h < sunrise ? 24.0 - sunset + h : h - sunset;
       const dMax = 6.0;
       const falloff = Math.max(0.0, 1.0 - d / dMax);
-      brightnessNorm = 0.5 * falloff;
+      brightnessNorm = 0.5 * falloff; // 0..0.5
     }
 
     const band = 1 + Math.round(6 * brightnessNorm);
