@@ -30,7 +30,7 @@
 
 html,
 body {
-  margin: 2ch;
+  margin: 1ch;
   height: 100%;
   background: var(--bg);
   color: var(--on-surface);

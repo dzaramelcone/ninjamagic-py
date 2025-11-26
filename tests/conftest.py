@@ -43,6 +43,27 @@ def pytest_configure(config):
 
 
 @pytest.fixture
+def golden_json(
+    request: pytest.FixtureRequest, golden_update: bool
+) -> Callable[[Any], None]:
+    base_dir = pathlib.Path(__file__).parent / "goldens" / request.node.name
+    ctr = 0
+
+    def _golden(data: Any) -> None:
+        nonlocal ctr
+        g_path = base_dir / f"{request.node.name}-{ctr}.out"
+        ctr += 1
+        if golden_update or not g_path.exists():
+            g_path.parent.mkdir(parents=True, exist_ok=True)
+            g_path.write_text(json.dumps(data, indent=1))
+            return
+        expected = json.loads(g_path.read_text())
+        assert data == expected
+
+    return _golden
+
+
+@pytest.fixture
 def golden(
     request: pytest.FixtureRequest, golden_update: bool
 ) -> Callable[[str, str | bytes], None]:

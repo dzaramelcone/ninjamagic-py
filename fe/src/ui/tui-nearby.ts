@@ -3,6 +3,7 @@ import { customElement, state, property } from "lit/decorators.js";
 import { sharedStyles } from "./tui-styles";
 import { useGameStore, type EntityPosition } from "../state";
 
+import "./tui-clock";
 import "./tui-entity-title";
 import "./tui-health-bar";
 import "./tui-label-line";
@@ -136,6 +137,7 @@ export class TuiNearby extends LitElement {
     const health = ent.healthPct;
     const stress = ent.stressPct;
     const lines = [
+      html`<tui-clock></tui-clock>`,
       html`<tui-entity-title
         glyph=${ent.glyph ?? "@"}
         name=${ent.noun ?? "unknown"}
