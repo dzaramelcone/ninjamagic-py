@@ -50,11 +50,10 @@ export class TuiClock extends LitElement {
       .icon {
         font-family: "Material Symbols Rounded";
         font-size: 18px;
-        color: var(--c-high);
+        color: var(--clock-icon-color, var(--c-high));
         font-variation-settings: "FILL" 1, "GRAD" 0, "opsz" 20,
           "wght" var(--clock-icon-wght, 400);
       }
-
       /* --- Text color wiring --- */
       .season,
       .time {
@@ -179,7 +178,8 @@ export class TuiClock extends LitElement {
     };
 
     this.snap = snap;
-
+    const color = this.iconColor(snap);
+    this.style.setProperty("--clock-icon-color", color);
     const wght = this.iconWeight(snap);
     this.style.setProperty("--clock-icon-wght", String(wght));
   }
@@ -209,6 +209,31 @@ export class TuiClock extends LitElement {
     const base = 200;
     const step = (700 - base) / 6.0;
     return Math.round(base + (b - 1) * step);
+  }
+  private iconColor(s: ClockSnapshot): string {
+    // If in storm, keep your existing flashing color
+    if (s.inNightstorm || s.brightness === 0) {
+      return "var(--c-high)"; // or your ember/highlight; storm animation overrides anyway
+    }
+
+    // Map 1–7 to a smooth color ramp
+    const b = Math.max(1, Math.min(7, s.brightness));
+
+    // Nice sky ramp (handpicked but aesthetic):
+    // 1 = #0a4d4f (deep teal night)
+    // 4 = #3db7c4 (cyan morning)
+    // 7 = #f0e6a0 (pale desaturated sunrise yellow)
+    const ramp = [
+      "#0a4d4f", // 1
+      "#136b70", // 2
+      "#1f8f98", // 3
+      "#3db7c4", // 4
+      "#7ac7be", // 5
+      "#cdd6a3", // 6
+      "#f0e6a0", // 7
+    ];
+
+    return ramp[b - 1];
   }
 
   private iconSeverity(s: ClockSnapshot): IconSeverity {
