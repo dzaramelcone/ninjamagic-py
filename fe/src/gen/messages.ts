@@ -206,6 +206,15 @@ export interface Skill {
     tnl: number;
 }
 /**
+ * @generated from protobuf message ninjamagic.Datetime
+ */
+export interface Datetime {
+    /**
+     * @generated from protobuf field: uint64 seconds = 1
+     */
+    seconds: bigint;
+}
+/**
  * A wrapper that can contain any of our specific message types.
  *
  * @generated from protobuf message ninjamagic.Kind
@@ -280,6 +289,12 @@ export interface Kind {
          * @generated from protobuf field: ninjamagic.Skill skill = 11
          */
         skill: Skill;
+    } | {
+        oneofKind: "datetime";
+        /**
+         * @generated from protobuf field: ninjamagic.Datetime datetime = 12
+         */
+        datetime: Datetime;
     } | {
         oneofKind: undefined;
     };
@@ -1005,6 +1020,53 @@ class Skill$Type extends MessageType<Skill> {
  */
 export const Skill = new Skill$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class Datetime$Type extends MessageType<Datetime> {
+    constructor() {
+        super("ninjamagic.Datetime", [
+            { no: 1, name: "seconds", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Datetime>): Datetime {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.seconds = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<Datetime>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Datetime): Datetime {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint64 seconds */ 1:
+                    message.seconds = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Datetime, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint64 seconds = 1; */
+        if (message.seconds !== 0n)
+            writer.tag(1, WireType.Varint).uint64(message.seconds);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Datetime
+ */
+export const Datetime = new Datetime$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class Kind$Type extends MessageType<Kind> {
     constructor() {
         super("ninjamagic.Kind", [
@@ -1018,7 +1080,8 @@ class Kind$Type extends MessageType<Kind> {
             { no: 8, name: "health", kind: "message", oneof: "body", T: () => Health },
             { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance },
             { no: 10, name: "condition", kind: "message", oneof: "body", T: () => Condition },
-            { no: 11, name: "skill", kind: "message", oneof: "body", T: () => Skill }
+            { no: 11, name: "skill", kind: "message", oneof: "body", T: () => Skill },
+            { no: 12, name: "datetime", kind: "message", oneof: "body", T: () => Datetime }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -1099,6 +1162,12 @@ class Kind$Type extends MessageType<Kind> {
                         skill: Skill.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).skill)
                     };
                     break;
+                case /* ninjamagic.Datetime datetime */ 12:
+                    message.body = {
+                        oneofKind: "datetime",
+                        datetime: Datetime.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).datetime)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1144,6 +1213,9 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Skill skill = 11; */
         if (message.body.oneofKind === "skill")
             Skill.internalBinaryWrite(message.body.skill, writer.tag(11, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Datetime datetime = 12; */
+        if (message.body.oneofKind === "datetime")
+            Datetime.internalBinaryWrite(message.body.datetime, writer.tag(12, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

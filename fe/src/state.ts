@@ -14,6 +14,7 @@ type EntityMeta = {
   glyph?: string;
   noun?: string;
   stance?: string;
+  condition?: string;
   healthPct?: number; // from Health.pct (0..1)
   stressPct?: number;
 };
@@ -24,11 +25,17 @@ export type SkillState = {
   tnl: number;
 };
 
+type ServerTimeState = {
+  unixSeconds: number | null; // server "now" at last sync
+  syncedAtMs: number | null; // performance.now() at last sync
+};
+
 type GameStore = {
   entities: Record<number, EntityPosition>;
   entityMeta: Record<number, EntityMeta>;
   messages: string[];
   skills: SkillState[];
+  serverTime: ServerTimeState;
 
   getPlayer: () => EntityPosition;
   setPosition: (id: number, map_id: number, x: number, y: number) => void;
@@ -38,7 +45,10 @@ type GameStore = {
   setNoun: (id: number, text: string) => void;
   setHealth: (id: number, pct: number, stressPct: number) => void;
   setStance: (id: number, text: string) => void;
+  setCondition: (id: number, text: string) => void;
   setSkill: (name: string, rank: number, tnl: number) => void;
+  setServerTime: (unixSeconds: bigint) => void;
+  getServerNow: () => Date;
 };
 
 export const useGameStore = createStore<GameStore>((set, get) => ({
@@ -46,6 +56,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   entityMeta: {},
   messages: [],
   skills: [],
+  serverTime: {
+    unixSeconds: null,
+    syncedAtMs: null,
+  },
   getPlayer: () => {
     return get().entities[PLAYER_ID];
   },
@@ -152,6 +166,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       },
     })),
 
+  setCondition: (id, text) =>
+    set((state) => ({
+      entityMeta: {
+        ...state.entityMeta,
+        [id]: {
+          ...(state.entityMeta[id] ?? {}),
+          condition: text,
+        },
+      },
+    })),
   setSkill: (name, rank, tnl) =>
     set((state) => {
       const existingIdx = state.skills.findIndex((s) => s.name === name);
@@ -166,4 +190,23 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         return { skills: [...state.skills, { name, rank, tnl }] };
       }
     }),
+
+  setServerTime: (unixSeconds: bigint) =>
+    set(() => ({
+      serverTime: {
+        unixSeconds: Number(unixSeconds),
+        syncedAtMs: performance.now(),
+      },
+    })),
+
+  getServerNow: () => {
+    const { serverTime } = get();
+    if (!serverTime.unixSeconds || !serverTime.syncedAtMs) {
+      // Fallback if we've never synced
+      return new Date();
+    }
+    const elapsedMs = performance.now() - serverTime.syncedAtMs;
+    const ms = serverTime.unixSeconds * 1000 + elapsedMs;
+    return new Date(ms);
+  },
 }));

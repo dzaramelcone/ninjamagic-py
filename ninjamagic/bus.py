@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass as signal, field
+from datetime import datetime
 from typing import TypeVar, cast
 
 from fastapi import WebSocket
@@ -195,6 +196,14 @@ class Outbound(Signal):
 
     to: EntityId
     text: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundDatetime(Signal):
+    """An outbound datetime."""
+
+    to: EntityId
+    dt: datetime
 
 
 @signal(frozen=True, slots=True, kw_only=True)
