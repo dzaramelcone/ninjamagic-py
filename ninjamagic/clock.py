@@ -12,7 +12,7 @@ SECONDS_PER_NIGHTSTORM: float = 10.0
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
 
 BASE_NIGHTYEAR: int = 200
-REAL_EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
+EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
 
 SECONDS_PER_DAY = 86400.0
 
@@ -36,7 +36,7 @@ class NightClock:
         if not dt:
             dt = datetime.now(EST)
         dt = dt.astimezone(EST) if dt.tzinfo else dt.replace(tzinfo=EST)
-        self._dt = dt
+        self.dt = dt
 
     @property
     def _real_month_start(self) -> datetime:
@@ -50,48 +50,14 @@ class NightClock:
             return datetime(self.dt.year, self.dt.month + 1, 1, 0, 0, 0, tzinfo=EST)
 
     @property
-    def dt(self) -> datetime:
-        return self._dt
-
-    @property
-    def _seconds_since_midnight(self) -> float:
-        """Seconds since today's 00:00 EST."""
+    def _seconds_since_dt_midnight(self) -> float:
+        """Seconds since dt midnight."""
         today = datetime(self.dt.year, self.dt.month, self.dt.day, 0, 0, 0, tzinfo=EST)
         return (self.dt - today).total_seconds()
 
-    # Elapsed time & indices
-
     @property
-    def seconds_since_epoch(self) -> float:
-        """Seconds from epoch to now."""
-        return max(0.0, (self.dt - REAL_EPOCH).total_seconds())
-
-    @property
-    def nights_since_epoch(self) -> int:
-        """Number of nights since epoch."""
-        return self.moons_since_epoch * NIGHTS_PER_DAY + self.nights_since_midnight
-
-    @property
-    def moons_since_epoch(self) -> int:
-        """Real days since epoch."""
-        return int(self.seconds_since_epoch // SECONDS_PER_DAY)
-
-    @property
-    def nights_since_midnight(self) -> int:
-        return int(self._seconds_since_midnight // SECONDS_PER_NIGHT)
-
-    @property
-    def nights_this_nightyear(self) -> int:
-        """Number of nights this nightyear.
-
-        (since the start of the current real month).
-        """
-        start = self._real_month_start
-        seconds_since_epoch_at_start = (start - REAL_EPOCH).total_seconds()
-        moons_since_start = int(seconds_since_epoch_at_start // SECONDS_PER_DAY)
-        cycles_before_year_start = moons_since_start * NIGHTS_PER_DAY
-        current = self.nights_since_epoch
-        return max(0, current - cycles_before_year_start)
+    def nights_since_dt_midnight(self) -> int:
+        return int(self._seconds_since_dt_midnight // SECONDS_PER_NIGHT)
 
     # Clock
 
@@ -138,7 +104,7 @@ class NightClock:
 
     @property
     def seconds(self) -> float:
-        return self._seconds_since_midnight % SECONDS_PER_NIGHT
+        return self._seconds_since_dt_midnight % SECONDS_PER_NIGHT
 
     @property
     def dawn(self) -> float:
@@ -184,6 +150,16 @@ class NightClock:
         return self.seconds / SECONDS_PER_NIGHT
 
     @property
+    def nightyear_elapsed_pct(self) -> float:
+        start = self._real_month_start
+        end = self._next_real_month_start
+        dur = (end - start).total_seconds()
+        if dur <= 0:
+            return 0.0
+        elapsed = (self.dt - start).total_seconds()
+        return elapsed / dur
+
+    @property
     def next_hour_eta(self) -> float:
         hours_elapsed = math.floor(self.seconds / SECONDS_PER_NIGHT_HOUR)
         next = (hours_elapsed + 1) * SECONDS_PER_NIGHT_HOUR
@@ -215,15 +191,32 @@ class NightClock:
         remaining = SECONDS_PER_NIGHT - self.seconds
         return 1.0 - (remaining / SECONDS_PER_NIGHTSTORM)
 
+    # Epoch
+
     @property
-    def nightyear_elapsed_pct(self) -> float:
+    def seconds_since_epoch(self) -> float:
+        return max(0.0, (self.dt - EPOCH).total_seconds())
+
+    @property
+    def nights_since_epoch(self) -> int:
+        return self.moons_since_epoch * NIGHTS_PER_DAY + self.nights_since_dt_midnight
+
+    @property
+    def moons_since_epoch(self) -> int:
+        return int(self.seconds_since_epoch // SECONDS_PER_DAY)
+
+    @property
+    def nights_this_nightyear(self) -> int:
+        """Number of nights this nightyear.
+
+        (since the start of the current real month).
+        """
         start = self._real_month_start
-        end = self._next_real_month_start
-        dur = (end - start).total_seconds()
-        if dur <= 0:
-            return 0.0
-        elapsed = (self.dt - start).total_seconds()
-        return elapsed / dur
+        seconds_since_epoch_at_start = (start - EPOCH).total_seconds()
+        moons_since_start = int(seconds_since_epoch_at_start // SECONDS_PER_DAY)
+        cycles_before_year_start = moons_since_start * NIGHTS_PER_DAY
+        current = self.nights_since_epoch
+        return max(0, current - cycles_before_year_start)
 
     @property
     def brightness_index(self) -> int:

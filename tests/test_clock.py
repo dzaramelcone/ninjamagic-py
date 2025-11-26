@@ -6,9 +6,9 @@ import pytest
 
 from ninjamagic.clock import (
     BASE_NIGHTYEAR,
+    EPOCH,
     EST,
     NIGHTS_PER_DAY,
-    REAL_EPOCH,
     SECONDS_PER_NIGHT,
     SECONDS_PER_NIGHT_HOUR,
     SECONDS_PER_NIGHTSTORM,
@@ -24,11 +24,11 @@ def est(dt: datetime) -> datetime:
 
 
 def test_epoch_baseline():
-    nc = NightClock(REAL_EPOCH)
+    nc = NightClock(EPOCH)
 
     assert nc.seconds_since_epoch == 0
     assert nc.moons_since_epoch == 0
-    assert nc.nights_since_midnight == 0
+    assert nc.nights_since_dt_midnight == 0
     assert nc.nights_since_epoch == 0
     assert nc.nights_this_nightyear == 0
 
@@ -38,13 +38,13 @@ def test_epoch_baseline():
 
 def test_nights_per_day_consistency():
     # Move forward exactly one real day
-    next_day = est(REAL_EPOCH + timedelta(days=1))
+    next_day = est(EPOCH + timedelta(days=1))
     nc = NightClock(next_day)
 
     assert nc.moons_since_epoch == 1
     # At exactly midnight next day, seconds_since_midnight == 0,
     # so nights_since_midnight == 0 again.
-    assert nc.nights_since_midnight == 0
+    assert nc.nights_since_dt_midnight == 0
     # Total nights since epoch advanced by NIGHTS_PER_DAY
     assert nc.nights_since_epoch == NIGHTS_PER_DAY
 
@@ -74,13 +74,13 @@ def test_hours_at_start_mid_end_of_night():
     assert nc_start.hours == 6
 
     # Middle of night -> around 16:00
-    mid = est(REAL_EPOCH + timedelta(seconds=SECONDS_PER_NIGHT / 2))
+    mid = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT / 2))
     nc_mid = NightClock(mid)
     assert math.isclose(nc_mid.elapsed_pct, 0.5, rel_tol=1e-6)
     assert 15 <= nc_mid.hours <= 17  # allow a 1h band due to flooring
 
     # Very end of night (just before wrap) -> between 01:00 and 02:00
-    end = est(REAL_EPOCH + timedelta(seconds=SECONDS_PER_NIGHT - 1))
+    end = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT - 1))
     nc_end = NightClock(end)
     assert 1 <= nc_end.hours <= 2
 
@@ -88,7 +88,7 @@ def test_hours_at_start_mid_end_of_night():
 def test_minutes_and_next_hour_eta_consistency():
     # Pick an arbitrary time into the night: say 3 in-game hours in
     # 3 * SECONDS_PER_NIGHT_HOUR seconds after midnight
-    dt = est(REAL_EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
+    dt = est(EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
     nc = NightClock(dt)
 
     assert nc.hours == 9  # 06 + 3 hours
@@ -104,14 +104,14 @@ def test_minutes_and_next_hour_eta_consistency():
 def test_nightstorm_flags_and_eta_before_and_during():
     # Just before nightstorm starts
     storm_start_real_offset = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
-    before_storm = est(REAL_EPOCH + timedelta(seconds=storm_start_real_offset - 1))
+    before_storm = est(EPOCH + timedelta(seconds=storm_start_real_offset - 1))
     nc_before = NightClock(before_storm)
 
     assert not nc_before.in_nightstorm
     assert 0 < nc_before.nightstorm_eta <= 2  # within a couple of seconds
 
     # Inside nightstorm window
-    during_storm = est(REAL_EPOCH + timedelta(seconds=storm_start_real_offset + 1))
+    during_storm = est(EPOCH + timedelta(seconds=storm_start_real_offset + 1))
     nc_during = NightClock(during_storm)
 
     assert nc_during.in_nightstorm
