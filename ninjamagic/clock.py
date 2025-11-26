@@ -1,10 +1,10 @@
 """Stateless, injective mapping from real-world timestamp to game time."""
 
 import math
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
 
-EST = ZoneInfo("US/Eastern")
+EST = timezone(timedelta(hours=-5), name="EST")
+
 
 # CONFIGURABLE WORLD CONSTANTS
 SECONDS_PER_NIGHT: float = 36.0 * 60.0  # 18m or 36m in seconds; must divide 86400
