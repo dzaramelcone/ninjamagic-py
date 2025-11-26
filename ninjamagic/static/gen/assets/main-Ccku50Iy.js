@@ -135,11 +135,10 @@ var lr;function ur(e){return(t,n)=>sr(t,n,{get(){return(this.renderRoot??(lr??=d
       .icon {
         font-family: "Material Symbols Rounded";
         font-size: 18px;
-        color: var(--c-high);
+        color: var(--clock-icon-color, var(--c-high));
         font-variation-settings: "FILL" 1, "GRAD" 0, "opsz" 20,
           "wght" var(--clock-icon-wght, 400);
       }
-
       /* --- Text color wiring --- */
       .season,
       .time {
@@ -231,7 +230,7 @@ var lr;function ur(e){return(t,n)=>sr(t,n,{get(){return(this.renderRoot??(lr??=d
           opacity: 0.5;
         }
       }
-    `]}connectedCallback(){super.connectedCallback(),this._tick(),this._timer=window.setInterval(()=>this._tick(),1e3)}disconnectedCallback(){super.disconnectedCallback(),this._timer!==null&&(window.clearInterval(this._timer),this._timer=null)}_tick(){let e=new yr,t=this.seasonLabel(e),n=Math.floor(e.minutes/5)*5,r={nightyear:e.nightyears,hour:e.hours,minutes:n,brightness:e.brightnessIndex,inNightstorm:e.inNightstorm,nightstormEta:e.nightstormEta,seasonLabel:t};this.snap=r;let i=this.iconWeight(r);this.style.setProperty(`--clock-icon-wght`,String(i))}seasonLabel(e){let t=e.nightyearElapsedPct,n=[`WINTER`,`SPRING`,`SUMMER`,`AUTUMN`],r=Math.floor(t*4)%4;return n[r]}iconName(e){return e.inNightstorm||e.brightness===0?`cyclone`:`brightness_${Math.max(1,Math.min(7,e.brightness))}`}iconWeight(e){if(e.inNightstorm||e.brightness===0)return 400;let t=Math.max(1,Math.min(7,e.brightness));return Math.round(200+(t-1)*83.33333333333333)}iconSeverity(e){let t=e.nightstormEta;return t<=10?3:t<=60?2:t<=120?1:0}render(){if(!this.snap)return H``;let{seasonLabel:e,nightyear:t,hour:n,minutes:r,brightness:i}=this.snap,a=n.toString().padStart(2,`0`),o=r.toString().padStart(2,`0`),s=this.iconName(this.snap),c=this.iconSeverity(this.snap);return H`
+    `]}connectedCallback(){super.connectedCallback(),this._tick(),this._timer=window.setInterval(()=>this._tick(),1e3)}disconnectedCallback(){super.disconnectedCallback(),this._timer!==null&&(window.clearInterval(this._timer),this._timer=null)}_tick(){let e=new yr,t=this.seasonLabel(e),n=Math.floor(e.minutes/5)*5,r={nightyear:e.nightyears,hour:e.hours,minutes:n,brightness:e.brightnessIndex,inNightstorm:e.inNightstorm,nightstormEta:e.nightstormEta,seasonLabel:t};this.snap=r;let i=this.iconColor(r);this.style.setProperty(`--clock-icon-color`,i);let a=this.iconWeight(r);this.style.setProperty(`--clock-icon-wght`,String(a))}seasonLabel(e){let t=e.nightyearElapsedPct,n=[`WINTER`,`SPRING`,`SUMMER`,`AUTUMN`],r=Math.floor(t*4)%4;return n[r]}iconName(e){return e.inNightstorm||e.brightness===0?`cyclone`:`brightness_${Math.max(1,Math.min(7,e.brightness))}`}iconWeight(e){if(e.inNightstorm||e.brightness===0)return 400;let t=Math.max(1,Math.min(7,e.brightness));return Math.round(200+(t-1)*83.33333333333333)}iconColor(e){return e.inNightstorm||e.brightness===0?`var(--c-high)`:[`#0a4d4f`,`#136b70`,`#1f8f98`,`#3db7c4`,`#7ac7be`,`#cdd6a3`,`#f0e6a0`][Math.max(1,Math.min(7,e.brightness))-1]}iconSeverity(e){let t=e.nightstormEta;return t<=10?3:t<=60?2:t<=120?1:0}render(){if(!this.snap)return H``;let{seasonLabel:e,nightyear:t,hour:n,minutes:r,brightness:i}=this.snap,a=n.toString().padStart(2,`0`),o=r.toString().padStart(2,`0`),s=this.iconName(this.snap),c=this.iconSeverity(this.snap);return H`
       <span class="clock-line">
         <span class="line-wrap">
           <span class="season text-layer">${e}</span>
