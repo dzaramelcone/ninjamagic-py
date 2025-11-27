@@ -2,7 +2,7 @@ import { LitElement, html, css } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
 import { sharedStyles } from "./tui-styles";
 import { useGameStore, type EntityPosition } from "../state";
-
+import { cardinalFromDelta } from "../util/util";
 import "./tui-clock";
 import "./tui-entity-title";
 import "./tui-health-bar";
@@ -30,18 +30,7 @@ type EntityMetaFromStore = {
 type NearbyEntity = EntityPosition & EntityMetaFromStore;
 
 function directionLabel(player: NearbyEntity, ent: NearbyEntity): string {
-  const dx = ent.x - player.x;
-  const dy = ent.y - player.y;
-
-  if (dx === 0 && dy === 0) return "(here)";
-
-  const vert = dy < 0 ? "north" : dy > 0 ? "south" : "";
-  const horiz = dx < 0 ? "west" : dx > 0 ? "east" : "";
-
-  if (vert && horiz) return `(${vert}${horiz})`;
-  if (vert) return `(${vert})`;
-  if (horiz) return `(${horiz})`;
-  return "";
+  return cardinalFromDelta(ent.x - player.x, ent.y - player.y);
 }
 
 @customElement("tui-nearby")
