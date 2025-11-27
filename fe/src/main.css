@@ -107,10 +107,10 @@ body {
 #nearby {
   white-space: pre;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 16px;
+  font-size: 19px;
   flex: 0 0 22ch;
   width: 22ch;
-  margin-right: 16px;
+  margin-right: 19px;
 }
 
 #chat {

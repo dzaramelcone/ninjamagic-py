@@ -98,7 +98,7 @@ export class InputModeMachine {
 
   private mapTabLabelToMode(label: string): ModeId | null {
     if (label === "cmd") return "cmd";
-    if (label === "skills" || label === "exp") return "exp";
+    if (label === "exp") return "exp";
     if (label === "inv" || label === "info") return "passive";
     return null;
   }

@@ -22,8 +22,7 @@ export class TuiSkill extends LitElement {
         box-sizing: border-box;
         padding: 2px 0;
         position: relative;
-        /* Enforce font size to ensure CH units align perfectly */
-        font-size: 1rem;
+        font-size: 19px;
         line-height: 1.2;
       }
 

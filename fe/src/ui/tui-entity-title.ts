@@ -70,7 +70,7 @@ export class TuiEntityTitle extends LitElement {
       :host {
         display: block;
         width: ${BAR_WIDTH}ch;
-        font: 300 16px "IBM Plex Mono", monospace;
+        font: 300 19px "IBM Plex Mono", monospace;
         line-height: 1;
       }
 

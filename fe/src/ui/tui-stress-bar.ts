@@ -29,7 +29,7 @@ export class TuiStressBar extends LitElement {
         margin-left: 1.5ch;
         min-width: 22ch;
         vertical-align: middle;
-        font: 300 16px "IBM Plex Mono", monospace;
+        font: 300 19px "IBM Plex Mono", monospace;
         --tui-monotonic: increase;
       }
 

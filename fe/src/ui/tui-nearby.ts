@@ -2,7 +2,7 @@ import { LitElement, html, css } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
 import { sharedStyles } from "./tui-styles";
 import { useGameStore, type EntityPosition } from "../state";
-
+import { cardinalFromDelta } from "../util/util";
 import "./tui-clock";
 import "./tui-entity-title";
 import "./tui-health-bar";
@@ -30,18 +30,7 @@ type EntityMetaFromStore = {
 type NearbyEntity = EntityPosition & EntityMetaFromStore;
 
 function directionLabel(player: NearbyEntity, ent: NearbyEntity): string {
-  const dx = ent.x - player.x;
-  const dy = ent.y - player.y;
-
-  if (dx === 0 && dy === 0) return "(here)";
-
-  const vert = dy < 0 ? "north" : dy > 0 ? "south" : "";
-  const horiz = dx < 0 ? "west" : dx > 0 ? "east" : "";
-
-  if (vert && horiz) return `(${vert}${horiz})`;
-  if (vert) return `(${vert})`;
-  if (horiz) return `(${horiz})`;
-  return "";
+  return cardinalFromDelta(ent.x - player.x, ent.y - player.y);
 }
 
 @customElement("tui-nearby")
@@ -58,16 +47,20 @@ export class TuiNearby extends LitElement {
       :host {
         display: block;
         width: ${BAR_WIDTH}ch;
-        font: 300 16px "IBM Plex Mono", monospace;
-        line-height: 1;
+        font: 300 19px "IBM Plex Mono", monospace;
       }
 
       .entity-block {
-        margin-bottom: 0.3em;
+        margin-bottom: 0.1em;
       }
 
       .entity-block:last-child {
         margin-bottom: 0;
+      }
+
+      /* extra vertical space between distinct locations */
+      .entity-gap {
+        height: 19px;
       }
     `,
   ];
@@ -137,7 +130,6 @@ export class TuiNearby extends LitElement {
     const health = ent.healthPct;
     const stress = ent.stressPct;
     const lines = [
-      html`<tui-clock></tui-clock>`,
       html`<tui-entity-title
         glyph=${ent.glyph ?? "@"}
         name=${ent.noun ?? "unknown"}
@@ -171,8 +163,20 @@ export class TuiNearby extends LitElement {
     if (!player) return html``;
 
     const ordered = this._orderedOnSameMap();
-    if (ordered.length === 0) return html``;
+    if (ordered.length === 0) return html`<tui-clock></tui-clock>`;
 
-    return html`${ordered.map((ent) => this._renderEntityBlock(ent, player))}`;
+    const blocks: unknown[] = [];
+    let lastLoc: string | null = null;
+
+    for (const ent of ordered) {
+      const locKey = `${ent.x},${ent.y}`;
+      if (lastLoc !== null && locKey !== lastLoc) {
+        blocks.push(html`<div class="entity-gap"></div>`);
+      }
+      blocks.push(this._renderEntityBlock(ent, player));
+      lastLoc = locKey;
+    }
+
+    return html`<tui-clock></tui-clock>${blocks}`;
   }
 }

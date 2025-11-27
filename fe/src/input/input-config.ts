@@ -21,7 +21,6 @@ export function createInputModeMachine(ctx: InputContext): InputModeMachine {
         if (ctx.onExitCmd) ctx.onExitCmd();
       },
       transitions: [
-        // from cmd, "exp" command → exp mode
         {
           kind: "push",
           to: "exp",
@@ -32,9 +31,7 @@ export function createInputModeMachine(ctx: InputContext): InputModeMachine {
     {
       id: "exp",
       enter(ctx) {
-        // exp is currently the "skills" tab
-        ctx.setTab("skills");
-        // we *do* still want typing to go into cmd even in exp mode
+        ctx.setTab("exp");
         ctx.focusCmdInput();
         if (ctx.onEnterExp) ctx.onEnterExp();
       },
@@ -42,13 +39,11 @@ export function createInputModeMachine(ctx: InputContext): InputModeMachine {
         if (ctx.onExitExp) ctx.onExitExp();
       },
       transitions: [
-        // from exp, "cmd" command → cmd mode
         {
           kind: "push",
           to: "cmd",
           when: isCommand("cmd"),
         },
-        // allow "exp" again without changing anything (no-op)
         {
           kind: "push",
           to: "exp",
@@ -58,16 +53,9 @@ export function createInputModeMachine(ctx: InputContext): InputModeMachine {
     },
     {
       id: "passive",
-      // This is the "ignoring" mode for inv/info/etc.
-      // We do NOT touch tabs or focus here; the tab click already set the tab.
-      enter(_ctx) {
-        // intentionally minimal
-      },
-      exit(_ctx) {
-        // intentionally minimal
-      },
+      enter(_ctx) {},
+      exit(_ctx) {},
       transitions: [
-        // even from passive, you can type "cmd" or "exp" to jump back
         {
           kind: "push",
           to: "cmd",
