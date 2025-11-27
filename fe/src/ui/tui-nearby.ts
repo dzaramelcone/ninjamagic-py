@@ -58,16 +58,20 @@ export class TuiNearby extends LitElement {
       :host {
         display: block;
         width: ${BAR_WIDTH}ch;
-        font: 300 16px "IBM Plex Mono", monospace;
-        line-height: 1;
+        font: 300 19px "IBM Plex Mono", monospace;
       }
 
       .entity-block {
-        margin-bottom: 0.3em;
+        margin-bottom: 0.1em;
       }
 
       .entity-block:last-child {
         margin-bottom: 0;
+      }
+
+      /* extra vertical space between distinct locations */
+      .entity-gap {
+        height: 19px;
       }
     `,
   ];
@@ -137,7 +141,6 @@ export class TuiNearby extends LitElement {
     const health = ent.healthPct;
     const stress = ent.stressPct;
     const lines = [
-      html`<tui-clock></tui-clock>`,
       html`<tui-entity-title
         glyph=${ent.glyph ?? "@"}
         name=${ent.noun ?? "unknown"}
@@ -171,8 +174,20 @@ export class TuiNearby extends LitElement {
     if (!player) return html``;
 
     const ordered = this._orderedOnSameMap();
-    if (ordered.length === 0) return html``;
+    if (ordered.length === 0) return html`<tui-clock></tui-clock>`;
 
-    return html`${ordered.map((ent) => this._renderEntityBlock(ent, player))}`;
+    const blocks: unknown[] = [];
+    let lastLoc: string | null = null;
+
+    for (const ent of ordered) {
+      const locKey = `${ent.x},${ent.y}`;
+      if (lastLoc !== null && locKey !== lastLoc) {
+        blocks.push(html`<div class="entity-gap"></div>`);
+      }
+      blocks.push(this._renderEntityBlock(ent, player));
+      lastLoc = locKey;
+    }
+
+    return html`<tui-clock></tui-clock>${blocks}`;
   }
 }
