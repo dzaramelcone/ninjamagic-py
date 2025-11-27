@@ -13,8 +13,8 @@ from ninjamagic.component import (
 
 @dataclass
 class FakeUserSetup:
-    subj: str
-    email: str
+    subj: str = "12023"
+    email: str = "test@example.com"
     glyph: Glyph = "@"
     health: Health = Field(default_factory=Health)
     stance: Stance = Field(default_factory=Stance)

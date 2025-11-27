@@ -3,10 +3,11 @@ import re
 from typing import Annotated, Literal
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.exc import IntegrityError
 
+from ninjamagic.component import Noun, Transform
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
 from ninjamagic.gen.models import OauthProvider, Pronoun
@@ -192,6 +193,23 @@ if settings.allow_local_auth:
 
     log.warning("Using local auth. Do not use this in production.")
 
+    @router.get("/local")
+    async def auth_via_local_get(
+        req: Request, q: Repository, name: Annotated[str, Query()] = ""
+    ):
+        from uuid import uuid4
+
+        return await auth_via_local(
+            req=req,
+            q=q,
+            body=FakeUserSetup(
+                subj=str(uuid4()),
+                email=str(uuid4()),
+                noun=Noun(value=name or str(uuid4())),
+                transform=Transform(map_id=2, x=6, y=6),
+            ),
+        )
+
     @router.post("/local")
     async def auth_via_local(
         req: Request,
@@ -203,6 +221,7 @@ if settings.allow_local_auth:
             subject=body.subj,
             email=body.email,
         )
+
         char = await q.get_character_brief(owner_id=owner_id)
         if not char:
             char = await q.create_character(
@@ -210,6 +229,7 @@ if settings.allow_local_auth:
                 name=body.noun.value,
                 pronoun=Pronoun(body.noun.pronoun.they),
             )
+
         await q.update_character(
             arg=UpdateCharacterParams(
                 id=char.id,
