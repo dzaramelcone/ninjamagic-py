@@ -3,7 +3,7 @@ import re
 from typing import Annotated, Literal
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -195,8 +195,7 @@ if settings.allow_local_auth:
 
     @router.get("/local")
     async def auth_via_local_get(
-        req: Request,
-        q: Repository,
+        req: Request, q: Repository, name: Annotated[str, Query()] = ""
     ):
         from uuid import uuid4
 
@@ -206,7 +205,7 @@ if settings.allow_local_auth:
             body=FakeUserSetup(
                 subj=str(uuid4()),
                 email=str(uuid4()),
-                noun=Noun(value=str(uuid4())),
+                noun=Noun(value=name or str(uuid4())),
                 transform=Transform(map_id=2, x=6, y=6),
             ),
         )
