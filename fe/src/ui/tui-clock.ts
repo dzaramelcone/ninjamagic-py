@@ -26,10 +26,11 @@ export class TuiClock extends LitElement {
     css`
       :host {
         display: inline-block;
-        font-size: 16px;
+        font-size: 19px;
         font-weight: 300;
-        line-height: 1.1;
-        --clock-icon-wght: 400;
+        line-height: 1.2;
+        margin-bottom: 19px;
+        --clock-icon-wght: 300;
       }
 
       .clock-line {
@@ -49,7 +50,7 @@ export class TuiClock extends LitElement {
 
       .icon {
         font-family: "Material Symbols Rounded";
-        font-size: 18px;
+        font-size: 20px;
         color: var(--clock-icon-color, var(--c-high));
         font-variation-settings: "FILL" 1, "GRAD" 0, "opsz" 20,
           "wght" var(--clock-icon-wght, 400);
