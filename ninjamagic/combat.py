@@ -100,9 +100,16 @@ def process():
         src_health = health(sig.source)
         src_health.cur += sig.health_change
         src_health.stress += sig.stress_change
+        src_health.aggravated_stress += sig.aggravated_stress_change
 
         if sig.stress_change > 0:
             src_health.aggravated_stress += sig.stress_change * 0.25
+
+        src_health.cur = min(100, max(-10, src_health.cur))
+        src_health.aggravated_stress = min(200, max(0, src_health.aggravated_stress))
+        src_health.stress = min(
+            200, max(src_health.aggravated_stress, src_health.stress)
+        )
 
     for sig in bus.iter(bus.HealthChanged):
         src_health = health(sig.source)
