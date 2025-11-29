@@ -187,6 +187,8 @@ def process():
 
 
 def schedule_respawn(entity: EntityId):
+    # HACK for something this stateful it could be much more robust.
+    # for example, if they lose connection at the 60.0s mark. lol.
     src_health = health(entity)
     src_loc = transform(entity)
     bus.pulse_in(
