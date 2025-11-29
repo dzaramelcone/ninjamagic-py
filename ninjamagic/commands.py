@@ -152,6 +152,10 @@ class Lie(Command):
         return OK
 
 
+class Rest(Lie):
+    text: str = "rest"
+
+
 class Kneel(Command):
     text: str = "kneel"
 
@@ -204,6 +208,7 @@ commands: list[Command] = [
     Stand(),
     Sit(),
     Lie(),
+    Rest(),
     Kneel(),
     Block(),
     Fart(),
