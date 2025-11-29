@@ -1,7 +1,7 @@
 // src/svc/clock.ts
 import { useGameStore } from "../state";
 
-export const SECONDS_PER_NIGHT = 36 * 60;
+export const SECONDS_PER_NIGHT = 18 * 60;
 export const SECONDS_PER_NIGHTSTORM = 10;
 export const HOURS_PER_NIGHT = 20;
 

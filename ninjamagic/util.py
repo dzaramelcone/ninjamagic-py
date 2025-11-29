@@ -209,7 +209,6 @@ BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
 CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
 
-MELEE_DELAY: float = 3.0
 loop: asyncio.AbstractEventLoop | None = None
 Walltime = float
 
@@ -222,7 +221,7 @@ def get_walltime() -> Walltime:
 
 
 def get_melee_delay() -> float:
-    return MELEE_DELAY
+    return settings.attack_len
 
 
 ContestResult = tuple[float, int, int]

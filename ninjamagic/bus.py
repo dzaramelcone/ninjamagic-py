@@ -117,6 +117,7 @@ class HealthChanged(Signal):
     source: EntityId
     health_change: float = 0.0
     stress_change: float = 0.0
+    aggravated_stress_change: float = 0.0
 
 
 @signal(frozen=True, slots=True, kw_only=True)

@@ -166,7 +166,7 @@ export class TuiClock extends LitElement {
   private _tick(): void {
     const nc = new NightClock();
     const seasonLabel = this.seasonLabel(nc);
-    const minutes = Math.floor(nc.minutes / 5) * 5; // bucket to 5-minute steps
+    const minutes = Math.floor(nc.minutes / 10) * 10; // bucket to 10-minute steps
 
     const snap: ClockSnapshot = {
       nightyear: nc.nightyears,

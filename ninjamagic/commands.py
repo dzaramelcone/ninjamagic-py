@@ -6,6 +6,7 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is, transform
+from ninjamagic.config import settings
 from ninjamagic.util import Compass, get_melee_delay
 
 log = logging.getLogger(__name__)
@@ -96,13 +97,9 @@ class Block(Command):
     requires_not_busy: bool = False
 
     def trigger(self, root: bus.Inbound) -> Out:
-        # MELEE_ATTACK_TIME = 3.0f;
-        # DODGE_DURATION = 2.0f;
-        # DODGE_LAG = 2.5f;
-        # PARRY_DURATION = 1.2f;
-        # PARRY_LAG = 2.5f;
-        esper.add_component(root.source, util.get_walltime() + 3.7, Lag)
+        lag_len = settings.block_len + settings.block_miss_len
         this_block = Blocking()
+        esper.add_component(root.source, util.get_walltime() + lag_len, Lag)
         esper.add_component(root.source, this_block)
         bus.pulse(
             bus.Interrupt(source=root.source),
@@ -118,7 +115,7 @@ class Block(Command):
             esper.remove_component(root.source, Blocking)
             bus.pulse(bus.Outbound(to=root.source, text="You block the air!"))
 
-        asyncio.get_running_loop().call_later(1.2, stop_blocking)
+        asyncio.get_running_loop().call_later(settings.block_len, stop_blocking)
         return OK
 
 
@@ -148,11 +145,15 @@ class Lie(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         if stance_is(root.source, "lying prone"):
-            return False, "You're already lying prone."
+            return False, "You're already prone."
         bus.pulse(
             bus.StanceChanged(source=root.source, stance="lying prone", echo=True)
         )
         return OK
+
+
+class Rest(Lie):
+    text: str = "rest"
 
 
 class Kneel(Command):
@@ -207,6 +208,7 @@ commands: list[Command] = [
     Stand(),
     Sit(),
     Lie(),
+    Rest(),
     Kneel(),
     Block(),
     Fart(),
