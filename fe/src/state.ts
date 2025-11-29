@@ -10,7 +10,7 @@ export type EntityPosition = {
   y: number;
 };
 
-type EntityMeta = {
+export type EntityMeta = {
   glyph?: string;
   noun?: string;
   stance?: string;
@@ -39,7 +39,17 @@ type GameStore = {
 
   getPlayer: () => EntityPosition;
   setPosition: (id: number, map_id: number, x: number, y: number) => void;
+
+  // existing
   entityChecker: () => (map_id: number, x: number, y: number) => boolean;
+
+  // NEW: for getting the actual entity + meta at a tile
+  entityLookup: () => (
+    map_id: number,
+    x: number,
+    y: number
+  ) => { position: EntityPosition; meta?: EntityMeta } | undefined;
+
   cullPositions: () => void;
   setGlyph: (id: number, glyph: string) => void;
   setNoun: (id: number, text: string) => void;
@@ -60,13 +70,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     unixSeconds: null,
     syncedAtMs: null,
   },
+
   getPlayer: () => {
     return get().entities[PLAYER_ID];
   },
+
   setPosition: (id, map_id, x, y) => {
     console.log(`Set position id=${id} map_id=${map_id} x=${x} y=${y}`);
     get().entities[id] = { id, map_id, x, y };
   },
+
   entityChecker: () => {
     const { entities } = get();
     const presenceByMap = new Map<number, Set<string>>();
@@ -78,18 +91,53 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       }
       presenceByMap.get(entity.map_id)!.add(`${entity.x},${entity.y}`);
     }
+
     return (map_id: number, x: number, y: number): boolean => {
       const positionSet = presenceByMap.get(map_id);
       if (!positionSet) return false;
       return positionSet.has(`${x},${y}`);
     };
   },
+
+  // NEW: lookup with glyph & meta
+  entityLookup: () => {
+    const { entities, entityMeta } = get();
+    // map_id -> "x,y" -> entity id
+    const presenceByMap = new Map<number, Map<string, number>>();
+
+    for (const [idStr, entity] of Object.entries(entities)) {
+      const id = Number(idStr);
+      let byCoord = presenceByMap.get(entity.map_id);
+      if (!byCoord) {
+        byCoord = new Map<string, number>();
+        presenceByMap.set(entity.map_id, byCoord);
+      }
+      byCoord.set(`${entity.x},${entity.y}`, id);
+    }
+
+    return (
+      map_id: number,
+      x: number,
+      y: number
+    ): { position: EntityPosition; meta?: EntityMeta } | undefined => {
+      const coordMap = presenceByMap.get(map_id);
+      if (!coordMap) return undefined;
+      const id = coordMap.get(`${x},${y}`);
+      if (id === undefined) return undefined;
+
+      const position = entities[id];
+      if (!position) return undefined;
+
+      const meta = entityMeta[id];
+      return { position, meta };
+    };
+  },
+
   cullPositions: () => {
     console.log(`Cull positions`);
     const { entities, entityMeta } = get();
     const player = entities[PLAYER_ID];
     if (!player) {
-      // Nothing to cull yet
       return;
     }
 
@@ -176,17 +224,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         },
       },
     })),
+
   setSkill: (name, rank, tnl) =>
     set((state) => {
       const existingIdx = state.skills.findIndex((s) => s.name === name);
 
       if (existingIdx !== -1) {
-        // Update existing skill
         const newSkills = [...state.skills];
         newSkills[existingIdx] = { name, rank, tnl };
         return { skills: newSkills };
       } else {
-        // Add new skill
         return { skills: [...state.skills, { name, rank, tnl }] };
       }
     }),
@@ -202,7 +249,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   getServerNow: () => {
     const { serverTime } = get();
     if (!serverTime.unixSeconds || !serverTime.syncedAtMs) {
-      // Fallback if we've never synced
       return new Date();
     }
     const elapsedMs = performance.now() - serverTime.syncedAtMs;
