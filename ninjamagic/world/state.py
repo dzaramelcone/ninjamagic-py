@@ -66,3 +66,7 @@ def get_tile(
 NOWHERE = build_nowhere()
 TEST = NOWHERE
 DEMO = build_demo()
+
+
+def get_recall(_: EntityId) -> tuple[int, int, int]:
+    return 2, 8, 8
