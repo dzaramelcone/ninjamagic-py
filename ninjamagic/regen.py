@@ -14,7 +14,7 @@ def process(now: Walltime):
         for eid, comps in esper.get_components(Health, Stance):
             health, stance = comps
 
-            if stance.cur == "lying prone":
+            if stance.cur == "lying prone" and health.condition == "normal":
                 bus.pulse(
                     bus.HealthChanged(source=eid, health_change=6, stress_change=-3),
                 )
