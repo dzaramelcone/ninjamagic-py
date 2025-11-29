@@ -16,6 +16,7 @@ from ninjamagic.component import (
 )
 from ninjamagic.config import settings
 from ninjamagic.util import RNG, contest, get_melee_delay
+from ninjamagic.world.state import get_recall
 
 A, B, MODE = settings.learn_abmode
 
@@ -191,6 +192,7 @@ def schedule_respawn(entity: EntityId):
     # for example, if they lose connection at the 60.0s mark. lol.
     src_health = health(entity)
     src_loc = transform(entity)
+    to_map_id, to_y, to_x = get_recall(entity)
     bus.pulse_in(
         2.5,
         bus.Outbound(to=entity, text="You begin to rise above this memory."),
@@ -227,10 +229,10 @@ def schedule_respawn(entity: EntityId):
         bus.PositionChanged(
             source=entity,
             from_map_id=src_loc.map_id,
-            from_x=src_loc.x,
             from_y=src_loc.y,
-            to_map_id=2,
-            to_x=6,
-            to_y=6,
+            from_x=src_loc.x,
+            to_map_id=to_map_id,
+            to_y=to_y,
+            to_x=to_x,
         ),
     )

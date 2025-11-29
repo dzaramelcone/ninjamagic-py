@@ -8,6 +8,7 @@ from ninjamagic import bus, reach, story, util
 from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is, transform
 from ninjamagic.config import settings
 from ninjamagic.util import Compass, get_melee_delay
+from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
 Out = tuple[bool, str]
@@ -199,6 +200,26 @@ class Stress(Command):
         return OK
 
 
+class Recall(Command):
+    text: str = "recall"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        loc = transform(root.source)
+        to_map_id, to_y, to_x = get_recall(root.source)
+        bus.pulse(
+            bus.PositionChanged(
+                source=root.source,
+                from_map_id=loc.map_id,
+                from_y=loc.y,
+                from_x=loc.x,
+                to_map_id=to_map_id,
+                to_y=to_y,
+                to_x=to_x,
+            )
+        )
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -213,4 +234,5 @@ commands: list[Command] = [
     Block(),
     Fart(),
     Stress(),
+    Recall(),
 ]
