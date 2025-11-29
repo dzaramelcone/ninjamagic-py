@@ -20,6 +20,7 @@ from ninjamagic import (
     move,
     outbox,
     parser,
+    regen,
     visibility,
 )
 
@@ -76,6 +77,7 @@ class State:
             conn.process()
             lag.process(now=loop.time())
             parser.process()
+            regen.process(now=loop.time())
             gas.process(now=loop.time())
             act.process(now=loop.time())
             combat.process()
@@ -85,8 +87,8 @@ class State:
             echo.process()
             outbox.process()
             bus.clear()
-            esper.clear_dead_entities()
             #                       #
+            esper.clear_dead_entities()
 
             deadline += STEP
             delay = deadline - loop.time()

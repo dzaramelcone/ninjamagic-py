@@ -7,7 +7,7 @@ EST = timezone(timedelta(hours=-5), name="EST")
 
 
 # CONFIGURABLE WORLD CONSTANTS
-SECONDS_PER_NIGHT: float = 36.0 * 60.0  # 18m or 36m in seconds; must divide 86400
+SECONDS_PER_NIGHT: float = 18.0 * 60.0  # 18m or 36m in seconds; must divide 86400
 SECONDS_PER_NIGHTSTORM: float = 10.0
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
 
