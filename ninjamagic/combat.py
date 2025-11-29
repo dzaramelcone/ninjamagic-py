@@ -49,7 +49,7 @@ def process():
             )
             bus.pulse(
                 bus.HealthChanged(
-                    source=sig.source, stress_change=RNG.choice([1.0, 2.0, 3.0])
+                    source=sig.source, stress_change=RNG.choice([1.0, 2.0])
                 )
             )
             continue
@@ -68,7 +68,8 @@ def process():
             bus.HealthChanged(
                 source=sig.target,
                 health_change=-damage,
-                stress_change=RNG.choice([4.0, 5.0, 6.0]),
+                stress_change=RNG.choice([3.0, 4.0]),
+                aggravated_stress_change=RNG.choice([0.25, 0.5, 0.75]),
             )
         )
 
@@ -102,9 +103,6 @@ def process():
         src_health.cur += sig.health_change
         src_health.stress += sig.stress_change
         src_health.aggravated_stress += sig.aggravated_stress_change
-
-        if sig.stress_change > 0:
-            src_health.aggravated_stress += sig.stress_change * 0.25
 
         src_health.cur = min(100, max(-10, src_health.cur))
         src_health.aggravated_stress = min(200, max(0, src_health.aggravated_stress))
