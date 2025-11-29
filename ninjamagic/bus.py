@@ -5,6 +5,7 @@ from dataclasses import dataclass as signal, field
 from datetime import datetime
 from typing import TypeVar, cast
 
+import esper
 from fastapi import WebSocket
 
 from ninjamagic.component import (
@@ -320,8 +321,24 @@ def pulse(*sigs: Signal) -> None:
 
 
 def pulse_in(delay: float, *sigs: Signal) -> None:
+    """This is convenient for delayed signals but generally sucks for a few reasons,
+    one of which is that signals need validation at pulse time since many things may
+    have mutated in the interim.
+    """
+
+    def delayed_pulse(*sigs: Signal):
+        pulse(
+            *[
+                sig
+                for sig in sigs
+                if esper.entity_exists(
+                    getattr(sig, "source", 0) or getattr(sig, "to", 0)
+                )
+            ]
+        )
+
     "Route signals into their queues after `delay` seconds."
-    asyncio.get_running_loop().call_later(delay, pulse, *sigs)
+    asyncio.get_running_loop().call_later(delay, delayed_pulse, *sigs)
 
 
 def clear() -> None:
