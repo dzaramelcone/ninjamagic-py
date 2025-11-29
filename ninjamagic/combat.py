@@ -5,6 +5,8 @@ import esper
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
     Blocking,
+    Connection,
+    EntityId,
     Lag,
     health,
     pain_mult,
@@ -47,7 +49,7 @@ def process():
             )
             bus.pulse(
                 bus.HealthChanged(
-                    source=sig.source, stress_change=RNG.choice([1.0, 2.0, 3.0])
+                    source=sig.source, stress_change=RNG.choice([1.0, 2.0])
                 )
             )
             continue
@@ -66,7 +68,8 @@ def process():
             bus.HealthChanged(
                 source=sig.target,
                 health_change=-damage,
-                stress_change=RNG.choice([4.0, 5.0, 6.0]),
+                stress_change=RNG.choice([3.0, 4.0]),
+                aggravated_stress_change=RNG.choice([0.25, 0.5, 0.75]),
             )
         )
 
@@ -95,15 +98,11 @@ def process():
             ),
         )
 
-    # mutate
     for sig in bus.iter(bus.HealthChanged):
         src_health = health(sig.source)
         src_health.cur += sig.health_change
         src_health.stress += sig.stress_change
         src_health.aggravated_stress += sig.aggravated_stress_change
-
-        if sig.stress_change > 0:
-            src_health.aggravated_stress += sig.stress_change * 0.25
 
         src_health.cur = min(100, max(-10, src_health.cur))
         src_health.aggravated_stress = min(200, max(0, src_health.aggravated_stress))
@@ -146,6 +145,9 @@ def process():
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
         bus.pulse(bus.ConditionChanged(source=sig.source, condition="dead"))
+        if not esper.has_component(sig.source, Connection):
+            continue
+        schedule_respawn(sig.source)
 
     for sig in bus.iter(bus.ConditionChanged):
         health(sig.source).condition = sig.condition
@@ -182,3 +184,53 @@ def process():
                     story.echo("{0} {0:stands} up.", sig.source)
                 case "sitting":
                     story.echo("{0} {0:sits} down.", sig.source)
+
+
+def schedule_respawn(entity: EntityId):
+    # HACK for something this stateful it could be much more robust.
+    # for example, if they lose connection at the 60.0s mark. lol.
+    src_health = health(entity)
+    src_loc = transform(entity)
+    bus.pulse_in(
+        2.5,
+        bus.Outbound(to=entity, text="You begin to rise above this memory."),
+    )
+    bus.pulse_in(
+        10.0,
+        bus.Outbound(
+            to=entity, text="The horizon of a vast, dark world yawns below you."
+        ),
+    )
+    bus.pulse_in(
+        30.0,
+        bus.Outbound(to=entity, text="All light fades."),
+    )
+    bus.pulse_in(
+        45.0,
+        bus.Outbound(to=entity, text="You are drawn thin until little remains."),
+    )
+    bus.pulse_in(
+        55.0,
+        bus.Outbound(to=entity, text="A sudden cold grips you."),
+    )
+    bus.pulse_in(
+        60.0,
+        bus.ConditionChanged(source=entity, condition="normal"),
+        bus.StanceChanged(source=entity, stance="lying prone"),
+        bus.Outbound(to=entity, text="You are turned back."),
+        bus.HealthChanged(
+            source=entity,
+            health_change=5 - src_health.cur,
+            stress_change=100 - src_health.stress,
+            aggravated_stress_change=0 - src_health.aggravated_stress,
+        ),
+        bus.PositionChanged(
+            source=entity,
+            from_map_id=src_loc.map_id,
+            from_x=src_loc.x,
+            from_y=src_loc.y,
+            to_map_id=2,
+            to_x=6,
+            to_y=6,
+        ),
+    )

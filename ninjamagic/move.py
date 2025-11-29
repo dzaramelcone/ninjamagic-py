@@ -21,9 +21,6 @@ def process():
                 bus.pulse(bus.Outbound(to=sig.source, text="You can't go there."))
             continue
 
-        # mutate
-        loc.y, loc.x = to_y, to_x
-
         bus.pulse(
             bus.PositionChanged(
                 source=sig.source,
@@ -35,3 +32,8 @@ def process():
                 to_y=to_y,
             )
         )
+
+    # mutate
+    for sig in bus.iter(bus.PositionChanged):
+        loc = transform(sig.source)
+        loc.map_id, loc.y, loc.x = sig.to_map_id, sig.to_y, sig.to_x

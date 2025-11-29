@@ -5,6 +5,7 @@ from dataclasses import dataclass as signal, field
 from datetime import datetime
 from typing import TypeVar, cast
 
+import esper
 from fastapi import WebSocket
 
 from ninjamagic.component import (
@@ -320,8 +321,34 @@ def pulse(*sigs: Signal) -> None:
 
 
 def pulse_in(delay: float, *sigs: Signal) -> None:
+    """This is convenient for delayed signals but generally sucks for a few reasons,
+    one of which is that signals need validation at pulse time since many things may
+    have mutated in the interim.
+
+    I don't like closures for validations either here because 1) they're very implicit
+    and 2) they would be executed out of band, so the signal processors can't be read
+    from top to bottom to understand the control flow of state mutation.
+
+    This is a question with any delayed processing, such as Act. A standardized means
+    of error checking / validating would be good. Python's just not great at that kind
+    of thing though.
+
+    Overall the best approach is probably just to cut this in favor of more signals.
+    """
+
+    def delayed_pulse(*sigs: Signal):
+        pulse(
+            *[
+                sig
+                for sig in sigs
+                if esper.entity_exists(
+                    getattr(sig, "source", 0) or getattr(sig, "to", 0)
+                )
+            ]
+        )
+
     "Route signals into their queues after `delay` seconds."
-    asyncio.get_running_loop().call_later(delay, pulse, *sigs)
+    asyncio.get_running_loop().call_later(delay, delayed_pulse, *sigs)
 
 
 def clear() -> None:
