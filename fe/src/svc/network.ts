@@ -72,6 +72,7 @@ function describeEntityName(id: number): string {
 
   return `a ${noun}`;
 }
+
 function formatNameList(names: string[]): string {
   if (names.length === 0) return "";
   if (names.length === 1) return names[0];

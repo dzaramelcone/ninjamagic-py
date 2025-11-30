@@ -162,7 +162,6 @@ export class TuiNearby extends LitElement {
     // prettier-ignore
     return html`<div class="entity-block">${lines}</div>`;
   }
-
   render() {
     const player = this._entities.find((e) => e.id === this.playerId);
     if (!player) return html``;
@@ -186,12 +185,27 @@ export class TuiNearby extends LitElement {
       const locKey = `${ent.x},${ent.y}`;
 
       let tileSample: TileSample | undefined;
+
       if (lookupFn) {
         try {
-          tileSample = getTile(ent.map_id, ent.x, ent.y, lookupFn);
+          // Ask who "wins" this tile, per the map renderer.
+          const winner = lookupFn(ent.map_id, ent.x, ent.y);
+
+          if (winner && winner.position.id === ent.id) {
+            // This entity is the winner → use the same glyph/color as the map
+            tileSample = getTile(ent.map_id, ent.x, ent.y, lookupFn);
+          } else {
+            // Not the winner → leave tileSample undefined so we fall back
+            // to the entity's own glyph/color.
+            tileSample = undefined;
+          }
         } catch (err) {
-          // Don't kill HUD if getTile misbehaves
-          console.error("tui-nearby: getTile failed for entity", ent.id, err);
+          // Don't kill HUD if anything misbehaves
+          console.error(
+            "tui-nearby: lookup/getTile failed for entity",
+            ent.id,
+            err
+          );
         }
       }
 
