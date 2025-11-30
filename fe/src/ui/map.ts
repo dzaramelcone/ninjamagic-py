@@ -88,33 +88,38 @@ function composeFrame(
       }
 
       let char = " ";
-      let color = { h: 0, s: 0, v: 1 };
+      // base tile color (fallback if no entity color)
+      let tileColor = { h: 0, s: 0, v: 1 };
 
       try {
         const chip = world.getChipId(player.map_id, worldX, worldY);
         char = chip.char;
-        color = chip.color;
+        tileColor = chip.color;
       } catch {
         // If something went missing, keep it blank.
       }
 
-      // NEW: look up entity at this tile
       const entity = entityLookup(player.map_id, worldX, worldY);
 
       let glyph = char;
-      if (entity) {
-        const { meta } = entity;
+      // By default, glyph uses tile color
+      let glyphColor = tileColor;
 
-        if (meta?.glyph) {
-          glyph = meta.glyph;
-        } else {
-          glyph = char;
-        }
+      // Entity override
+      if (entity?.meta?.glyph) {
+        glyph = entity.meta.glyph;
+
+        // h/s/v are optional in the type but guaranteed when glyph exists
+        const {
+          h = tileColor.h,
+          s = tileColor.s,
+          v = tileColor.v,
+        } = entity.meta;
+        glyphColor = { h, s, v };
       }
-
       if (isVisible) {
         // 2) Currently visible: full brightness + gas
-        const [fr, fg, fb] = hsv2rgb(color.h, color.s, color.v);
+        const [fr, fg, fb] = hsv2rgb(glyphColor.h, glyphColor.s, glyphColor.v);
         const gasV = world.getGasAt(player.map_id, worldX, worldY);
 
         if (gasV > 0) {
@@ -127,9 +132,9 @@ function composeFrame(
         }
       } else {
         // 3) Seen before but not currently visible: dimmer, no gas
-        const dimS = color.s * 0.85;
-        const dimV = color.v * 0.44;
-        const [fr, fg, fb] = hsv2rgb(color.h, dimS, dimV);
+        const dimS = glyphColor.s * 0.85;
+        const dimV = glyphColor.v * 0.44;
+        const [fr, fg, fb] = hsv2rgb(glyphColor.h, dimS, dimV);
 
         const [br, bg, bb] = BASE_BG;
         out += `\x1b[48;2;${br};${bg};${bb}m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;

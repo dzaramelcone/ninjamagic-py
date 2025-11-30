@@ -141,15 +141,24 @@ class Glyph(google.protobuf.message.Message):
 
     ID_FIELD_NUMBER: builtins.int
     GLYPH_FIELD_NUMBER: builtins.int
+    H_FIELD_NUMBER: builtins.int
+    S_FIELD_NUMBER: builtins.int
+    V_FIELD_NUMBER: builtins.int
     id: builtins.int
     glyph: builtins.str
+    h: builtins.float
+    s: builtins.float
+    v: builtins.float
     def __init__(
         self,
         *,
         id: builtins.int = ...,
         glyph: builtins.str = ...,
+        h: builtins.float = ...,
+        s: builtins.float = ...,
+        v: builtins.float = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["glyph", b"glyph", "id", b"id"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["glyph", b"glyph", "h", b"h", "id", b"id", "s", b"s", "v", b"v"]) -> None: ...
 
 global___Glyph = Glyph
 

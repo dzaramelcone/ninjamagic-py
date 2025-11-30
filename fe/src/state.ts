@@ -12,6 +12,9 @@ export type EntityPosition = {
 
 export type EntityMeta = {
   glyph?: string;
+  h?: number;
+  s?: number;
+  v?: number;
   noun?: string;
   stance?: string;
   condition?: string;
@@ -51,7 +54,13 @@ type GameStore = {
   ) => { position: EntityPosition; meta?: EntityMeta } | undefined;
 
   cullPositions: () => void;
-  setGlyph: (id: number, glyph: string) => void;
+  setGlyph: (
+    id: number,
+    glyph: string,
+    h: number,
+    s: number,
+    v: number
+  ) => void;
   setNoun: (id: number, text: string) => void;
   setHealth: (id: number, pct: number, stressPct: number) => void;
   setStance: (id: number, text: string) => void;
@@ -169,13 +178,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     });
   },
 
-  setGlyph: (id, glyph) =>
+  setGlyph: (id, glyph, h, s, v) =>
     set((state) => ({
       entityMeta: {
         ...state.entityMeta,
         [id]: {
           ...(state.entityMeta[id] ?? {}),
           glyph,
+          h,
+          s,
+          v,
         },
       },
     })),

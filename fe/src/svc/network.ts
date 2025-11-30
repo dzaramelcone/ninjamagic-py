@@ -193,7 +193,7 @@ const handlerMap = {
   },
 
   glyph: (body: Glyph) => {
-    setGlyph(body.id, body.glyph);
+    setGlyph(body.id, body.glyph, body.h, body.s, body.v);
   },
   noun: (body: Noun) => {
     setNoun(body.id, body.text);

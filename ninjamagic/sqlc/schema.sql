@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS characters (
 
     -- Glyph Component
     glyph       VARCHAR(1)  NOT NULL DEFAULT '@',
-    
+    glyph_h     REAL        NOT NULL DEFAULT '0.5833',
+    glyph_s     REAL        NOT NULL DEFAULT '0.7',
+    glyph_v     REAL        NOT NULL DEFAULT '0.828',
+
     -- Transform Component
     map_id      INTEGER     NOT NULL DEFAULT 2,
     x           INTEGER     NOT NULL DEFAULT 8,

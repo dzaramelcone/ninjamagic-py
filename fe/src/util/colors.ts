@@ -1,3 +1,4 @@
+// src/util/colors.ts
 export type RGB = [r: number, g: number, b: number];
 export type HSV = [h: number, s: number, v: number];
 export type PackedRGB = number;

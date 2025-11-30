@@ -42,6 +42,9 @@ message Gas {
 message Glyph {
   uint32 id = 1;
   string glyph = 2;
+  float h = 3;
+  float s = 4;
+  float v = 5;
 }
 
 message Noun {
