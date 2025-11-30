@@ -26,6 +26,9 @@ DELETE FROM characters WHERE id = $1;
 UPDATE characters
 SET
   glyph = coalesce(sqlc.narg('glyph'), glyph),
+  glyph_h = coalesce(sqlc.narg('glyph_h'), glyph_h),
+  glyph_v = coalesce(sqlc.narg('glyph_v'), glyph_v),
+  glyph_s = coalesce(sqlc.narg('glyph_s'), glyph_s),
   pronoun = coalesce(sqlc.narg('pronoun'), pronoun),
   map_id = coalesce(sqlc.narg('map_id'), map_id),
   x = coalesce(sqlc.narg('x'), x),

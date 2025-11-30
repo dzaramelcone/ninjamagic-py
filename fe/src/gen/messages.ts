@@ -131,6 +131,18 @@ export interface Glyph {
      * @generated from protobuf field: string glyph = 2
      */
     glyph: string;
+    /**
+     * @generated from protobuf field: float h = 3
+     */
+    h: number;
+    /**
+     * @generated from protobuf field: float s = 4
+     */
+    s: number;
+    /**
+     * @generated from protobuf field: float v = 5
+     */
+    v: number;
 }
 /**
  * @generated from protobuf message ninjamagic.Noun
@@ -678,13 +690,19 @@ class Glyph$Type extends MessageType<Glyph> {
     constructor() {
         super("ninjamagic.Glyph", [
             { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 2, name: "glyph", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "glyph", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "h", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ },
+            { no: 4, name: "s", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ },
+            { no: 5, name: "v", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
         ]);
     }
     create(value?: PartialMessage<Glyph>): Glyph {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.id = 0;
         message.glyph = "";
+        message.h = 0;
+        message.s = 0;
+        message.v = 0;
         if (value !== undefined)
             reflectionMergePartial<Glyph>(this, message, value);
         return message;
@@ -699,6 +717,15 @@ class Glyph$Type extends MessageType<Glyph> {
                     break;
                 case /* string glyph */ 2:
                     message.glyph = reader.string();
+                    break;
+                case /* float h */ 3:
+                    message.h = reader.float();
+                    break;
+                case /* float s */ 4:
+                    message.s = reader.float();
+                    break;
+                case /* float v */ 5:
+                    message.v = reader.float();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -718,6 +745,15 @@ class Glyph$Type extends MessageType<Glyph> {
         /* string glyph = 2; */
         if (message.glyph !== "")
             writer.tag(2, WireType.LengthDelimited).string(message.glyph);
+        /* float h = 3; */
+        if (message.h !== 0)
+            writer.tag(3, WireType.Bit32).float(message.h);
+        /* float s = 4; */
+        if (message.s !== 0)
+            writer.tag(4, WireType.Bit32).float(message.s);
+        /* float v = 5; */
+        if (message.v !== 0)
+            writer.tag(5, WireType.Bit32).float(message.v);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

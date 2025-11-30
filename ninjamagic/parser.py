@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 def process():
     for sig in bus.iter(bus.Parse):
-        inb = sig.text
+        inb = sig.text.strip()
         if not inb:
             continue
 

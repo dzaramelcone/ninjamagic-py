@@ -247,6 +247,9 @@ class OutboundGlyph(Signal):
     to: EntityId
     source: EntityId
     glyph: str
+    h: float
+    v: float
+    s: float
 
 
 @signal(frozen=True, slots=True, kw_only=True)

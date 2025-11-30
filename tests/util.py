@@ -11,11 +11,12 @@ from ninjamagic.component import (
 )
 
 
+# TODO Just use the sqlc generated fake models. UpdateCharacterParams or whatever.
 @dataclass
 class FakeUserSetup:
     subj: str = "12023"
     email: str = "test@example.com"
-    glyph: Glyph = "@"
+    glyph: Glyph = ("@", 0.5833, 0.7, 0.828)
     health: Health = Field(default_factory=Health)
     stance: Stance = Field(default_factory=Stance)
     stats: Stats = Field(default_factory=Stats)

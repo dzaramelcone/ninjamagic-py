@@ -102,7 +102,10 @@ export class NightClock {
 
   get elapsedPct(): number {
     const sec = this.seconds;
-    return sec / SECONDS_PER_NIGHT;
+    return Math.max(
+      0,
+      Math.min(1, sec / (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM))
+    );
   }
 
   get seconds(): number {
@@ -114,7 +117,10 @@ export class NightClock {
     const hoursElapsed = Math.floor(this.seconds / SECONDS_PER_NIGHT_HOUR);
     const next = (hoursElapsed + 1) * SECONDS_PER_NIGHT_HOUR;
     let eta = next - this.seconds;
-    eta = Math.max(0, Math.min(eta, SECONDS_PER_NIGHT - this.seconds));
+    eta = Math.max(
+      0,
+      Math.min(eta, SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM - this.seconds)
+    );
     return eta;
   }
 
