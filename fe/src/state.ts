@@ -107,8 +107,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       return positionSet.has(`${x},${y}`);
     };
   },
-
-  // NEW: lookup with glyph & meta
   entityLookup: () => {
     const { entities, entityMeta } = get();
     // map_id -> "x,y" -> entity id
@@ -121,7 +119,23 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         byCoord = new Map<string, number>();
         presenceByMap.set(entity.map_id, byCoord);
       }
-      byCoord.set(`${entity.x},${entity.y}`, id);
+
+      const key = `${entity.x},${entity.y}`;
+      const existing = byCoord.get(key);
+
+      if (existing === PLAYER_ID) {
+        // Player already there → keep player
+        continue;
+      }
+
+      if (id === PLAYER_ID) {
+        // Current entity is player → override
+        byCoord.set(key, id);
+        continue;
+      }
+
+      // Otherwise: last entity wins
+      byCoord.set(key, id);
     }
 
     return (
@@ -131,6 +145,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     ): { position: EntityPosition; meta?: EntityMeta } | undefined => {
       const coordMap = presenceByMap.get(map_id);
       if (!coordMap) return undefined;
+
       const id = coordMap.get(`${x},${y}`);
       if (id === undefined) return undefined;
 
@@ -141,7 +156,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       return { position, meta };
     };
   },
-
   cullPositions: () => {
     console.log(`Cull positions`);
     const { entities, entityMeta } = get();
