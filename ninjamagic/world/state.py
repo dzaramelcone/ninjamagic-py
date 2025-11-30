@@ -1,7 +1,7 @@
 import esper
 
-from ninjamagic.component import Chips, ChipSet, EntityId
-from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W
+from ninjamagic.component import Chips, ChipSet, EntityId, Glyph, Noun, Transform
+from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W, Pronouns
 from ninjamagic.world import simple
 
 
@@ -20,7 +20,7 @@ def build_nowhere() -> EntityId:
         # tile id, map id, glyph, h, s, v, a
         (0, out, ord(" "), 1.0, 1.0, 1.0, 1.0),
         (1, out, ord("."), 0.52777, 0.5, 0.9, 1.0),
-        (2, out, ord("#"), 0.73888, 0.34, 1.0, 1.0),
+        (2, out, ord("Ϙ"), 0.73888, 0.34, 1.0, 1.0),
     ]
     esper.add_component(out, chipset, ChipSet)
     return out
@@ -37,9 +37,17 @@ def build_demo() -> EntityId:
         (2, out, ord("#"), 0.73888, 0.34, 1.0, 1.0),
     ]
 
+    build_hub(map_id=out)
+
     esper.add_component(out, chips, Chips)
     esper.add_component(out, chipset, ChipSet)
     return out
+
+
+def build_hub(map_id: EntityId):
+    bonfire = esper.create_entity(Transform(map_id=map_id, y=9, x=4))
+    esper.add_component(bonfire, ("⚶", 0.5833, 0.7, 0.828), Glyph)
+    esper.add_component(bonfire, Noun(value="bonfire", pronoun=Pronouns.IT))
 
 
 def can_enter(*, map_id: int, y: int, x: int) -> bool:

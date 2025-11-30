@@ -1,8 +1,10 @@
+// src/ui/tui-nearby.ts
 import { LitElement, html, css } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
 import { sharedStyles } from "./tui-styles";
-import { useGameStore, type EntityPosition } from "../state";
+import { useGameStore, type EntityPosition, type EntityMeta } from "../state";
 import { cardinalFromDelta } from "../util/util";
+import { getTile, type EntityLookupFn, type TileSample } from "./map";
 import "./tui-clock";
 import "./tui-entity-title";
 import "./tui-health-bar";
@@ -11,20 +13,9 @@ import "./tui-label-line";
 const PLAYER_ID = 0;
 const BAR_WIDTH = 22;
 
-type NearbyHsva = {
-  h: number;
-  s: number;
-  v: number;
-  a: number;
-};
-
-type EntityMetaFromStore = {
-  glyph?: string;
-  noun?: string;
-  stance?: string;
+type EntityMetaFromStore = EntityMeta & {
   healthPct?: number;
   stressPct?: number;
-  hsva?: NearbyHsva;
 };
 
 type NearbyEntity = EntityPosition & EntityMetaFromStore;
@@ -89,12 +80,7 @@ export class TuiNearby extends LitElement {
       const meta = (entityMeta[pos.id] ?? {}) as EntityMetaFromStore;
       merged.push({
         ...pos,
-        glyph: meta.glyph,
-        noun: meta.noun,
-        stance: meta.stance,
-        healthPct: meta.healthPct,
-        stressPct: meta.stressPct,
-        hsva: meta.hsva,
+        ...meta,
       });
     }
 
@@ -122,23 +108,42 @@ export class TuiNearby extends LitElement {
     return [...playerList, ...others];
   }
 
-  private _renderEntityBlock(ent: NearbyEntity, player: NearbyEntity) {
+  private _renderEntityBlock(
+    ent: NearbyEntity,
+    player: NearbyEntity,
+    tileSample?: TileSample
+  ) {
     const isPlayer = ent.id === this.playerId;
-    const dir = isPlayer ? "(here)" : directionLabel(player, ent);
-    const hsva = ent.hsva ?? { h: 0, s: 0, v: 1, a: 1 };
+    const dir = directionLabel(player, ent);
+
+    // Glyph: prefer what the map would draw at this tile
+    const glyph = tileSample?.glyph ?? ent.glyph ?? "@";
+
+    // Color:
+    // - Prefer tileSample.color from getTile (same as map)
+    // - Fall back to per-entity h/s/v from store
+    const color = tileSample?.color;
+    const hNorm = color?.h ?? (typeof ent.h === "number" ? ent.h : 0); // normalized [0,1]
+    const s = color?.s ?? (typeof ent.s === "number" ? ent.s : 0);
+    const v = color?.v ?? (typeof ent.v === "number" ? ent.v : 1);
+
+    // Convert normalized hue in [0,1] to degrees for hsvaToRgba
+    const hDeg = hNorm * 360;
+    const a = 1;
 
     const health = ent.healthPct;
     const stress = ent.stressPct;
+
     const lines = [
       html`<tui-entity-title
-        glyph=${ent.glyph ?? "@"}
+        glyph=${glyph}
         name=${ent.noun ?? "unknown"}
         direction=${dir}
         .isPlayer=${isPlayer}
-        .h=${hsva.h}
-        .s=${hsva.s}
-        .v=${hsva.v}
-        .a=${hsva.a}
+        .h=${hDeg}
+        .s=${s}
+        .v=${v}
+        .a=${a}
       ></tui-entity-title>`,
     ];
 
@@ -165,15 +170,35 @@ export class TuiNearby extends LitElement {
     const ordered = this._orderedOnSameMap();
     if (ordered.length === 0) return html`<tui-clock></tui-clock>`;
 
+    // Get tile lookup (same as map.ts uses)
+    const state = useGameStore.getState();
+    const lookupFactory = (state as any).entityLookup as
+      | (() => EntityLookupFn)
+      | undefined;
+    const lookupFn: EntityLookupFn | undefined = lookupFactory
+      ? lookupFactory()
+      : undefined;
+
     const blocks: unknown[] = [];
     let lastLoc: string | null = null;
 
     for (const ent of ordered) {
       const locKey = `${ent.x},${ent.y}`;
+
+      let tileSample: TileSample | undefined;
+      if (lookupFn) {
+        try {
+          tileSample = getTile(ent.map_id, ent.x, ent.y, lookupFn);
+        } catch (err) {
+          // Don't kill HUD if getTile misbehaves
+          console.error("tui-nearby: getTile failed for entity", ent.id, err);
+        }
+      }
+
       if (lastLoc !== null && locKey !== lastLoc) {
         blocks.push(html`<div class="entity-gap"></div>`);
       }
-      blocks.push(this._renderEntityBlock(ent, player));
+      blocks.push(this._renderEntityBlock(ent, player, tileSample));
       lastLoc = locKey;
     }
 

@@ -1,31 +1,10 @@
+// src/ui/tui-entity-title.ts
 import { LitElement, html, css } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { sharedStyles } from "./tui-styles";
+import { hsvaToRgba as hsva2Rgba } from "../util/colors";
 
 const BAR_WIDTH = 22;
-
-function hsvaToRgba(h: number, s: number, v: number, a: number): string {
-  const C = v * s;
-  const Hp = (h % 360) / 60;
-  const X = C * (1 - Math.abs((Hp % 2) - 1));
-  let r = 0,
-    g = 0,
-    b = 0;
-
-  if (0 <= Hp && Hp < 1) [r, g, b] = [C, X, 0];
-  else if (1 <= Hp && Hp < 2) [r, g, b] = [X, C, 0];
-  else if (2 <= Hp && Hp < 3) [r, g, b] = [0, C, X];
-  else if (3 <= Hp && Hp < 4) [r, g, b] = [0, X, C];
-  else if (4 <= Hp && Hp < 5) [r, g, b] = [X, 0, C];
-  else if (5 <= Hp && Hp < 6) [r, g, b] = [C, 0, X];
-
-  const m = v - C;
-  const R = Math.round((r + m) * 255);
-  const G = Math.round((g + m) * 255);
-  const B = Math.round((b + m) * 255);
-
-  return `rgba(${R}, ${G}, ${B}, ${a})`;
-}
 
 function clampLabel(parts: { glyph: string; name: string; dir: string }): {
   left: string;
@@ -78,6 +57,18 @@ export class TuiEntityTitle extends LitElement {
         white-space: pre;
       }
 
+      .glyph {
+        /* color via inline HSVA */
+      }
+
+      .colon {
+        color: var(--c-low, #888);
+      }
+
+      .name {
+        color: var(--c-mid, #ccc);
+      }
+
       .dir {
         color: var(--c-low, #888);
       }
@@ -85,19 +76,40 @@ export class TuiEntityTitle extends LitElement {
   ];
 
   private get _color(): string {
-    return hsvaToRgba(this.h, this.s, this.v, this.a);
+    return hsva2Rgba(this.h, this.s, this.v, this.a);
   }
 
   render() {
-    const labelName = this.isPlayer ? "you" : this.name || "unknown";
-    const dirText = this.isPlayer ? "(here)" : this.direction;
+    const labelName = this.name || "unknown";
+    const dirText = this.direction || "";
 
+    // Use original alignment logic
     const { left, dir } = clampLabel({
       glyph: this.glyph || "@",
       name: labelName,
-      dir: dirText || "",
+      dir: dirText,
     });
+
+    // Split `left` into glyph / colon / name segments
+    let glyphText = "";
+    let colonText = "";
+    let nameText = "";
+
+    const colonIdx = left.indexOf(":");
+
+    if (colonIdx === -1) {
+      // No colon in the clamped text (edge case: long dir or extreme truncation)
+      if (left.length > 0) {
+        glyphText = left.charAt(0);
+        nameText = left.slice(1);
+      }
+    } else {
+      glyphText = left.slice(0, colonIdx); // usually just the glyph
+      colonText = left.charAt(colonIdx); // the ':' itself
+      nameText = left.slice(colonIdx + 1); // everything after ':'
+    }
+
     // prettier-ignore
-    return html`<div class="line"><span style=${`color: ${this._color};`}>${left}</span><span class="dir">${dir}</span></div>`;
+    return html`<div class="line"><span class="glyph" style=${`color: ${this._color};`}>${glyphText}</span><span class="colon">${colonText}</span><span class="name">${nameText}</span><span class="dir">${dir}</span></div>`;
   }
 }

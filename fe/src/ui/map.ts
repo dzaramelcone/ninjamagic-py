@@ -10,6 +10,52 @@ import "@xterm/xterm/css/xterm.css";
 export const COLS = 13;
 export const ROWS = 13;
 
+export type EntityLookupFn = (
+  map_id: number,
+  x: number,
+  y: number
+) => { position: EntityPosition; meta?: EntityMeta } | undefined;
+
+export type TileSample = {
+  glyph: string;
+  color: { h: number; s: number; v: number };
+};
+
+/**
+ * Returns the glyph + HSV color for a given world tile,
+ * combining base chip color and entity overrides.
+ */
+export function getTile(
+  map_id: number,
+  worldX: number,
+  worldY: number,
+  entityLookup: EntityLookupFn
+): TileSample {
+  let char = " ";
+  let tileColor = { h: 0, s: 0, v: 1 };
+
+  try {
+    const chip = world.getChipId(map_id, worldX, worldY);
+    char = chip.char;
+    tileColor = chip.color;
+  } catch {
+    // keep defaults
+  }
+
+  const entity = entityLookup(map_id, worldX, worldY);
+
+  let glyph = char;
+  let glyphColor = tileColor;
+
+  if (entity?.meta?.glyph) {
+    glyph = entity.meta.glyph;
+    const { h = tileColor.h, s = tileColor.s, v = tileColor.v } = entity.meta;
+    glyphColor = { h, s, v };
+  }
+
+  return { glyph, color: glyphColor };
+}
+
 export function initMap(element: HTMLElement) {
   const term = new Terminal({
     rows: ROWS,
@@ -37,12 +83,6 @@ export function initMap(element: HTMLElement) {
 
   tick();
 }
-
-type EntityLookupFn = (
-  map_id: number,
-  x: number,
-  y: number
-) => { position: EntityPosition; meta?: EntityMeta } | undefined;
 
 function composeFrame(
   term: Terminal,
@@ -87,36 +127,13 @@ function composeFrame(
         continue;
       }
 
-      let char = " ";
-      // base tile color (fallback if no entity color)
-      let tileColor = { h: 0, s: 0, v: 1 };
+      const { glyph, color: glyphColor } = getTile(
+        player.map_id,
+        worldX,
+        worldY,
+        entityLookup
+      );
 
-      try {
-        const chip = world.getChipId(player.map_id, worldX, worldY);
-        char = chip.char;
-        tileColor = chip.color;
-      } catch {
-        // If something went missing, keep it blank.
-      }
-
-      const entity = entityLookup(player.map_id, worldX, worldY);
-
-      let glyph = char;
-      // By default, glyph uses tile color
-      let glyphColor = tileColor;
-
-      // Entity override
-      if (entity?.meta?.glyph) {
-        glyph = entity.meta.glyph;
-
-        // h/s/v are optional in the type but guaranteed when glyph exists
-        const {
-          h = tileColor.h,
-          s = tileColor.s,
-          v = tileColor.v,
-        } = entity.meta;
-        glyphColor = { h, s, v };
-      }
       if (isVisible) {
         // 2) Currently visible: full brightness + gas
         const [fr, fg, fb] = hsv2rgb(glyphColor.h, glyphColor.s, glyphColor.v);

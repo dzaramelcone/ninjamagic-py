@@ -37,6 +37,29 @@ export function int2hex(rgbInt: PackedRGB): HexColor {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
+export function hsvaToRgba(h: number, s: number, v: number, a: number): string {
+  const C = v * s;
+  const Hp = (h % 360) / 60;
+  const X = C * (1 - Math.abs((Hp % 2) - 1));
+  let r = 0,
+    g = 0,
+    b = 0;
+
+  if (0 <= Hp && Hp < 1) [r, g, b] = [C, X, 0];
+  else if (1 <= Hp && Hp < 2) [r, g, b] = [X, C, 0];
+  else if (2 <= Hp && Hp < 3) [r, g, b] = [0, C, X];
+  else if (3 <= Hp && Hp < 4) [r, g, b] = [0, X, C];
+  else if (4 <= Hp && Hp < 5) [r, g, b] = [X, 0, C];
+  else if (5 <= Hp && Hp < 6) [r, g, b] = [C, 0, X];
+
+  const m = v - C;
+  const R = Math.round((r + m) * 255);
+  const G = Math.round((g + m) * 255);
+  const B = Math.round((b + m) * 255);
+
+  return `rgba(${R}, ${G}, ${B}, ${a})`;
+}
+
 export function rgb2hsv(r: number, g: number, b: number): HSV {
   r /= 255;
   g /= 255;
