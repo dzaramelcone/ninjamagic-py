@@ -113,6 +113,9 @@ def try_insert(
             glyph = envelope.add().glyph
             glyph.id = 0 if to == sig.source else sig.source
             glyph.glyph = sig.glyph
+            glyph.h = sig.h
+            glyph.s = sig.s
+            glyph.v = sig.v
             return True
         case bus.OutboundMove():
             pos = envelope.add().pos

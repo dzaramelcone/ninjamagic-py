@@ -7,8 +7,9 @@ EST = timezone(timedelta(hours=-5), name="EST")
 
 
 # CONFIGURABLE WORLD CONSTANTS
-SECONDS_PER_NIGHT: float = 18.0 * 60.0  # 18m or 36m in seconds; must divide 86400
 SECONDS_PER_NIGHTSTORM: float = 10.0
+# 18m or 36m in seconds; must divide 86400
+SECONDS_PER_NIGHT: float = 18.0 * 60.0
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
 
 BASE_NIGHTYEAR: int = 200
@@ -151,7 +152,7 @@ class NightClock:
     @property
     def elapsed_pct(self) -> float:
         """Percentage elapsed through the current night."""
-        return self.seconds / SECONDS_PER_NIGHT
+        return self.seconds / (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM)
 
     @property
     def nightyear_elapsed_pct(self) -> float:
@@ -169,7 +170,9 @@ class NightClock:
         next = (hours_elapsed + 1) * SECONDS_PER_NIGHT_HOUR
         eta = next - self.seconds
         # clamp against floating noise and cycle end
-        eta = max(0.0, min(eta, SECONDS_PER_NIGHT - self.seconds))
+        eta = max(
+            0.0, min(eta, (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM) - self.seconds)
+        )
         return eta
 
     @property

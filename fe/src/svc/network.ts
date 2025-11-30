@@ -38,7 +38,39 @@ const {
 function describeEntityName(id: number): string {
   const { entityMeta } = useGameStore.getState() as any;
   const noun: string | undefined = entityMeta?.[id]?.noun;
-  return noun ?? "someone";
+
+  if (!noun || noun.length === 0) return "someone";
+
+  // Proper name → leave as-is
+  if (noun[0] === noun[0].toUpperCase()) return noun;
+
+  const lower = noun.toLowerCase();
+
+  // 1. Silent H cases → use “an”
+  if (/^(honest|hour|honor|honour|heir)/.test(lower)) {
+    return `an ${noun}`;
+  }
+
+  // 2. "Yoo-" and "W" sounding vowel words → use “a”
+  if (
+    /^u[bcfhjkqrstnlgm]/.test(lower) || // unicorn, useful, ukulele, uranium, etc.
+    /^eu/.test(lower) || // European, eucalyptus
+    /^one/.test(lower) // one, once
+  ) {
+    return `a ${noun}`;
+  }
+
+  // 3. Acronyms that begin with a vowel *sound*
+  if (/^[AEFHILMNORSX]\b/.test(noun)) {
+    return `an ${noun}`;
+  }
+
+  // 4. Default vowel-letter rule
+  if (/^[aeiou]/.test(lower)) {
+    return `an ${noun}`;
+  }
+
+  return `a ${noun}`;
 }
 
 function formatNameList(names: string[]): string {
@@ -193,7 +225,7 @@ const handlerMap = {
   },
 
   glyph: (body: Glyph) => {
-    setGlyph(body.id, body.glyph);
+    setGlyph(body.id, body.glyph, body.h, body.s, body.v);
   },
   noun: (body: Noun) => {
     setNoun(body.id, body.text);

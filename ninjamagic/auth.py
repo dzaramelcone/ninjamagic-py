@@ -229,11 +229,14 @@ if settings.allow_local_auth:
                 name=body.noun.value,
                 pronoun=Pronoun(body.noun.pronoun.they),
             )
-
+        g, h, s, v = body.glyph
         await q.update_character(
             arg=UpdateCharacterParams(
                 id=char.id,
-                glyph=body.glyph,
+                glyph=g,
+                glyph_h=h,
+                glyph_s=s,
+                glyph_v=v,
                 pronoun=Pronoun(body.noun.pronoun.they),
                 map_id=body.transform.map_id,
                 x=body.transform.x,

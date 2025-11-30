@@ -53,8 +53,11 @@ def notify_movement(sig: bus.PositionChanged):
             ],
         )
         if sig_glyph:
+            g, h, s, v = sig_glyph
             bus.pulse(
-                bus.OutboundGlyph(to=sig.source, source=sig.source, glyph=sig_glyph)
+                bus.OutboundGlyph(
+                    to=sig.source, source=sig.source, glyph=g, h=h, s=s, v=v
+                )
             )
         if sig_health:
             bus.pulse(
@@ -118,8 +121,11 @@ def notify_movement(sig: bus.PositionChanged):
                 ),
             )
             if sig_glyph:
+                g, h, s, v = sig_glyph
                 bus.pulse(
-                    bus.OutboundGlyph(to=o_id, source=sig.source, glyph=sig_glyph)
+                    bus.OutboundGlyph(
+                        to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v
+                    )
                 )
             if sig_health:
                 bus.pulse(
@@ -153,7 +159,12 @@ def notify_movement(sig: bus.PositionChanged):
                 )
             )
             if o_glyph:
-                bus.pulse(bus.OutboundGlyph(to=sig.source, source=o_id, glyph=o_glyph))
+                g, h, s, v = o_glyph
+                bus.pulse(
+                    bus.OutboundGlyph(
+                        to=sig.source, source=o_id, glyph=g, h=h, s=s, v=v
+                    )
+                )
             if o_health:
                 bus.pulse(
                     bus.OutboundHealth(
@@ -184,8 +195,11 @@ def notify_movement(sig: bus.PositionChanged):
                 )
             )
             if sig_glyph:
+                g, h, s, v = sig_glyph
                 bus.pulse(
-                    bus.OutboundGlyph(to=o_id, source=sig.source, glyph=sig_glyph)
+                    bus.OutboundGlyph(
+                        to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v
+                    )
                 )
             if sig_health:
                 bus.pulse(

@@ -1,13 +1,60 @@
 // src/ui/map.ts
-import { useGameStore, type EntityPosition } from "../state";
+import { useGameStore, type EntityPosition, type EntityMeta } from "../state";
 import { world } from "../svc/world";
 import { hsv2rgb, lerpHSV_rgb } from "../util/colors";
 import { Terminal } from "@xterm/xterm";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { computeFOV } from "../util/fov";
 import "@xterm/xterm/css/xterm.css";
+
 export const COLS = 13;
 export const ROWS = 13;
+
+export type EntityLookupFn = (
+  map_id: number,
+  x: number,
+  y: number
+) => { position: EntityPosition; meta?: EntityMeta } | undefined;
+
+export type TileSample = {
+  glyph: string;
+  color: { h: number; s: number; v: number };
+};
+
+/**
+ * Returns the glyph + HSV color for a given world tile,
+ * combining base chip color and entity overrides.
+ */
+export function getTile(
+  map_id: number,
+  worldX: number,
+  worldY: number,
+  entityLookup: EntityLookupFn
+): TileSample {
+  let char = " ";
+  let tileColor = { h: 0, s: 0, v: 1 };
+
+  try {
+    const chip = world.getChipId(map_id, worldX, worldY);
+    char = chip.char;
+    tileColor = chip.color;
+  } catch {
+    // keep defaults
+  }
+
+  const entity = entityLookup(map_id, worldX, worldY);
+
+  let glyph = char;
+  let glyphColor = tileColor;
+
+  if (entity?.meta?.glyph) {
+    glyph = entity.meta.glyph;
+    const { h = tileColor.h, s = tileColor.s, v = tileColor.v } = entity.meta;
+    glyphColor = { h, s, v };
+  }
+
+  return { glyph, color: glyphColor };
+}
 
 export function initMap(element: HTMLElement) {
   const term = new Terminal({
@@ -26,29 +73,31 @@ export function initMap(element: HTMLElement) {
   term.open(element);
 
   function tick() {
-    const { getPlayer, entityChecker } = useGameStore.getState();
-    composeFrame(term, getPlayer(), entityChecker());
+    const { getPlayer, entityLookup } = useGameStore.getState();
+    const player = getPlayer();
+    const lookupFn = entityLookup();
+
+    composeFrame(term, player, lookupFn);
     requestAnimationFrame(tick);
   }
+
   tick();
 }
 
 function composeFrame(
   term: Terminal,
   player: EntityPosition | undefined,
-  isEntityAt: (map_id: number, x: number, y: number) => boolean
+  entityLookup: EntityLookupFn
 ) {
   if (!player) return;
   if (!world.hasMap(player.map_id)) return;
 
-  const FOV_RADIUS = Math.max(COLS, ROWS); // tweak if you want shorter LOS
+  const FOV_RADIUS = Math.max(COLS, ROWS);
 
-  // Compute what's currently visible
   const visible = computeFOV(player.x, player.y, FOV_RADIUS, (x, y) =>
     world.isOpaque(player.map_id, x, y)
   );
 
-  // Mark all visible tiles as "seen" in memory
   for (const key of visible) {
     const [xs, ys] = key.split(",");
     const x = Number(xs);
@@ -78,24 +127,16 @@ function composeFrame(
         continue;
       }
 
-      // For visible & seen tiles we still want to use the actual chip.
-      let char = " ";
-      let color = { h: 0, s: 0, v: 1 };
-
-      try {
-        const chip = world.getChipId(player.map_id, worldX, worldY);
-        char = chip.char;
-        color = chip.color;
-      } catch {
-        // If something went missing, we just keep it blank.
-      }
-
-      const hasEntity = isEntityAt(player.map_id, worldX, worldY);
-      const glyph = hasEntity ? "@" : char;
+      const { glyph, color: glyphColor } = getTile(
+        player.map_id,
+        worldX,
+        worldY,
+        entityLookup
+      );
 
       if (isVisible) {
         // 2) Currently visible: full brightness + gas
-        const [fr, fg, fb] = hsv2rgb(color.h, color.s, color.v);
+        const [fr, fg, fb] = hsv2rgb(glyphColor.h, glyphColor.s, glyphColor.v);
         const gasV = world.getGasAt(player.map_id, worldX, worldY);
 
         if (gasV > 0) {
@@ -108,12 +149,10 @@ function composeFrame(
         }
       } else {
         // 3) Seen before but not currently visible: dimmer, no gas
-        // Dim by reducing saturation + value in HSV.
-        const dimS = color.s * 0.85;
-        const dimV = color.v * 0.44;
-        const [fr, fg, fb] = hsv2rgb(color.h, dimS, dimV);
+        const dimS = glyphColor.s * 0.85;
+        const dimV = glyphColor.v * 0.44;
+        const [fr, fg, fb] = hsv2rgb(glyphColor.h, dimS, dimV);
 
-        // Slightly dark background to distinguish from void
         const [br, bg, bb] = BASE_BG;
         out += `\x1b[48;2;${br};${bg};${bb}m\x1b[38;2;${fr};${fg};${fb}m${glyph}`;
       }

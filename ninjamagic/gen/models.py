@@ -49,6 +49,9 @@ class Character(pydantic.BaseModel):
     name: str
     pronoun: Pronoun
     glyph: str
+    glyph_h: float
+    glyph_s: float
+    glyph_v: float
     map_id: int
     x: int
     y: int
