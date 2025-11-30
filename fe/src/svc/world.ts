@@ -111,7 +111,15 @@ class World {
       const chip = this.getChipId(map_id, x, y);
       const ch = chip.char;
       // Adjust to your tileset: add/remove characters as needed.
-      return ch === "#" || ch === "+" || ch === "|" || ch === "-" || ch === "X";
+      return (
+        ch === "#" ||
+        ch === "+" ||
+        ch === "|" ||
+        ch === "-" ||
+        ch === "X" ||
+        ch === "Ϙ" ||
+        ch === "ϒ"
+      );
     } catch {
       // Outside known tiles: treat as blocking vision.
       return true;

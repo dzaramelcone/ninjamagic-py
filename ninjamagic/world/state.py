@@ -34,20 +34,61 @@ def build_demo() -> EntityId:
         # tile id, map id, glyph, h, s, v, a
         (0, out, ord(" "), 1.0, 1.0, 1.0, 1.0),
         (1, out, ord("."), 0.52777, 0.5, 0.9, 1.0),
-        (2, out, ord("#"), 0.73888, 0.34, 1.0, 1.0),
+        (2, out, ord("#"), 0.10, 0.10, 0.40, 1.0),
+        (3, out, ord("☵"), 0.58, 0.85, 0.85, 1.0),
+        (4, out, ord("Ϙ"), 0.33, 0.65, 0.55, 1.0),
+        (5, out, ord("ϒ"), 0.08, 0.30, 0.35, 1.0),
     ]
 
-    build_hub(map_id=out)
+    build_hub(map_id=out, chips=chips)
 
     esper.add_component(out, chips, Chips)
     esper.add_component(out, chipset, ChipSet)
     return out
 
 
-def build_hub(map_id: EntityId):
+def build_hub(map_id: EntityId, chips: Chips):
+
+    wanderer = esper.create_entity(Transform(map_id=map_id, y=9, x=5))
+    esper.add_component(wanderer, ("w", 0.12, 0.55, 0.75), Glyph)
+    esper.add_component(wanderer, Noun(value="wanderer", pronoun=Pronouns.HE))
+
     bonfire = esper.create_entity(Transform(map_id=map_id, y=9, x=4))
-    esper.add_component(bonfire, ("⚶", 0.5833, 0.7, 0.828), Glyph)
+    esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
     esper.add_component(bonfire, Noun(value="bonfire", pronoun=Pronouns.IT))
+
+    lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
+    esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
+    esper.add_component(lily_pad, Noun(value="lily pad", pronoun=Pronouns.IT))
+
+    fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
+    esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
+    esper.add_component(fern, Noun(value="fern", pronoun=Pronouns.IT))
+
+    wildflower = esper.create_entity(Transform(map_id=map_id, y=4, x=11))
+    esper.add_component(wildflower, ("⚘", 0.73888, 0.34, 1.0), Glyph)
+    esper.add_component(wildflower, Noun(value="wildflower", pronoun=Pronouns.IT))
+
+    # fmt: off
+    chips[(0,0)] = bytearray([
+        2,4,5,1,1,1,1,1,1,1,4,2,2,2,2,2,
+        5,2,2,2,1,1,4,1,1,1,5,4,2,2,2,2,
+        4,2,2,2,2,2,4,1,1,4,1,4,2,2,2,2,
+        1,2,2,2,2,4,1,1,1,1,1,4,2,1,4,4,
+        1,2,2,4,4,1,1,1,1,1,1,1,5,4,4,1,
+        1,2,2,2,1,1,1,1,1,1,1,1,1,5,1,1,
+        1,2,2,1,1,5,1,1,1,1,4,1,1,1,1,1,
+        1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,5,1,1,1,1,1,1,1,3,1,1,1,1,1,1,
+        1,1,1,1,1,1,1,1,3,3,1,1,1,1,1,1,
+        1,2,4,1,1,1,3,3,3,3,3,1,1,1,1,1,
+        1,2,2,1,1,1,3,3,3,3,3,3,1,1,1,1,
+        1,4,2,2,4,1,1,3,3,3,3,3,3,1,1,1,
+        1,5,1,1,2,5,1,1,5,3,3,2,2,1,1,2,
+        1,1,4,1,1,1,4,1,1,4,2,2,1,1,2,2,
+        1,1,1,1,1,1,1,1,1,2,1,1,0,2,2,2,
+    ])
+    # fmt: on
 
 
 def can_enter(*, map_id: int, y: int, x: int) -> bool:
@@ -57,7 +98,7 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
         return False
     y -= top
     x -= left
-    return grid[y * TILE_STRIDE_W + x] == 1
+    return grid[y * TILE_STRIDE_W + x] in {1, 3}
 
 
 def get_tile(
