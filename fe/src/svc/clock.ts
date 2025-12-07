@@ -19,7 +19,8 @@ if (Math.abs(_cycles - Math.round(_cycles)) > 1e-9) {
 
 export const NIGHTS_PER_DAY = Math.round(_cycles);
 export const SECONDS_PER_NIGHT_HOUR = SECONDS_PER_NIGHT / HOURS_PER_NIGHT;
-
+export const SECONDS_PER_NIGHT_ACTIVE =
+  SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM;
 const EST_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   year: "numeric",
@@ -102,10 +103,7 @@ export class NightClock {
 
   get elapsedPct(): number {
     const sec = this.seconds;
-    return Math.max(
-      0,
-      Math.min(1, sec / (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM))
-    );
+    return Math.max(0, Math.min(1, sec / SECONDS_PER_NIGHT_ACTIVE));
   }
 
   get seconds(): number {
@@ -117,10 +115,7 @@ export class NightClock {
     const hoursElapsed = Math.floor(this.seconds / SECONDS_PER_NIGHT_HOUR);
     const next = (hoursElapsed + 1) * SECONDS_PER_NIGHT_HOUR;
     let eta = next - this.seconds;
-    eta = Math.max(
-      0,
-      Math.min(eta, SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM - this.seconds)
-    );
+    eta = Math.max(0, Math.min(eta, SECONDS_PER_NIGHT_ACTIVE - this.seconds));
     return eta;
   }
 
@@ -152,8 +147,8 @@ export class NightClock {
   }
 
   get hours(): number {
-    const hourIndex = Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) / 60;
-    let hour24 = 6 + Math.floor(hourIndex); // 6 -> 25
+    const hourIndex = Math.floor(this.elapsedPct * HOURS_PER_NIGHT); // 0..19
+    let hour24 = 6 + hourIndex; // 6 -> 25
     if (hour24 >= 24) hour24 -= 24;
     return hour24;
   }
