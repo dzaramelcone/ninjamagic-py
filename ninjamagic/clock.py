@@ -6,11 +6,12 @@ from datetime import datetime, timedelta, timezone
 EST = timezone(timedelta(hours=-5), name="EST")
 
 
-# CONFIGURABLE WORLD CONSTANTS
-SECONDS_PER_NIGHTSTORM: float = 10.0
 # 18m or 36m in seconds; must divide 86400
 SECONDS_PER_NIGHT: float = 18.0 * 60.0
+SECONDS_PER_NIGHTSTORM: float = 10.0
+SECONDS_PER_NIGHT_ACTIVE: float = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
+SECONDS_PER_NIGHT_HOUR: float = SECONDS_PER_NIGHT_ACTIVE / HOURS_PER_NIGHT
 
 BASE_NIGHTYEAR: int = 200
 EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
@@ -25,9 +26,6 @@ if abs(_cycles - round(_cycles)) > 1e-9:
         f"got {_cycles} cycles per real day."
     )
 NIGHTS_PER_DAY: int = int(round(_cycles))
-
-# length of one in-game hour in real seconds
-SECONDS_PER_NIGHT_HOUR: float = SECONDS_PER_NIGHT / HOURS_PER_NIGHT
 
 
 def now():
@@ -151,8 +149,7 @@ class NightClock:
 
     @property
     def elapsed_pct(self) -> float:
-        """Percentage elapsed through the current night."""
-        return self.seconds / (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM)
+        return min(self.seconds / SECONDS_PER_NIGHT_ACTIVE, 1.0)
 
     @property
     def nightyear_elapsed_pct(self) -> float:
@@ -167,12 +164,9 @@ class NightClock:
     @property
     def next_hour_eta(self) -> float:
         hours_elapsed = math.floor(self.seconds / SECONDS_PER_NIGHT_HOUR)
-        next = (hours_elapsed + 1) * SECONDS_PER_NIGHT_HOUR
-        eta = next - self.seconds
-        # clamp against floating noise and cycle end
-        eta = max(
-            0.0, min(eta, (SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM) - self.seconds)
-        )
+        next_mark = (hours_elapsed + 1) * SECONDS_PER_NIGHT_HOUR
+        eta = next_mark - self.seconds
+        eta = max(0.0, min(eta, SECONDS_PER_NIGHT_ACTIVE - self.seconds))
         return eta
 
     @property

@@ -110,6 +110,9 @@ class Noun:
     num: Num = util.SINGULAR
     hypernyms: list[str] | None = None  # list of nouns?
 
+    def matches(self, prefix: str) -> bool:
+        return self.value.lower().startswith(prefix)
+
     def definite(self) -> str:
         if self.value == "you":
             return "you"

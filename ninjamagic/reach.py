@@ -1,4 +1,5 @@
 from collections.abc import Callable, Generator
+from typing import Any
 
 import esper
 
@@ -23,14 +24,19 @@ def visible(this: Transform, that: Transform) -> bool:
 
 
 def find(
-    source: EntityId, prefix: str, range: Selector
+    source: EntityId,
+    prefix: str,
+    in_range: Selector,
+    *,
+    with_components: tuple[type[Any], ...] = (),
 ) -> Generator[tuple[EntityId, Noun, Transform]]:
     source_transform = transform(source)
-    for other, (noun, other_transform) in esper.get_components(Noun, Transform):
+    for other, cmps in esper.get_components(Noun, Transform, *with_components):
+        noun, other_transform = cmps[0], cmps[1]
         if other == source:
             continue
-        if not range(other_transform, source_transform):
+        if not in_range(other_transform, source_transform):
             continue
-        if not noun.lower().startswith(prefix):
+        if not noun.matches(prefix):
             continue
         yield other, noun, other_transform
