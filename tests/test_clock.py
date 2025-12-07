@@ -10,6 +10,7 @@ from ninjamagic.clock import (
     EST,
     NIGHTS_PER_DAY,
     SECONDS_PER_NIGHT,
+    SECONDS_PER_NIGHT_ACTIVE,
     SECONDS_PER_NIGHT_HOUR,
     SECONDS_PER_NIGHTSTORM,
     NightClock,
@@ -74,27 +75,27 @@ def test_hours_at_start_mid_end_of_night():
     assert nc_start.hours == 6
 
     # Middle of night -> around 16:00
-    mid = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT / 2))
+    mid = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE / 2))
     nc_mid = NightClock(mid)
     assert math.isclose(nc_mid.elapsed_pct, 0.5, rel_tol=1e-6)
     assert 15 <= nc_mid.hours <= 17  # allow a 1h band due to flooring
 
     # Very end of night (just before wrap) -> between 01:00 and 02:00
-    end = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT - 1))
+    end = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE - 1))
     nc_end = NightClock(end)
     assert 1 <= nc_end.hours <= 2
 
 
 def test_minutes_and_next_hour_eta_consistency():
-    # Pick an arbitrary time into the night: say 3 in-game hours in
-    # 3 * SECONDS_PER_NIGHT_HOUR seconds after midnight
+    # Pick 3 in-game hours into the active night:
+    # 3 * SECONDS_PER_NIGHT_HOUR after midnight
     dt = est(EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
     nc = NightClock(dt)
 
-    assert nc.hours == 9  # 06 + 3 hours
+    assert nc.hours == 9  # 06 + 3
     assert nc.minutes == 0  # exactly on the hour
 
-    # next_hour_eta should be one full in-game hour in real seconds
+    # next_hour_eta should be exactly one in-game hour of real seconds
     assert math.isclose(nc.next_hour_eta, SECONDS_PER_NIGHT_HOUR, rel_tol=1e-6)
 
 

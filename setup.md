@@ -135,6 +135,12 @@ systemctl status ninjamagic
 systemctl status postgresql
 systemctl status fail2ban
 
+check CICD logs:
+journalctl -u ninjamagic-deploy.service
+
+mess with git:
+sudo -u ninjamagic -H bash
+
 ## Check deploy trigger is working
 sudo journalctl -u ninjamagic-deploy --no-pager
 

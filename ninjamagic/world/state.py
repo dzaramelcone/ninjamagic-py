@@ -1,6 +1,18 @@
 import esper
 
-from ninjamagic.component import Chips, ChipSet, EntityId, Glyph, Noun, Transform
+from ninjamagic import bus
+from ninjamagic.component import (
+    Chips,
+    ChipSet,
+    EntityId,
+    Glyph,
+    Health,
+    Noun,
+    Skills,
+    Stance,
+    Stats,
+    Transform,
+)
 from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W, Pronouns
 from ninjamagic.world import simple
 
@@ -48,10 +60,24 @@ def build_demo() -> EntityId:
 
 
 def build_hub(map_id: EntityId, chips: Chips):
-
-    wanderer = esper.create_entity(Transform(map_id=map_id, y=9, x=5))
+    wanderer = esper.create_entity(Transform(map_id=0, y=0, x=0))
     esper.add_component(wanderer, ("w", 0.12, 0.55, 0.75), Glyph)
     esper.add_component(wanderer, Noun(value="wanderer", pronoun=Pronouns.HE))
+    esper.add_component(wanderer, Health())
+    esper.add_component(wanderer, Stance())
+    esper.add_component(wanderer, Skills())
+    esper.add_component(wanderer, Stats())
+    bus.pulse(
+        bus.PositionChanged(
+            source=wanderer,
+            from_map_id=0,
+            from_y=0,
+            from_x=0,
+            to_map_id=map_id,
+            to_y=9,
+            to_x=5,
+        )
+    )
 
     bonfire = esper.create_entity(Transform(map_id=map_id, y=9, x=4))
     esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)

@@ -5,7 +5,16 @@ from typing import Protocol
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Blocking, EntityId, Health, Lag, stance_is, transform
+from ninjamagic.component import (
+    Blocking,
+    EntityId,
+    Health,
+    Lag,
+    Skills,
+    Stance,
+    stance_is,
+    transform,
+)
 from ninjamagic.config import settings
 from ninjamagic.util import Compass, get_melee_delay
 from ninjamagic.world.state import get_recall
@@ -68,7 +77,12 @@ class Attack(Command):
         if not rest:
             return False, "Attack whom?"
         match = next(
-            reach.find(root.source, rest, reach.adjacent),
+            reach.find(
+                root.source,
+                rest,
+                reach.adjacent,
+                with_components=(Health, Stance, Skills),
+            ),
             None,
         )
         if not match:
