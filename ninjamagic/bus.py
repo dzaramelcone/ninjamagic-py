@@ -11,6 +11,7 @@ from fastapi import WebSocket
 from ninjamagic.component import (
     AABB,
     ActId,
+    ChipSet,
     Conditions,
     EntityId,
     Gas,
@@ -21,7 +22,6 @@ from ninjamagic.component import (
 from ninjamagic.gen.models import Character
 from ninjamagic.reach import Selector, adjacent
 from ninjamagic.util import Compass, Walltime, get_walltime, serial
-from ninjamagic.world.state import ChipSet
 
 
 class Signal:
