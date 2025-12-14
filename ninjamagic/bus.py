@@ -59,6 +59,12 @@ class Inbound(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class InboundPrompt(Signal):
+    source: EntityId
+    text: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Learn(Signal):
     "An entity gained experience."
 
@@ -196,6 +202,12 @@ class Echo(Signal):
 class Outbound(Signal):
     """An outbound message."""
 
+    to: EntityId
+    text: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class OutboundPrompt(Signal):
     to: EntityId
     text: str
 

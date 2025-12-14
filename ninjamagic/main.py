@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus, factory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
-from ninjamagic.component import EntityId, OwnerId
+from ninjamagic.component import EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
 from ninjamagic.db import get_repository_factory
 from ninjamagic.state import State
@@ -100,9 +100,16 @@ async def ws_main(ws: WebSocket) -> None:
                     char.name,
                     text,
                 )
+                if prompt := esper.try_component(entity_id, Prompt):
+                    esper.remove_component(entity_id, Prompt)
+                    if prompt == text:
+                        bus.pulse(bus.InboundPrompt(source=entity_id, text=text))
+                        continue
+
                 # TODO: Preprocessor / Aliases
                 if text and text[0] == "'":
                     text = f"say {text[1:]}"
+
                 bus.pulse(bus.Inbound(source=entity_id, text=text))
         except WebSocketDisconnect:
             pass

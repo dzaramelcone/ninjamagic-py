@@ -274,6 +274,21 @@ class Datetime(google.protobuf.message.Message):
 global___Datetime = Datetime
 
 @typing.final
+class Prompt(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TEXT_FIELD_NUMBER: builtins.int
+    text: builtins.str
+    def __init__(
+        self,
+        *,
+        text: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["text", b"text"]) -> None: ...
+
+global___Prompt = Prompt
+
+@typing.final
 class Kind(google.protobuf.message.Message):
     """A wrapper that can contain any of our specific message types."""
 
@@ -291,6 +306,7 @@ class Kind(google.protobuf.message.Message):
     CONDITION_FIELD_NUMBER: builtins.int
     SKILL_FIELD_NUMBER: builtins.int
     DATETIME_FIELD_NUMBER: builtins.int
+    PROMPT_FIELD_NUMBER: builtins.int
     @property
     def msg(self) -> global___Msg: ...
     @property
@@ -315,6 +331,8 @@ class Kind(google.protobuf.message.Message):
     def skill(self) -> global___Skill: ...
     @property
     def datetime(self) -> global___Datetime: ...
+    @property
+    def prompt(self) -> global___Prompt: ...
     def __init__(
         self,
         *,
@@ -330,10 +348,11 @@ class Kind(google.protobuf.message.Message):
         condition: global___Condition | None = ...,
         skill: global___Skill | None = ...,
         datetime: global___Datetime | None = ...,
+        prompt: global___Prompt | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "condition", b"condition", "datetime", b"datetime", "gas", b"gas", "glyph", b"glyph", "health", b"health", "msg", b"msg", "noun", b"noun", "pos", b"pos", "skill", b"skill", "stance", b"stance", "tile", b"tile"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "condition", b"condition", "datetime", b"datetime", "gas", b"gas", "glyph", b"glyph", "health", b"health", "msg", b"msg", "noun", b"noun", "pos", b"pos", "skill", b"skill", "stance", b"stance", "tile", b"tile"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["body", b"body"]) -> typing.Literal["msg", "pos", "chip", "tile", "gas", "glyph", "noun", "health", "stance", "condition", "skill", "datetime"] | None: ...
+    def HasField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "condition", b"condition", "datetime", b"datetime", "gas", b"gas", "glyph", b"glyph", "health", b"health", "msg", b"msg", "noun", b"noun", "pos", b"pos", "prompt", b"prompt", "skill", b"skill", "stance", b"stance", "tile", b"tile"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["body", b"body", "chip", b"chip", "condition", b"condition", "datetime", b"datetime", "gas", b"gas", "glyph", b"glyph", "health", b"health", "msg", b"msg", "noun", b"noun", "pos", b"pos", "prompt", b"prompt", "skill", b"skill", "stance", b"stance", "tile", b"tile"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["body", b"body"]) -> typing.Literal["msg", "pos", "chip", "tile", "gas", "glyph", "noun", "health", "stance", "condition", "skill", "datetime", "prompt"] | None: ...
 
 global___Kind = Kind
 

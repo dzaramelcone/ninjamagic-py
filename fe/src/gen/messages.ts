@@ -227,6 +227,15 @@ export interface Datetime {
     seconds: bigint;
 }
 /**
+ * @generated from protobuf message ninjamagic.Prompt
+ */
+export interface Prompt {
+    /**
+     * @generated from protobuf field: string text = 1
+     */
+    text: string;
+}
+/**
  * A wrapper that can contain any of our specific message types.
  *
  * @generated from protobuf message ninjamagic.Kind
@@ -307,6 +316,12 @@ export interface Kind {
          * @generated from protobuf field: ninjamagic.Datetime datetime = 12
          */
         datetime: Datetime;
+    } | {
+        oneofKind: "prompt";
+        /**
+         * @generated from protobuf field: ninjamagic.Prompt prompt = 13
+         */
+        prompt: Prompt;
     } | {
         oneofKind: undefined;
     };
@@ -1103,6 +1118,53 @@ class Datetime$Type extends MessageType<Datetime> {
  */
 export const Datetime = new Datetime$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class Prompt$Type extends MessageType<Prompt> {
+    constructor() {
+        super("ninjamagic.Prompt", [
+            { no: 1, name: "text", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Prompt>): Prompt {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.text = "";
+        if (value !== undefined)
+            reflectionMergePartial<Prompt>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Prompt): Prompt {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string text */ 1:
+                    message.text = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Prompt, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string text = 1; */
+        if (message.text !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.text);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ninjamagic.Prompt
+ */
+export const Prompt = new Prompt$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class Kind$Type extends MessageType<Kind> {
     constructor() {
         super("ninjamagic.Kind", [
@@ -1117,7 +1179,8 @@ class Kind$Type extends MessageType<Kind> {
             { no: 9, name: "stance", kind: "message", oneof: "body", T: () => Stance },
             { no: 10, name: "condition", kind: "message", oneof: "body", T: () => Condition },
             { no: 11, name: "skill", kind: "message", oneof: "body", T: () => Skill },
-            { no: 12, name: "datetime", kind: "message", oneof: "body", T: () => Datetime }
+            { no: 12, name: "datetime", kind: "message", oneof: "body", T: () => Datetime },
+            { no: 13, name: "prompt", kind: "message", oneof: "body", T: () => Prompt }
         ]);
     }
     create(value?: PartialMessage<Kind>): Kind {
@@ -1204,6 +1267,12 @@ class Kind$Type extends MessageType<Kind> {
                         datetime: Datetime.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).datetime)
                     };
                     break;
+                case /* ninjamagic.Prompt prompt */ 13:
+                    message.body = {
+                        oneofKind: "prompt",
+                        prompt: Prompt.internalBinaryRead(reader, reader.uint32(), options, (message.body as any).prompt)
+                    };
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1252,6 +1321,9 @@ class Kind$Type extends MessageType<Kind> {
         /* ninjamagic.Datetime datetime = 12; */
         if (message.body.oneofKind === "datetime")
             Datetime.internalBinaryWrite(message.body.datetime, writer.tag(12, WireType.LengthDelimited).fork(), options).join();
+        /* ninjamagic.Prompt prompt = 13; */
+        if (message.body.oneofKind === "prompt")
+            Prompt.internalBinaryWrite(message.body.prompt, writer.tag(13, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
