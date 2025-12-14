@@ -1,3 +1,4 @@
+//src/ui/chat.ts
 import { send } from "../svc/network";
 
 let chatContainer: HTMLElement;

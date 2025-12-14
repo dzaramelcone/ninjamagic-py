@@ -151,7 +151,10 @@ body {
   font: 19px 'IBM Plex Mono', monospace;
   font-weight: 300;
   color: var(--primary);
-  caret-color: var(--primary);
+}
+
+tui-prompt[text]:not([text=""]) #cmd {
+  color: transparent;
 }
 
 .xterm-cursor-layer {
