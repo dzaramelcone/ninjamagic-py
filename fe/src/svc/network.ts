@@ -16,9 +16,11 @@ import {
   Condition,
   Skill,
   Datetime,
+  Prompt,
 } from "../gen/messages";
 import { COLS, ROWS } from "../ui/map";
 import { cardinalFromDelta } from "../util/util";
+import type { TuiPrompt } from "../ui/tui-prompt";
 
 const PLAYER_ID = 0;
 const NONE_LEVEL_ID = 1;
@@ -249,6 +251,10 @@ const handlerMap = {
   condition: (body: Condition) => {
     setCondition(body.id, body.text);
   },
+  prompt: (body: Prompt) => {
+    const el = document.getElementById("prompt") as TuiPrompt | null;
+    el?.setPrompt(body.text);
+  },
 };
 
 export function initializeNetwork() {
@@ -297,6 +303,9 @@ export function initializeNetwork() {
           break;
         case "condition":
           handlerMap.condition(body.condition);
+          break;
+        case "prompt":
+          handlerMap.prompt(body.prompt);
           break;
       }
     }

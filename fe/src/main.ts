@@ -5,6 +5,7 @@ import { initChat } from "./ui/chat";
 import { setupInputModes } from "./input/setup-input-modes";
 
 import "./ui/tui-nearby";
+import "./ui/tui-prompt";
 import "./ui/tui-skills";
 import "./ui/tui-stress-bar";
 import "./ui/tui-tab-selector";
