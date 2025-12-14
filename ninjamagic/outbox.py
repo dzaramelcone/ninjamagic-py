@@ -40,6 +40,7 @@ def process():
         bus.OutboundCondition,
         bus.OutboundSkill,
         bus.OutboundDatetime,
+        bus.OutboundPrompt,
     ):
         for signal in bus.iter(type):
             mailbag[signal.to].append(signal)
@@ -82,6 +83,10 @@ def try_insert(
     match sig:
         case bus.Outbound():
             msg = envelope.add().msg
+            msg.text = sig.text
+            return True
+        case bus.OutboundPrompt():
+            msg = envelope.add().prompt
             msg.text = sig.text
             return True
         case bus.OutboundDatetime():

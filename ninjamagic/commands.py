@@ -10,6 +10,7 @@ from ninjamagic.component import (
     EntityId,
     Health,
     Lag,
+    Prompt,
     Skills,
     Stance,
     stance_is,
@@ -198,6 +199,9 @@ class Fart(Command):
         tform = transform(root.source)
         story.echo("{0} {0:farts}.", root.source)
         bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
+
+        esper.add_component(root.source, "inhale deeply", Prompt)
+        bus.pulse_in(1, bus.OutboundPrompt(to=root.source, text="inhale deeply"))
         return OK
 
 

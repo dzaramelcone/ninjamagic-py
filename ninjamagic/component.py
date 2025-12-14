@@ -20,6 +20,7 @@ Glyph = tuple[str, float, float, float]
 EntityId = int
 Gas = dict[tuple[int, int], float]
 Lag = float
+Prompt = str
 OwnerId = int
 Size = tuple[int, int]
 Stamina = float
