@@ -1,5 +1,6 @@
 import asyncio
 import itertools
+import math
 import random
 from dataclasses import dataclass
 from enum import StrEnum
@@ -145,6 +146,28 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
     return a + (b - a) * RNG.betavariate(α, β)
 
 
+def proc(prev: float, cur: float, odds: float = 0, interval: float = 0) -> bool:
+    odds = odds or get_proc_odds()
+    if not odds:
+        return False
+    interval = interval or get_melee_delay()
+
+    δ = max(0, cur - prev)
+    λ = odds / interval
+    return RNG.random() < 1 - math.exp(-λ * δ)
+
+
+def delta_for_odds(target: float = 0, odds: float = 0, interval: float = 0) -> float:
+    odds = odds or get_proc_odds()
+    if not odds:
+        return 0
+    interval = interval or get_melee_delay()
+    target = target or odds
+
+    target = max(0, min(target, 0.999))
+    return -math.log(1 - target) / odds / interval
+
+
 class Compass(StrEnum):
     NORTH = "north"
     EAST = "east"
@@ -222,6 +245,10 @@ def get_walltime() -> Walltime:
 
 def get_melee_delay() -> float:
     return settings.attack_len
+
+
+def get_proc_odds() -> float:
+    return settings.base_proc_odds
 
 
 ContestResult = tuple[float, int, int]
