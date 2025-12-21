@@ -4,6 +4,7 @@ import esper
 
 from ninjamagic import bus, story
 from ninjamagic.component import DoubleDamage, Stunned
+from ninjamagic.config import settings
 
 
 def process(now: float) -> None:
@@ -15,7 +16,7 @@ def process(now: float) -> None:
         match sig.verb:
             case "block":
                 story.echo("{0} is stunned!", sig.target)
-                esper.add_component(sig.target, Stunned(end=now + 4.0))
+                esper.add_component(sig.target, Stunned(end=now + settings.stun_len))
             case "punch":
                 bus.pulse(
                     bus.Echo(

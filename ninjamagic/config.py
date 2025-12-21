@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     attack_len: float = 3.0
     block_len: float = 1.2
     block_miss_len: float = 2.5
+    stun_len: float = 5.0
 
     base_proc_odds: float = 0.10
 
