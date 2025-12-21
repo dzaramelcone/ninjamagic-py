@@ -20,6 +20,7 @@ from ninjamagic import (
     move,
     outbox,
     parser,
+    proc,
     regen,
     visibility,
 )
@@ -80,7 +81,8 @@ class State:
             regen.process(now=loop.time())
             gas.process(now=loop.time())
             act.process(now=loop.time())
-            combat.process()
+            combat.process(now=loop.time())
+            proc.process(now=loop.time())
             move.process()
             visibility.process()
             experience.process()
