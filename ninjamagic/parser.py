@@ -25,6 +25,7 @@ def process():
         ok, err = commands.assert_not_stunned(sig.source)
         if not ok:
             bus.pulse(bus.Outbound(to=sig.source, text=err))
+            continue
 
         if match.requires_healthy:
             ok, err = commands.assert_healthy(sig.source)
