@@ -1,4 +1,5 @@
 import math
+from functools import partial
 
 import esper
 
@@ -39,6 +40,12 @@ def get_award(
     return (lo + (hi - lo) * w) * util.RNG.lognormvariate(mu=0.0, sigma=0.4)
 
 
+def get_risk_modifier(risk: float) -> float:
+    if risk > 0.35:
+        return 1.0
+    return util.ease_in_expo(util.remap(risk, 0.0, 0.35, 0.0, 1.0))
+
+
 def process():
     for sig in bus.iter(bus.Learn):
         if not esper.entity_exists(sig.source):
@@ -47,19 +54,23 @@ def process():
             continue
 
         skill = sig.skill
-        skill.tnl += get_award(sig.mult * util.clamp01(sig.risk))
+        skill.tnl += get_award(sig.mult * get_risk_modifier(sig.risk))
         ranks_gained = 0
         while skill.tnl >= 1.0:
             ranks_gained += 1
             skill.tnl -= 1
             skill.tnl *= 0.68
+
         if ranks_gained > 0:
             skill.rank += ranks_gained
             # TODO this can be removed now and performed clientside
             bus.pulse(
-                bus.Outbound(
-                    to=sig.source,
-                    text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
+                bus.Echo(
+                    source=sig.source,
+                    make_source_sig=partial(
+                        bus.Outbound,
+                        text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
+                    ),
                 )
             )
         bus.pulse(
