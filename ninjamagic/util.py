@@ -126,13 +126,18 @@ def remap(
     return out_min + t * (out_max - out_min)
 
 
+def ease_in_expo(t: float) -> float:
+    return 2 ** (10 * max(0, min(t, 1.0)) - 10)
+
+
+def ease_out_expo(t: float) -> float:
+    return 1 - (2 ** (-10 * max(0, min(t, 1.0))))
+
+
 def ease_in_out_expo(t: float) -> float:
-    "Exponential ease-in-out, t∈[0,1] → [0,1]."
-    if t <= 0.0:
-        return 0.0
-    if t >= 1.0:
-        return 1.0
-    return (2 ** (20 * t - 10)) / 2 if t < 0.5 else (2 - 2 ** (-20 * t + 10)) / 2
+    if t < 0.5:
+        return ease_in_expo(2 * t) / 2
+    return 0.5 + ease_out_expo((t - 0.5) * 2) / 2
 
 
 def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
