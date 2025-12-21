@@ -9,6 +9,7 @@ import httpx
 import pytest
 import pytest_asyncio
 import websockets
+from deepdiff import DeepDiff
 from google.protobuf.json_format import MessageToDict
 from websockets.asyncio.client import ClientConnection
 
@@ -42,6 +43,15 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "asyncio")
 
 
+@pytest.fixture(autouse=True)
+def make_tests_deterministic():
+    from ninjamagic.util import RNG
+
+    state = RNG.getstate()
+    yield
+    RNG.setstate(state)
+
+
 @pytest.fixture
 def golden_json(
     request: pytest.FixtureRequest, golden_update: bool
@@ -72,63 +82,43 @@ def golden(
 
     Usage:
         golden(await alice.recv())
-
-    Behavior:
-      - str: must be JSON; re-serialized deterministic pretty JSON.
-      - bytes: always dump hex as first line (after client header), then:
-          1) Protobuf Packet -> pretty JSON
-          2) UTF-8 JSON -> pretty JSON
-          3) fallback: just hex
     """
+
     base_dir = pathlib.Path(__file__).parent / "goldens" / request.node.name
     ctr = 0
 
-    def _pp_json(obj: Any) -> str:
-        return json.dumps(obj, indent=2, sort_keys=True) + "\n"
-
-    def _decode_bytes(b: bytes) -> str:
-        hex_line = b.hex()
-        parts = [hex_line]
-
-        try:
-            pkt = Packet()
-            pkt.ParseFromString(b)
-            as_dict = MessageToDict(
-                pkt,
-                preserving_proto_field_name=True,
-                use_integers_for_enums=False,
-            )
-            parts.append(_pp_json(as_dict))
-        except Exception:
-            try:
-                maybe = json.loads(b.decode("utf-8"))
-                parts.append(_pp_json(maybe))
-            except Exception:
-                pass
-
-        return "\n".join(parts).rstrip() + "\n"
+    def proto_loadb(b: bytes) -> str:
+        pkt = Packet()
+        pkt.ParseFromString(b)
+        return MessageToDict(
+            pkt,
+            preserving_proto_field_name=True,
+            use_integers_for_enums=False,
+        )
 
     def _golden(client: str, data: str | bytes) -> None:
         nonlocal ctr
 
-        header = f"# client: {client}\n# len: {len(data)} B\n"
-        if isinstance(data, str):
-            payload = json.loads(data)
-            assert payload, "Did not receive valid JSON data!"
-            rendered = header + _pp_json(payload)
-        else:
-            rendered = header + _decode_bytes(data)
+        rendered = {
+            "client": client,
+            "len": f"{len(data)} B",
+            "parsed": (
+                json.loads(data) if isinstance(data, str) else proto_loadb(data)
+            ),
+        }
 
         g_path = base_dir / f"{request.node.name}-{ctr}.out"
         ctr += 1
 
         if golden_update or not g_path.exists():
             g_path.parent.mkdir(parents=True, exist_ok=True)
-            g_path.write_text(rendered)
+            g_path.write_text(json.dumps(rendered, indent=2, sort_keys=True))
             return
 
-        expected = g_path.read_text()
-        assert rendered == expected
+        expected = json.loads(g_path.read_text())
+        assert not DeepDiff(
+            rendered, expected, exclude_regex_paths=[r"root.*?\['(id|seconds)'\]"]
+        )
 
     return _golden
 

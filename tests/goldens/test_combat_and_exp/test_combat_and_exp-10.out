@@ -1,12 +1,13 @@
-# client: alice
-# len: 18 B
-0a100a0e0a0c596f75277265206465616421
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You're dead!"
+  "client": "alice",
+  "len": "18 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "You're dead!"
+        }
       }
-    }
-  ]
+    ]
+  }
 }

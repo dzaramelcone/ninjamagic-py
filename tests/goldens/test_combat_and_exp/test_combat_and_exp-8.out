@@ -1,18 +1,19 @@
-# client: bob
-# len: 29 B
-0a0f0a0d0a0b416c6963652064696573210a0a5208080d120464656164
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "Alice dies!"
+  "client": "bob",
+  "len": "29 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "Alice dies!"
+        }
+      },
+      {
+        "condition": {
+          "id": 13,
+          "text": "dead"
+        }
       }
-    },
-    {
-      "condition": {
-        "id": 13,
-        "text": "dead"
-      }
-    }
-  ]
+    ]
+  }
 }

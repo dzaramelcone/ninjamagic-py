@@ -1,19 +1,20 @@
-# client: alice
-# len: 47 B
-0a1d0a1b0a19426f62206472617773206261636b2068697320666973742e2e0a0e420c080e150000803f1d0ad7a33b
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "Bob draws back his fist.."
+  "client": "alice",
+  "len": "47 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "Bob draws back his fist.."
+        }
+      },
+      {
+        "health": {
+          "id": 14,
+          "pct": 1.0,
+          "stress_pct": 0.005
+        }
       }
-    },
-    {
-      "health": {
-        "id": 14,
-        "pct": 1.0,
-        "stress_pct": 0.005
-      }
-    }
-  ]
+    ]
+  }
 }

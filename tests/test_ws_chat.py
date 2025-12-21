@@ -187,3 +187,5 @@ async def test_combat_and_exp(golden, client_factory):
         with pytest.raises(asyncio.TimeoutError):
             async with asyncio.timeout(0.25):
                 await cli.recv()
+
+    # todo: test stuns

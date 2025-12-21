@@ -1,33 +1,34 @@
-# client: alice
-# len: 119 B
-0a220a200a1e426f62206869747320796f7520666f722031302e31252064616d616765210a240a220a20596f752066616c6c20746f207468652067726f756e6420696e2073686f636b210a0c420a1511ea77bd1dcdcccc3c0a0f4a0d120b6c79696e672070726f6e650a0c520a1208696e2073686f636b
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "Bob hits you for 10.1% damage!"
+  "client": "alice",
+  "len": "119 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "Bob hits you for 10.1% damage!"
+        }
+      },
+      {
+        "msg": {
+          "text": "You fall to the ground in shock!"
+        }
+      },
+      {
+        "health": {
+          "pct": -0.060525957,
+          "stress_pct": 0.025
+        }
+      },
+      {
+        "stance": {
+          "text": "lying prone"
+        }
+      },
+      {
+        "condition": {
+          "text": "in shock"
+        }
       }
-    },
-    {
-      "msg": {
-        "text": "You fall to the ground in shock!"
-      }
-    },
-    {
-      "health": {
-        "pct": -0.060525957,
-        "stress_pct": 0.025
-      }
-    },
-    {
-      "stance": {
-        "text": "lying prone"
-      }
-    },
-    {
-      "condition": {
-        "text": "in shock"
-      }
-    }
-  ]
+    ]
+  }
 }

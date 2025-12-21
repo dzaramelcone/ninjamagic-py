@@ -1,17 +1,18 @@
-# client: alice
-# len: 24 B
-0a0c0a0a0a08596f7520646965210a085206120464656164
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You die!"
+  "client": "alice",
+  "len": "24 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "You die!"
+        }
+      },
+      {
+        "condition": {
+          "text": "dead"
+        }
       }
-    },
-    {
-      "condition": {
-        "text": "dead"
-      }
-    }
-  ]
+    ]
+  }
 }
