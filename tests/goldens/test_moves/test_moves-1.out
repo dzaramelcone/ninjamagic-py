@@ -1,42 +1,43 @@
-# client: alice
-# len: 74 B
-0a0a1208080c1001180c200c0a163214080c1201401d2653153f253333333f2dcff7533f0a093a07080c1203426f620a094207080c150000803f0a0e4a0c080c12087374616e64696e67
 {
-  "envelope": [
-    {
-      "pos": {
-        "id": 12,
-        "map_id": 1,
-        "x": 12,
-        "y": 12
+  "client": "alice",
+  "len": "74 B",
+  "parsed": {
+    "envelope": [
+      {
+        "pos": {
+          "id": 12,
+          "map_id": 1,
+          "x": 12,
+          "y": 12
+        }
+      },
+      {
+        "glyph": {
+          "glyph": "@",
+          "h": 0.5833,
+          "id": 12,
+          "s": 0.7,
+          "v": 0.828
+        }
+      },
+      {
+        "noun": {
+          "id": 12,
+          "text": "Bob"
+        }
+      },
+      {
+        "health": {
+          "id": 12,
+          "pct": 1.0
+        }
+      },
+      {
+        "stance": {
+          "id": 12,
+          "text": "standing"
+        }
       }
-    },
-    {
-      "glyph": {
-        "glyph": "@",
-        "h": 0.5833,
-        "id": 12,
-        "s": 0.7,
-        "v": 0.828
-      }
-    },
-    {
-      "noun": {
-        "id": 12,
-        "text": "Bob"
-      }
-    },
-    {
-      "health": {
-        "id": 12,
-        "pct": 1.0
-      }
-    },
-    {
-      "stance": {
-        "id": 12,
-        "text": "standing"
-      }
-    }
-  ]
+    ]
+  }
 }

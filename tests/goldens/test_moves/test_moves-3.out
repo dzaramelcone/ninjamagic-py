@@ -1,37 +1,38 @@
-# client: bob
-# len: 64 B
-0a0812061001180e200e0a1432121201401d2653153f253333333f2dcff7533f0a073a051203426f620a074205150000803f0a0c4a0a12087374616e64696e67
 {
-  "envelope": [
-    {
-      "pos": {
-        "map_id": 1,
-        "x": 14,
-        "y": 14
+  "client": "bob",
+  "len": "64 B",
+  "parsed": {
+    "envelope": [
+      {
+        "pos": {
+          "map_id": 1,
+          "x": 14,
+          "y": 14
+        }
+      },
+      {
+        "glyph": {
+          "glyph": "@",
+          "h": 0.5833,
+          "s": 0.7,
+          "v": 0.828
+        }
+      },
+      {
+        "noun": {
+          "text": "Bob"
+        }
+      },
+      {
+        "health": {
+          "pct": 1.0
+        }
+      },
+      {
+        "stance": {
+          "text": "standing"
+        }
       }
-    },
-    {
-      "glyph": {
-        "glyph": "@",
-        "h": 0.5833,
-        "s": 0.7,
-        "v": 0.828
-      }
-    },
-    {
-      "noun": {
-        "text": "Bob"
-      }
-    },
-    {
-      "health": {
-        "pct": 1.0
-      }
-    },
-    {
-      "stance": {
-        "text": "standing"
-      }
-    }
-  ]
+    ]
+  }
 }

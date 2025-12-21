@@ -1,37 +1,38 @@
-# client: alice
-# len: 66 B
-0a0812061001180720070a1432121201401d2653153f253333333f2dcff7533f0a093a071205416c6963650a074205150000803f0a0c4a0a12087374616e64696e67
 {
-  "envelope": [
-    {
-      "pos": {
-        "map_id": 1,
-        "x": 7,
-        "y": 7
+  "client": "alice",
+  "len": "66 B",
+  "parsed": {
+    "envelope": [
+      {
+        "pos": {
+          "map_id": 1,
+          "x": 7,
+          "y": 7
+        }
+      },
+      {
+        "glyph": {
+          "glyph": "@",
+          "h": 0.5833,
+          "s": 0.7,
+          "v": 0.828
+        }
+      },
+      {
+        "noun": {
+          "text": "Alice"
+        }
+      },
+      {
+        "health": {
+          "pct": 1.0
+        }
+      },
+      {
+        "stance": {
+          "text": "standing"
+        }
       }
-    },
-    {
-      "glyph": {
-        "glyph": "@",
-        "h": 0.5833,
-        "s": 0.7,
-        "v": 0.828
-      }
-    },
-    {
-      "noun": {
-        "text": "Alice"
-      }
-    },
-    {
-      "health": {
-        "pct": 1.0
-      }
-    },
-    {
-      "stance": {
-        "text": "standing"
-      }
-    }
-  ]
+    ]
+  }
 }

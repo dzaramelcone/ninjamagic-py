@@ -1,12 +1,13 @@
-# client: alice
-# len: 20 B
-0a120a100a0e596f75207361792c202768692127
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You say, 'hi!'"
+  "client": "alice",
+  "len": "20 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "You say, 'hi!'"
+        }
       }
-    }
-  ]
+    ]
+  }
 }

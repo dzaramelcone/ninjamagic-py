@@ -20,6 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "deepdiff>=8.6.1",
     "language-tool-python>=2.9.4",
     "pyspellchecker>=0.8.3",
     "pytest>=8.4.2",

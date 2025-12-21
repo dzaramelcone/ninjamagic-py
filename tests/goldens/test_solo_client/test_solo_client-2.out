@@ -1,12 +1,13 @@
-# client: alice
-# len: 42 B
-0a280a260a24596f75206f70656e20796f7572206d6f7574682c20617320696620746f20737065616b2e
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You open your mouth, as if to speak."
+  "client": "alice",
+  "len": "42 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "You open your mouth, as if to speak."
+        }
       }
-    }
-  ]
+    ]
+  }
 }
