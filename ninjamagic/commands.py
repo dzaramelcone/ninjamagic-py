@@ -6,13 +6,14 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
-    Blocking,
+    Defending,
     EntityId,
     Health,
     Lag,
     Prompt,
     Skills,
     Stance,
+    Stunned,
     stance_is,
     transform,
 )
@@ -23,6 +24,12 @@ from ninjamagic.world.state import get_recall
 log = logging.getLogger(__name__)
 Out = tuple[bool, str]
 OK = (True, "")
+
+
+def assert_not_stunned(entity: EntityId) -> Out:
+    if esper.has_component(entity, Stunned):
+        return False, "You're stunned!"
+    return OK
 
 
 def assert_healthy(entity: EntityId) -> Out:
@@ -100,7 +107,7 @@ class Attack(Command):
             bus.Act(
                 source=root.source,
                 delay=get_melee_delay(),
-                then=bus.Melee(source=root.source, target=target),
+                then=bus.Melee(source=root.source, target=target, verb="punch"),
             ),
             bus.HealthChanged(source=root.source, stress_change=1.0),
         )
@@ -114,7 +121,7 @@ class Block(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         lag_len = settings.block_len + settings.block_miss_len
-        this_block = Blocking()
+        this_block = Defending(verb="block")
         esper.add_component(root.source, util.get_walltime() + lag_len, Lag)
         esper.add_component(root.source, this_block)
         bus.pulse(
@@ -125,10 +132,10 @@ class Block(Command):
         def stop_blocking():
             if not esper.entity_exists(root.source):
                 return
-            block = esper.try_component(root.source, Blocking)
+            block = esper.try_component(root.source, Defending)
             if not block or block is not this_block:
                 return
-            esper.remove_component(root.source, Blocking)
+            esper.remove_component(root.source, Defending)
             bus.pulse(bus.Outbound(to=root.source, text="You block the air!"))
 
         asyncio.get_running_loop().call_later(settings.block_len, stop_blocking)

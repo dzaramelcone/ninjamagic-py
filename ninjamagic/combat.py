@@ -4,9 +4,11 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
-    Blocking,
     Connection,
+    Defending,
+    DoubleDamage,
     EntityId,
+    FightTimer,
     Lag,
     health,
     pain_mult,
@@ -14,60 +16,97 @@ from ninjamagic.component import (
     stance,
     transform,
 )
-from ninjamagic.config import settings
-from ninjamagic.util import RNG, contest, get_melee_delay
+from ninjamagic.util import RNG, contest, delta_for_odds, get_melee_delay, proc
 from ninjamagic.world.state import get_recall
 
-A, B, MODE = settings.learn_abmode
+
+def touch_fight_timer(entity: EntityId, now: float) -> FightTimer:
+    if ft := esper.try_component(entity, FightTimer):
+        ft.last_refresh = now
+    else:
+        ft = FightTimer(
+            last_atk_proc=now - delta_for_odds(),
+            last_def_proc=now - delta_for_odds(),
+            last_refresh=now,
+        )
+        esper.add_component(entity, ft)
+    return ft
 
 
-def process():
+def process(now: float):
     for sig in bus.iter(bus.Melee):
-        if not esper.entity_exists(sig.source):
+        # TODO move into validations
+        source, target = sig.source, sig.target
+        if not esper.entity_exists(source):
             continue
-        if not esper.entity_exists(sig.target):
+        if not esper.entity_exists(target):
             continue
-        if stance(sig.source).cur != "standing":
+        if stance(source).cur != "standing":
             continue
-        if health(sig.source).condition != "normal":
+        if health(source).condition != "normal":
             continue
 
-        if not reach.adjacent(transform(sig.source), transform(sig.target)):
+        if not reach.adjacent(transform(source), transform(target)):
             story.echo(
                 "{0} {0:swings} wide at {1}!",
-                sig.source,
-                sig.target,
+                source,
+                target,
             )
             continue
 
-        if esper.has_component(sig.target, Blocking):
-            esper.remove_component(sig.target, Blocking)
-            esper.add_component(sig.target, -1, Lag)
-            story.echo(
-                "{0} {0:swings} at {1}. {1:they} {1:blocks} {0:their} attack.",
-                sig.source,
-                sig.target,
-            )
-            bus.pulse(
-                bus.HealthChanged(
-                    source=sig.source, stress_change=RNG.choice([1.0, 2.0])
-                )
-            )
-            continue
-
-        source_skills = skills(sig.source)
-        target_skills = skills(sig.target)
+        source_skills = skills(source)
+        target_skills = skills(target)
         attack = source_skills.martial_arts
         defend = target_skills.evasion
-        source_pain_mult = pain_mult(sig.source)
-        target_pain_mult = pain_mult(sig.target)
+        source_pain_mult = pain_mult(source)
+        target_pain_mult = pain_mult(target)
         skill_mult, _, _ = contest(attack.rank, defend.rank)
 
+        bus.pulse(
+            bus.Learn(
+                source=source,
+                skill=attack,
+                mult=skill_mult,
+                risk=target_pain_mult / source_pain_mult,
+                generation=source_skills.generation,
+            ),
+            bus.Learn(
+                source=target,
+                skill=defend,
+                mult=1.0 / skill_mult,
+                risk=source_pain_mult / target_pain_mult,
+                generation=target_skills.generation,
+            ),
+        )
+
+        source_fight_timer = touch_fight_timer(source, now)
+        target_fight_timer = touch_fight_timer(target, now)
+
+        if defense := esper.try_component(target, Defending):
+            esper.remove_component(target, Defending)
+            esper.add_component(target, -1, Lag)
+            story.echo(
+                "{0} {0:swings} at {1}. {1:they} {1:blocks} {0:their} attack.",
+                source,
+                target,
+            )
+            bus.pulse(
+                bus.HealthChanged(source=source, stress_change=RNG.choice([1.0, 2.0]))
+            )
+            if proc(prev=target_fight_timer.last_def_proc, cur=now):
+                target_fight_timer.last_def_proc = now
+                bus.pulse(bus.Proc(source=target, target=source, verb=defense.verb))
+
+            continue
+
         damage = skill_mult * source_pain_mult * 10.0
+        if esper.has_component(source, DoubleDamage):
+            esper.remove_component(source, DoubleDamage)
+            damage *= 2
 
         bus.pulse(
             bus.HealthChanged(
-                source=sig.target,
+                source=target,
                 health_change=-damage,
                 stress_change=RNG.choice([3.0, 4.0]),
                 aggravated_stress_change=RNG.choice([0.25, 0.5, 0.75]),
@@ -76,28 +115,14 @@ def process():
 
         story.echo(
             "{0} {0:hits} {1} for {damage:.1f}% damage!",
-            sig.source,
-            sig.target,
+            source,
+            target,
             damage=damage,
         )
 
-        bus.pulse_in(
-            util.pert(A, B, MODE),
-            bus.Learn(
-                source=sig.source,
-                skill=attack,
-                mult=skill_mult,
-                risk=target_pain_mult / source_pain_mult,
-                generation=source_skills.generation,
-            ),
-            bus.Learn(
-                source=sig.target,
-                skill=defend,
-                mult=1.0 / skill_mult,
-                risk=source_pain_mult / target_pain_mult,
-                generation=target_skills.generation,
-            ),
-        )
+        if proc(prev=source_fight_timer.last_atk_proc, cur=now):
+            source_fight_timer.last_atk_proc = now
+            bus.pulse(bus.Proc(source=source, target=target, verb=sig.verb))
 
     for sig in bus.iter(bus.HealthChanged):
         src_health = health(sig.source)

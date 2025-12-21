@@ -17,6 +17,7 @@ from ninjamagic.component import (
     Gas,
     Skill,
     Stances,
+    TokenVerb,
     Transform,
 )
 from ninjamagic.gen.models import Character
@@ -150,6 +151,14 @@ class Melee(Signal):
 
     source: EntityId
     target: EntityId
+    verb: TokenVerb
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Proc(Signal):
+    source: EntityId
+    target: EntityId
+    verb: TokenVerb
 
 
 @signal(frozen=True, slots=True, kw_only=True)

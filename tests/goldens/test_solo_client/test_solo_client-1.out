@@ -1,12 +1,13 @@
-# client: alice
-# len: 10 B
-0a080a060a044875683f
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "Huh?"
+  "client": "alice",
+  "len": "10 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "Huh?"
+        }
       }
-    }
-  ]
+    ]
+  }
 }

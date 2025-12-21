@@ -1,19 +1,19 @@
-# client: bob
-# len: 66 B
-0a270a250a23596f75206761696e2074776f2072616e6b7320696e204d61727469616c20417274732e0a175a150a0c4d61727469616c204172747310021d0f0b353f
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You gain two ranks in Martial Arts."
+  "client": "bob",
+  "len": "29 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "Alice dies!"
+        }
+      },
+      {
+        "condition": {
+          "id": 13,
+          "text": "dead"
+        }
       }
-    },
-    {
-      "skill": {
-        "name": "Martial Arts",
-        "rank": 2,
-        "tnl": 0.7072
-      }
-    }
-  ]
+    ]
+  }
 }

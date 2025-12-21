@@ -1,5 +1,6 @@
 import asyncio
 import itertools
+import math
 import random
 from dataclasses import dataclass
 from enum import StrEnum
@@ -125,13 +126,18 @@ def remap(
     return out_min + t * (out_max - out_min)
 
 
+def ease_in_expo(t: float) -> float:
+    return 2 ** (10 * max(0, min(t, 1.0)) - 10)
+
+
+def ease_out_expo(t: float) -> float:
+    return 1 - (2 ** (-10 * max(0, min(t, 1.0))))
+
+
 def ease_in_out_expo(t: float) -> float:
-    "Exponential ease-in-out, t∈[0,1] → [0,1]."
-    if t <= 0.0:
-        return 0.0
-    if t >= 1.0:
-        return 1.0
-    return (2 ** (20 * t - 10)) / 2 if t < 0.5 else (2 - 2 ** (-20 * t + 10)) / 2
+    if t < 0.5:
+        return ease_in_expo(2 * t) / 2
+    return 0.5 + ease_out_expo((t - 0.5) * 2) / 2
 
 
 def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
@@ -143,6 +149,28 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
     α = 1.0 + shape * (mode - a) / (b - a)
     β = 1.0 + shape * (b - mode) / (b - a)
     return a + (b - a) * RNG.betavariate(α, β)
+
+
+def proc(prev: float, cur: float, odds: float = 0, interval: float = 0) -> bool:
+    odds = odds or get_proc_odds()
+    if not odds:
+        return False
+    interval = interval or get_melee_delay()
+
+    δ = max(0, cur - prev)
+    λ = odds / interval
+    return RNG.random() < 1 - math.exp(-λ * δ)
+
+
+def delta_for_odds(target: float = 0, odds: float = 0, interval: float = 0) -> float:
+    odds = odds or get_proc_odds()
+    if not odds:
+        return 0
+    interval = interval or get_melee_delay()
+    target = target or odds
+
+    target = max(0, min(target, 0.999))
+    return -math.log(1 - target) / odds / interval
 
 
 class Compass(StrEnum):
@@ -222,6 +250,10 @@ def get_walltime() -> Walltime:
 
 def get_melee_delay() -> float:
     return settings.attack_len
+
+
+def get_proc_odds() -> float:
+    return settings.base_proc_odds
 
 
 ContestResult = tuple[float, int, int]

@@ -173,10 +173,6 @@ async def test_combat_and_exp(golden, client_factory):
         await alice.send("west")
         golden("alice", await alice.recv())
 
-    # bob gets a rank in martial arts
-    async with asyncio.timeout(0.25):
-        golden("bob", await bob.recv())
-
     # alice dies. bob and alice see it.
     async with asyncio.timeout(5):
         golden("bob", await bob.recv())
@@ -191,3 +187,5 @@ async def test_combat_and_exp(golden, client_factory):
         with pytest.raises(asyncio.TimeoutError):
             async with asyncio.timeout(0.25):
                 await cli.recv()
+
+    # todo: test stuns

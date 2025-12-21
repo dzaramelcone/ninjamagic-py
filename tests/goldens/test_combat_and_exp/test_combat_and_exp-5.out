@@ -1,36 +1,49 @@
-# client: bob
-# len: 129 B
-0a230a210a1f596f752068697420416c69636520666f722031302e31252064616d616765210a270a250a23416c6963652066616c6c7320746f207468652067726f756e6420696e2073686f636b210a0e420c080d1511ea77bd1dcdcccc3c0a114a0f080d120b6c79696e672070726f6e650a0e520c080d1208696e2073686f636b
 {
-  "envelope": [
-    {
-      "msg": {
-        "text": "You hit Alice for 10.1% damage!"
+  "client": "bob",
+  "len": "195 B",
+  "parsed": {
+    "envelope": [
+      {
+        "msg": {
+          "text": "You hit Alice for 10.1% damage!"
+        }
+      },
+      {
+        "msg": {
+          "text": "Alice falls to the ground in shock!"
+        }
+      },
+      {
+        "msg": {
+          "text": "You gain two ranks in Martial Arts."
+        }
+      },
+      {
+        "health": {
+          "id": 13,
+          "pct": -0.060525957,
+          "stress_pct": 0.025
+        }
+      },
+      {
+        "stance": {
+          "id": 13,
+          "text": "lying prone"
+        }
+      },
+      {
+        "condition": {
+          "id": 13,
+          "text": "in shock"
+        }
+      },
+      {
+        "skill": {
+          "name": "Martial Arts",
+          "rank": 2,
+          "tnl": 0.7072
+        }
       }
-    },
-    {
-      "msg": {
-        "text": "Alice falls to the ground in shock!"
-      }
-    },
-    {
-      "health": {
-        "id": 13,
-        "pct": -0.060525957,
-        "stress_pct": 0.025
-      }
-    },
-    {
-      "stance": {
-        "id": 13,
-        "text": "lying prone"
-      }
-    },
-    {
-      "condition": {
-        "id": 13,
-        "text": "in shock"
-      }
-    }
-  ]
+    ]
+  }
 }

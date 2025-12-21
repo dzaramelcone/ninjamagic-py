@@ -8,6 +8,9 @@ from ninjamagic import util
 from ninjamagic.util import Num, Pronoun, Pronouns
 
 MAX_HEALTH = 100.0
+TokenVerb = Literal[
+    "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
+]
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 ActId = int
@@ -35,12 +38,28 @@ class Health:
 
 
 @component(slots=True)
+class Stunned:
+    end: float
+
+
+class DoubleDamage: ...
+
+
+@component(slots=True)
 class Stance:
     cur: Stances = "standing"
 
 
-class Blocking:
-    pass
+@component(slots=True, kw_only=True)
+class FightTimer:
+    last_atk_proc: float
+    last_def_proc: float
+    last_refresh: float
+
+
+@component(slots=True, kw_only=True)
+class Defending:
+    verb: TokenVerb
 
 
 @component(slots=True, kw_only=True)
