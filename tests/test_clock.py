@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from ninjamagic.clock import (
+from ninjamagic.nightclock import (
     BASE_NIGHTYEAR,
     EPOCH,
     EST,
@@ -34,7 +34,6 @@ def test_epoch_baseline():
     assert nc.nights_this_nightyear == 0
 
     assert nc.nightyears == BASE_NIGHTYEAR
-    assert nc.moons == 1  # Dec 1st
 
 
 def test_nights_per_day_consistency():

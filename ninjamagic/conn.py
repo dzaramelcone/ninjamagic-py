@@ -2,7 +2,7 @@ import logging
 
 import esper
 
-from ninjamagic import bus, clock, factory
+from ninjamagic import bus, factory, nightclock
 from ninjamagic.component import Connection
 from ninjamagic.experience import send_skills
 
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 def send_init(sig: bus.Connected):
     send_skills(sig.source)
-    bus.pulse(bus.OutboundDatetime(to=sig.source, dt=clock.now()))
+    bus.pulse(bus.OutboundDatetime(to=sig.source, dt=nightclock.now()))
 
 
 def process():

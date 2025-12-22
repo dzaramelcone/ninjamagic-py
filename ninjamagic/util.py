@@ -224,7 +224,12 @@ class Compass(StrEnum):
                 raise ValueError(f"Unknown compass {self!r}")
 
 
-def serial(counter=itertools.count(1)) -> int:
+SERIAL = itertools.count(1)
+
+
+def serial(counter: itertools.count | None = None) -> int:
+    if counter is None:
+        counter = SERIAL
     return next(counter)
 
 
@@ -237,15 +242,11 @@ BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
 CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
 
-loop: asyncio.AbstractEventLoop | None = None
 Walltime = float
 
 
 def get_walltime() -> Walltime:
-    global loop
-    if not loop:
-        loop = asyncio.get_running_loop()
-    return loop.time()
+    return asyncio.get_running_loop().time()
 
 
 def get_melee_delay() -> float:
