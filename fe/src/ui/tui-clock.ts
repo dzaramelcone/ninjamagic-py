@@ -1,7 +1,7 @@
 // src/ui/tui-clock.ts
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { NightClock } from "../svc/clock";
+import { NightClock } from "../svc/nightclock";
 import { sharedStyles } from "./tui-styles";
 
 type IconSeverity = 0 | 1 | 2 | 3;
