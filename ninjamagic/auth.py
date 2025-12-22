@@ -189,7 +189,7 @@ async def auth_via_discord(req: Request, q: Repository, client: ClientDep):
 
 
 if settings.allow_local_auth:
-    from tests.util import FakeUserSetup
+    from tests.conftest import FakeUserSetup
 
     log.warning("Using local auth. Do not use this in production.")
 

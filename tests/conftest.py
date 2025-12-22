@@ -11,13 +11,29 @@ import pytest_asyncio
 import websockets
 from deepdiff import DeepDiff
 from google.protobuf.json_format import MessageToDict
+from pydantic.dataclasses import Field, dataclass
 from websockets.asyncio.client import ClientConnection
 
+from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
 from ninjamagic.gen.messages_pb2 import Packet
-from tests.util import FakeUserSetup
 
 BASE_HTTP_URL = "http://localhost:8000"
 BASE_WS_URL = "ws://localhost:8000"
+
+
+# TODO Just use the sqlc generated fake models. UpdateCharacterParams or whatever.
+@dataclass
+class FakeUserSetup:
+    subj: str = "12023"
+    email: str = "test@example.com"
+    glyph: Glyph = ("@", 0.5833, 0.7, 0.828)
+    health: Health = Field(default_factory=Health)
+    stance: Stance = Field(default_factory=Stance)
+    stats: Stats = Field(default_factory=Stats)
+    skills: Skills = Field(default_factory=Skills)
+    transform: Transform = Field(default_factory=lambda: Transform(map_id=1, x=2, y=2))
+    noun: Noun = Field(default_factory=Noun)
+
 
 ClientFactory = Callable[[FakeUserSetup, bool], Awaitable[ClientConnection]]
 
