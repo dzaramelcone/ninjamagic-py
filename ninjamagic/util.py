@@ -244,9 +244,12 @@ CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
 
 Walltime = float
 
+loop = asyncio.get_running_loop()
+
 
 def get_walltime() -> Walltime:
-    return asyncio.get_running_loop().time()
+    global loop
+    return loop.time()
 
 
 def get_melee_delay() -> float:

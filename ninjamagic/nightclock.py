@@ -97,6 +97,9 @@ class NightClock:
         dt = dt.astimezone(EST) if dt.tzinfo else dt.replace(tzinfo=EST)
         self.dt = dt
 
+    def tick(self) -> None:
+        self.dt = datetime.now(EST)
+
     def __eq__(self, other: "NightClock") -> bool:
         return self.dt == other.dt
 
