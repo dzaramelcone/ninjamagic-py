@@ -291,6 +291,7 @@ class Get(Command):
         dest = Slot.LEFT_HAND if r_hand else Slot.RIGHT_HAND
 
         cmd = root.text.strip().replace(" in ", " ")
+        cmd = cmd.replace(" from ", " ")
         cmd, _, rest = cmd.partition(" ")
         first, _, second = rest.partition(" ")
         if not first:
@@ -310,7 +311,7 @@ class Get(Command):
                 c_eid,
                 range=reach.visible,
             )
-            bus.pulse(bus.MoveEntity(source=c_eid, container=root.source, slot=dest))
+            bus.pulse(bus.MoveEntity(source=s_eid, container=root.source, slot=dest))
             return OK
 
         if match := next(
