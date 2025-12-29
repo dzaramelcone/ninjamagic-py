@@ -1,45 +1,145 @@
-"""Stateless, injective mapping from real-world timestamp to game time."""
-
+import heapq
 import math
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from functools import total_ordering
+from typing import overload
+
+from ninjamagic import bus
+from ninjamagic.util import serial
 
 EST = timezone(timedelta(hours=-5), name="EST")
 
 
-# 18m or 36m in seconds; must divide 86400
-SECONDS_PER_NIGHT: float = 18.0 * 60.0
-SECONDS_PER_NIGHTSTORM: float = 10.0
-SECONDS_PER_NIGHT_ACTIVE: float = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
+# 18m or 36m in seconds; must divide 86400 or fix implementation
+SECONDS_PER_NIGHT: float = 18.0 * 60.0
+SECONDS_PER_NIGHTSTORM: float = 25.0
+SECONDS_PER_NIGHTSTORM_HOUR: float = SECONDS_PER_NIGHTSTORM / (24 - HOURS_PER_NIGHT)
+SECONDS_PER_NIGHT_ACTIVE: float = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
 SECONDS_PER_NIGHT_HOUR: float = SECONDS_PER_NIGHT_ACTIVE / HOURS_PER_NIGHT
 
 BASE_NIGHTYEAR: int = 200
 EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
 
 SECONDS_PER_DAY = 86400.0
-
-# validate divisibility
-_cycles = SECONDS_PER_DAY / SECONDS_PER_NIGHT
-if abs(_cycles - round(_cycles)) > 1e-9:
-    raise ValueError(
-        f"SECONDS_PER_NIGHT={SECONDS_PER_NIGHT} does not divide 86400 cleanly; "
-        f"got {_cycles} cycles per real day."
-    )
-NIGHTS_PER_DAY: int = int(round(_cycles))
+NIGHTS_PER_DAY = int(SECONDS_PER_DAY // SECONDS_PER_NIGHT)
 
 
 def now():
     return datetime.now(tz=EST)
 
 
+@total_ordering
+class NightTime:
+    def __init__(self, hour: int = 0, minute: int = 0):
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError
+
+        self.hour = hour
+        self.minute = minute
+
+    def __eq__(self, other: "NightTime") -> bool:
+        return self.total_seconds() == other.total_seconds()
+
+    def __lt__(self, other: "NightTime") -> bool:
+        return self.total_seconds() < other.total_seconds()
+
+    def total_seconds(self) -> float:
+        """Return the total seconds into the cycle for this time."""
+        if 6 <= self.hour < 24:
+            hour = self.hour - 6
+        elif 0 <= self.hour < 2:
+            hour = self.hour + 18
+        else:
+            # Nightstorm.
+            offset = (self.hour - 2) * SECONDS_PER_NIGHTSTORM_HOUR
+            offset += self.minute * SECONDS_PER_NIGHTSTORM_HOUR / 60.0
+            return SECONDS_PER_NIGHT_ACTIVE + offset
+
+        out = hour * SECONDS_PER_NIGHT_HOUR
+        out += self.minute * SECONDS_PER_NIGHT_HOUR / 60.0
+        return out
+
+    @classmethod
+    def from_seconds(cls, seconds: float) -> "NightTime":
+        seconds = seconds % SECONDS_PER_NIGHT
+        if seconds < SECONDS_PER_NIGHT_ACTIVE:
+            hours = seconds / SECONDS_PER_NIGHT_HOUR
+            hour = (6.0 + hours) % 24.0
+        else:
+            hours = (seconds - SECONDS_PER_NIGHT_ACTIVE) / SECONDS_PER_NIGHTSTORM_HOUR
+            hour = 2.0 + hours
+
+        hour, minute = divmod(hour, 1)
+        return cls(hour=int(hour), minute=int(minute * 60))
+
+
+class NightDelta:
+    def __init__(
+        self,
+        *,
+        nights: float = 0,
+        hours: float = 0,
+        minutes: float = 0,
+        seconds: float = 0,
+    ):
+        self.seconds = nights * SECONDS_PER_NIGHT
+        self.seconds += hours * SECONDS_PER_NIGHT_HOUR
+        self.seconds += minutes * SECONDS_PER_NIGHT_HOUR / 60.0
+        self.seconds += seconds
+
+    def total_seconds(self) -> float:
+        return self.seconds
+
+
+@total_ordering
 class NightClock:
     """Stateless, injective mapping from real-world EST timestamp to game time."""
 
     def __init__(self, dt: datetime | None = None):
-        if not dt:
-            dt = datetime.now(EST)
+        dt = dt or datetime.now(EST)
         dt = dt.astimezone(EST) if dt.tzinfo else dt.replace(tzinfo=EST)
         self.dt = dt
+
+    def __eq__(self, other: "NightClock") -> bool:
+        return self.dt == other.dt
+
+    def __lt__(self, other: "NightClock") -> bool:
+        return self.dt < other.dt
+
+    def __add__(self, delta: NightDelta) -> "NightClock":
+        return NightClock(dt=self.dt + timedelta(seconds=delta.total_seconds()))
+
+    @overload
+    def __sub__(self, other: "NightClock") -> NightDelta: ...
+    @overload
+    def __sub__(self, other: NightDelta) -> "NightClock": ...
+
+    def __sub__(self, other: object) -> object:
+        match other:
+            case NightDelta():
+                return NightClock(dt=self.dt - timedelta(seconds=other.total_seconds()))
+            case NightClock():
+                delta = (self.dt - other.dt).total_seconds()
+                return NightDelta(seconds=delta)
+            case _:
+                return NotImplemented
+
+    def to_now(self) -> None:
+        self.dt = datetime.now(EST)
+
+    def next(self, time: NightTime) -> NightDelta:
+        target_seconds = time.total_seconds()
+        if target_seconds > self.seconds:
+            delta = target_seconds - self.seconds
+        else:
+            delta = (SECONDS_PER_NIGHT - self.seconds) + target_seconds
+        return NightDelta(seconds=delta)
+
+    def replace(self, time: NightTime) -> "NightClock":
+        delta = timedelta(seconds=time.total_seconds() - self.seconds)
+        return NightClock(self.dt + delta)
 
     @property
     def _real_month_start(self) -> datetime:
@@ -62,8 +162,6 @@ class NightClock:
     def nights_since_dt_midnight(self) -> int:
         return int(self._seconds_since_dt_midnight // SECONDS_PER_NIGHT)
 
-    # Clock
-
     @property
     def nightyears(self) -> int:
         """One real month is one nightyear.
@@ -75,35 +173,41 @@ class NightClock:
         return BASE_NIGHTYEAR + months_since_epoch
 
     @property
-    def moons(self) -> int:
-        return self.dt.day
+    def hour(self) -> int:
+        """The current hour in 24-hour format."""
+        s = self.seconds
 
-    @property
-    def hours(self) -> int:
-        """The current hour in 24-hour format from 06:00 to 02:00."""
+        if s < SECONDS_PER_NIGHT_ACTIVE:
+            hour_index = int(s / SECONDS_PER_NIGHT_HOUR)
+            h = 6 + hour_index
+            if h >= 24:
+                h -= 24
+            return h
 
-        hour_index = int(self.elapsed_pct * HOURS_PER_NIGHT * 60) // 60  # 0..19
-        hour_24 = 6 + hour_index  # 6 -> 25
-        if hour_24 >= 24:
-            hour_24 -= 24
-        return hour_24
+        else:
+            storm_elapsed = s - SECONDS_PER_NIGHT_ACTIVE
+            storm_hour_index = int(storm_elapsed / SECONDS_PER_NIGHTSTORM_HOUR)
+            return 2 + storm_hour_index
 
     @property
     def hours_float(self) -> float:
-        """
-        Continuous in-game hour in [0, 24), mapped from 06:00 -> 02:00
-        over HOURS_PER_NIGHT hours.
-        """
-        total_night_minutes = self.elapsed_pct * HOURS_PER_NIGHT * 60.0
-        hour_offset = total_night_minutes / 60.0  # 0..20
-        h = 6.0 + hour_offset  # 6..26
-        if h >= 24.0:
-            h -= 24.0  # wrap to 0..24
-        return h
+        s = self.seconds
+        if s < SECONDS_PER_NIGHT_ACTIVE:
+            return (s / SECONDS_PER_NIGHT_HOUR + 6.0) % 24.0
+        else:
+            storm_elapsed = s - SECONDS_PER_NIGHT_ACTIVE
+            return 2.0 + (storm_elapsed / SECONDS_PER_NIGHTSTORM_HOUR)
 
     @property
-    def minutes(self) -> int:
-        return int(self.elapsed_pct * HOURS_PER_NIGHT * 60) % 60
+    def minute(self) -> int:
+        s = self.seconds
+        if s < SECONDS_PER_NIGHT_ACTIVE:
+            rem = s % SECONDS_PER_NIGHT_HOUR
+            return int(rem / SECONDS_PER_NIGHT_HOUR * 60)
+        else:
+            storm_elapsed = s - SECONDS_PER_NIGHT_ACTIVE
+            rem = storm_elapsed % SECONDS_PER_NIGHTSTORM_HOUR
+            return int(rem / SECONDS_PER_NIGHTSTORM_HOUR * 60)
 
     @property
     def seconds(self) -> float:
@@ -169,16 +273,11 @@ class NightClock:
         eta = max(0.0, min(eta, SECONDS_PER_NIGHT_ACTIVE - self.seconds))
         return eta
 
-    @property
-    def seconds_remaining(self) -> float:
-        return SECONDS_PER_NIGHT - self.seconds
-
     # Nightstorm
 
     @property
     def in_nightstorm(self) -> bool:
-        remaining = SECONDS_PER_NIGHT - self.seconds
-        return remaining <= SECONDS_PER_NIGHTSTORM and SECONDS_PER_NIGHTSTORM > 0
+        return self.seconds >= SECONDS_PER_NIGHT_ACTIVE
 
     @property
     def nightstorm_eta(self) -> float:
@@ -261,3 +360,35 @@ class NightClock:
         # Map normalized [0,1] to bands 1–7
         band = 1 + round(6.0 * brightness_norm)
         return max(1, min(7, band))
+
+
+Rule = Generator[NightDelta]
+Cue = tuple[NightClock, int, bus.Signal, Rule | None]
+pq = list[Cue]()
+clock = NightClock()
+
+
+def cue(
+    sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
+) -> None:
+    time = time or NightTime()
+    eta = clock + clock.next(time)
+    heapq.heappush(pq, (eta, serial(), sig, recur))
+
+
+def every(delta: NightDelta, *, count: int = 1, forever: bool = False) -> Rule:
+    i = 0
+    while forever or i < count:
+        yield delta
+        i += 1
+
+
+def process():
+    clock.to_now()
+    while pq and pq[0][0] <= clock:
+        due, tiebreak, sig, recur = heapq.heappop(pq)
+        bus.pulse(sig)
+        if not recur:
+            continue
+        if eta := next(recur, None):
+            heapq.heappush(pq, (due + eta, serial(), sig, recur))

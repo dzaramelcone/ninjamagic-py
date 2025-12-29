@@ -31,5 +31,17 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "editor.fontFamily": "Liberation Mono",
-  "editor.fontLigatures": true
+  "editor.fontLigatures": true,
+  "sqltools.connections": [
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "db",
+      "username": "postgres",
+      "database": "postgres"
+    }
+  ]
 }
