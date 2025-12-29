@@ -512,6 +512,50 @@ class Stow(Command):
         return OK
 
 
+class Swap(Command):
+    text: str = "swap"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        l_hand, r_hand = get_hands(root.source)
+        if l_hand and r_hand:
+            r_eid, _, _ = r_hand
+            l_eid, _, _ = l_hand
+            story.echo(
+                "{0} {0:moves} {2} to {0:their} right hand and {1} to {0:their} left.",
+                root.source,
+                r_eid,
+                l_eid,
+            )
+            bus.pulse(
+                bus.MoveEntity(
+                    source=r_eid, container=root.source, slot=Slot.LEFT_HAND
+                ),
+                bus.MoveEntity(
+                    source=l_eid, container=root.source, slot=Slot.RIGHT_HAND
+                ),
+            )
+        elif r_hand:
+            r_eid, _, _ = r_hand
+            story.echo("{0} {0:moves} {1} to {0:their} left hand.", root.source, r_eid)
+            bus.pulse(
+                bus.MoveEntity(
+                    source=r_eid, container=root.source, slot=Slot.LEFT_HAND
+                ),
+            )
+        elif l_hand:
+            l_eid, _, _ = l_hand
+            story.echo("{0} {0:moves} {1} to {0:their} left hand.", root.source, l_eid)
+            bus.pulse(
+                bus.MoveEntity(
+                    source=l_eid, container=root.source, slot=Slot.RIGHT_HAND
+                ),
+            )
+        else:
+            story.echo("{0} {0:flaps} {0:their} hands about.", root.source)
+
+        return OK
+
+
 class Inventory(Command):
     text: str = "inventory"
 
