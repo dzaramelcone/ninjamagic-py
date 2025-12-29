@@ -2,7 +2,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import (
-    CharId,
+    CharacterId,
     EntityId,
     Glyph,
     Health,
@@ -40,7 +40,7 @@ def move_into_world(entity: EntityId):
 
 def load(entity: EntityId, row: Character) -> EntityId:
     esper.add_component(entity, row.owner_id, OwnerId)
-    esper.add_component(entity, row.id, CharId)
+    esper.add_component(entity, row.id, CharacterId)
     esper.add_component(
         entity, Noun(value=row.name, pronoun=Pronouns.from_str(row.pronoun))
     )
@@ -75,7 +75,7 @@ def load(entity: EntityId, row: Character) -> EntityId:
 
 
 def dump(entity: EntityId) -> UpdateCharacterParams:
-    char_id = esper.component_for_entity(entity, CharId)
+    char_id = esper.component_for_entity(entity, CharacterId)
     g, h, s, v = esper.component_for_entity(entity, Glyph)
     noun = esper.component_for_entity(entity, Noun)
     pos = esper.component_for_entity(entity, Transform)

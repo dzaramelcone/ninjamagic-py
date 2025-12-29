@@ -5,7 +5,7 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import AABB, EntityId, Gas, Transform
 from ninjamagic.move import can_enter
-from ninjamagic.util import EIGHT_DIRS as DIRS, EPSILON, Walltime
+from ninjamagic.util import EIGHT_DIRS as DIRS, EPSILON, Looptime
 
 scratch = list[tuple[tuple[int, int], float]]()
 neighbors = list[tuple[int, int]]()
@@ -26,7 +26,7 @@ def create(*, map: int, y: int, x: int) -> EntityId:
     return out
 
 
-def process(now: Walltime):
+def process(now: Looptime):
     for sig in bus.iter(bus.CreateGas):
         map, y, x = sig.loc
         create(map=map, y=y, x=x)

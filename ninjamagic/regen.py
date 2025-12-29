@@ -3,12 +3,12 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import Health, Stance
 from ninjamagic.config import settings
-from ninjamagic.util import Walltime
+from ninjamagic.util import Looptime
 
 next_call = 5
 
 
-def process(now: Walltime):
+def process(now: Looptime):
     global next_call
     if now >= next_call:
         for eid, comps in esper.get_components(Health, Stance):
