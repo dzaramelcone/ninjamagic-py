@@ -1,7 +1,12 @@
+import heapq
 import math
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from functools import total_ordering
 from typing import overload
+
+from ninjamagic import bus
+from ninjamagic.util import serial
 
 EST = timezone(timedelta(hours=-5), name="EST")
 
@@ -97,9 +102,6 @@ class NightClock:
         dt = dt.astimezone(EST) if dt.tzinfo else dt.replace(tzinfo=EST)
         self.dt = dt
 
-    def tick(self) -> None:
-        self.dt = datetime.now(EST)
-
     def __eq__(self, other: "NightClock") -> bool:
         return self.dt == other.dt
 
@@ -123,6 +125,9 @@ class NightClock:
                 return NightDelta(seconds=delta)
             case _:
                 return NotImplemented
+
+    def to_now(self) -> None:
+        self.dt = datetime.now(EST)
 
     def next(self, time: NightTime) -> NightDelta:
         target_seconds = time.total_seconds()
@@ -268,10 +273,6 @@ class NightClock:
         eta = max(0.0, min(eta, SECONDS_PER_NIGHT_ACTIVE - self.seconds))
         return eta
 
-    @property
-    def seconds_remaining(self) -> float:
-        return SECONDS_PER_NIGHT - self.seconds
-
     # Nightstorm
 
     @property
@@ -359,3 +360,35 @@ class NightClock:
         # Map normalized [0,1] to bands 1–7
         band = 1 + round(6.0 * brightness_norm)
         return max(1, min(7, band))
+
+
+Rule = Generator[NightDelta]
+Cue = tuple[NightClock, int, bus.Signal, Rule | None]
+pq = list[Cue]()
+clock = NightClock()
+
+
+def cue(
+    sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
+) -> None:
+    time = time or NightTime()
+    eta = clock + clock.next(time)
+    heapq.heappush(pq, (eta, serial(), sig, recur))
+
+
+def every(delta: NightDelta, *, count: int = 1, forever: bool = False) -> Rule:
+    i = 0
+    while forever or i < count:
+        yield delta
+        i += 1
+
+
+def process():
+    clock.to_now()
+    while pq and pq[0][0] <= clock:
+        due, tiebreak, sig, recur = heapq.heappop(pq)
+        bus.pulse(sig)
+        if not recur:
+            continue
+        if eta := next(recur, None):
+            heapq.heappush(pq, (due + eta, serial(), sig, recur))
