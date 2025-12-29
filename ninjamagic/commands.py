@@ -513,6 +513,10 @@ class Stow(Command):
         s_eid, _, _ = match
         if not second and esper.try_component(root.source, Stowed):
             c_eid = esper.component_for_entity(root.source, Stowed).container
+            loc = esper.try_component(c_eid, Location)
+            if not loc or loc != root.source:
+                esper.remove_component(root.source, Stowed)
+                return False, "Stow that where?"
         elif second and (container := match_contents(root.source, second)):
             c_eid, _, _ = container
         else:
