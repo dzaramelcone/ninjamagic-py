@@ -60,7 +60,7 @@ class NightTime:
     def from_seconds(cls, seconds: float) -> "NightTime":
         seconds = seconds % SECONDS_PER_NIGHT
         if seconds < SECONDS_PER_NIGHT_ACTIVE:
-            hours = seconds / SECONDS_PER_NIGHT_ACTIVE
+            hours = seconds / SECONDS_PER_NIGHT_HOUR
             hour = (6.0 + hours) % 24.0
         else:
             hours = (seconds - SECONDS_PER_NIGHT_ACTIVE) / SECONDS_PER_NIGHTSTORM_HOUR
@@ -73,6 +73,7 @@ class NightTime:
 class NightDelta:
     def __init__(
         self,
+        *,
         nights: float = 0,
         hours: float = 0,
         minutes: float = 0,
@@ -164,7 +165,7 @@ class NightClock:
         return BASE_NIGHTYEAR + months_since_epoch
 
     @property
-    def hours(self) -> int:
+    def hour(self) -> int:
         """The current hour in 24-hour format."""
         s = self.seconds
 
@@ -190,7 +191,7 @@ class NightClock:
             return 2.0 + (storm_elapsed / SECONDS_PER_NIGHTSTORM_HOUR)
 
     @property
-    def minutes(self) -> int:
+    def minute(self) -> int:
         s = self.seconds
         if s < SECONDS_PER_NIGHT_ACTIVE:
             rem = s % SECONDS_PER_NIGHT_HOUR
