@@ -230,7 +230,12 @@ class Compass(StrEnum):
                 raise ValueError(f"Unknown compass {self!r}")
 
 
-def serial(counter=itertools.count(1)) -> int:
+SERIAL = itertools.count(1)
+
+
+def serial(counter: itertools.count | None = None) -> int:
+    if counter is None:
+        counter = SERIAL
     return next(counter)
 
 
