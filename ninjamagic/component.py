@@ -71,9 +71,9 @@ EntityId = int
 
 @component(slots=True, kw_only=True)
 class FightTimer:
-    last_atk_proc: float
-    last_def_proc: float
-    last_refresh: float
+    last_atk_proc: Walltime
+    last_def_proc: Walltime
+    last_refresh: Walltime
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
@@ -161,7 +161,7 @@ Size = tuple[int, int]
 @component(slots=True, kw_only=True)
 class Prompt:
     text: str
-    end: Walltime | None = None
+    end: Walltime = 0
     on_success: Callable | None = None
     on_mismatch: Callable | None = None
     on_expired_success: Callable | None = None
@@ -218,7 +218,7 @@ class Stats:
 
 @component(slots=True)
 class Stunned:
-    end: float
+    end: Walltime
 
 
 @component(slots=True, kw_only=True)

@@ -24,6 +24,7 @@ from ninjamagic import (
     regen,
     visibility,
 )
+from ninjamagic.util import get_walltime
 
 TPS = 240.0
 STEP = 1.0 / TPS
@@ -64,7 +65,7 @@ class State:
     async def step(self) -> None:
         last_logged_sec = 0
         loop = asyncio.get_running_loop()
-        deadline = loop.time()
+        deadline = get_walltime()
         prev_ns = time.perf_counter_ns()
 
         jitter_ema = 0.0
@@ -76,13 +77,13 @@ class State:
 
             # invoke systems        #
             conn.process()
-            inbound.process(now=loop.time())
+            inbound.process(now=get_walltime())
             parser.process()
-            regen.process(now=loop.time())
-            gas.process(now=loop.time())
-            act.process(now=loop.time())
-            combat.process(now=loop.time())
-            proc.process(now=loop.time())
+            regen.process(now=get_walltime())
+            gas.process(now=get_walltime())
+            act.process(now=get_walltime())
+            combat.process(now=get_walltime())
+            proc.process(now=get_walltime())
             move.process()
             visibility.process()
             experience.process()
@@ -93,13 +94,13 @@ class State:
             esper.clear_dead_entities()
 
             deadline += STEP
-            delay = deadline - loop.time()
+            delay = deadline - get_walltime()
             if delay > 0:
                 pause = delay - 0.001
                 if pause > 0:
                     await asyncio.sleep(pause)
                 while True:
-                    remaining = deadline - loop.time()
+                    remaining = deadline - get_walltime()
                     if remaining <= 0:
                         break
                     await asyncio.sleep(0)
@@ -107,9 +108,9 @@ class State:
                 # We're late.
                 late = -delay
                 if late > MAX_LATE_RESET:
-                    deadline = loop.time()
+                    deadline = get_walltime()
 
-            now = loop.time()
+            now = get_walltime()
             jitter = now - deadline
             jitter_ema = (1 - ALPHA) * jitter_ema + ALPHA * jitter
             current_sec = int(now)

@@ -158,7 +158,7 @@ class Attack(Command):
         if health and health.condition != "normal":
             return False, f"They're {health.condition}!"
 
-        story.echo("{0} {0:draws} back {0:their} fist..", root.source, target)
+        story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
         bus.pulse(
             bus.Act(
                 source=root.source,
