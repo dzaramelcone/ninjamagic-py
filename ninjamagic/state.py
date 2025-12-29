@@ -16,7 +16,7 @@ from ninjamagic import (
     echo,
     experience,
     gas,
-    lag,
+    inbound,
     move,
     outbox,
     parser,
@@ -76,7 +76,7 @@ class State:
 
             # invoke systems        #
             conn.process()
-            lag.process(now=loop.time())
+            inbound.process(now=loop.time())
             parser.process()
             regen.process(now=loop.time())
             gas.process(now=loop.time())

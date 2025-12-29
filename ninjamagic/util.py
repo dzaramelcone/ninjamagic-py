@@ -22,9 +22,9 @@ Num = Literal[1, 2]
 
 
 def conjugate(word: str, num: Num) -> str:
+    if word == "lies":
+        return "lie" if num == PLURAL else "lies"
     out = INFLECTOR.plural_verb(word, num)
-    if word[-3:] == "ies" and out[-1] == "y":
-        return word[:-1]
     return out
 
 

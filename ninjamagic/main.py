@@ -100,15 +100,12 @@ async def ws_main(ws: WebSocket) -> None:
                     char.name,
                     text,
                 )
-                if prompt := esper.try_component(entity_id, Prompt):
-                    esper.remove_component(entity_id, Prompt)
-                    if prompt == text:
-                        bus.pulse(bus.InboundPrompt(source=entity_id, text=text))
-                        continue
 
-                # TODO: Preprocessor / Aliases
-                if text and text[0] == "'":
-                    text = f"say {text[1:]}"
+                if prompt := esper.try_component(entity_id, Prompt):
+                    bus.pulse(
+                        bus.InboundPrompt(source=entity_id, text=text, prompt=prompt)
+                    )
+                    continue
 
                 bus.pulse(bus.Inbound(source=entity_id, text=text))
         except WebSocketDisconnect:

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass as component, field, fields
 from enum import StrEnum, auto
 from typing import Literal, NewType, TypeVar
@@ -6,7 +7,7 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
-from ninjamagic.util import Num, Pronoun, Pronouns
+from ninjamagic.util import Num, Pronoun, Pronouns, Walltime
 
 TokenVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
@@ -46,7 +47,7 @@ class AABB:
 
 
 ActId = NewType("ActId", int)
-CharId = NewType("CharId", int)
+CharacterId = NewType("CharacterId", int)
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
@@ -154,8 +155,15 @@ class Noun:
 
 YOU = Noun(value="you", pronoun=Pronouns.YOU, num=util.PLURAL)
 OwnerId = NewType("OwnerId", int)
-Prompt = NewType("Prompt", str)
 Size = tuple[int, int]
+
+
+@component(slots=True, kw_only=True)
+class Prompt:
+    text: str
+    end: Walltime | None = None
+    on_success: Callable | None = None
+    on_mismatch: Callable | None = None
 
 
 @component(slots=True, kw_only=True)

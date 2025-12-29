@@ -15,6 +15,7 @@ from ninjamagic.component import (
     Conditions,
     EntityId,
     Gas,
+    Prompt,
     Skill,
     Slot,
     Stances,
@@ -64,6 +65,7 @@ class Inbound(Signal):
 class InboundPrompt(Signal):
     source: EntityId
     text: str
+    prompt: Prompt
 
 
 @signal(frozen=True, slots=True, kw_only=True)

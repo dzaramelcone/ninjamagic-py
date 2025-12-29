@@ -28,7 +28,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.util import Compass, get_melee_delay
+from ninjamagic.util import Compass, get_melee_delay, get_walltime
 from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
@@ -263,7 +263,21 @@ class Fart(Command):
         story.echo("{0} {0:farts}.", root.source)
         bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
 
-        esper.add_component(root.source, "inhale deeply", Prompt)
+        esper.add_component(
+            root.source,
+            Prompt(
+                text="inhale deeply",
+                end=get_walltime() + 4.0,
+                on_success=lambda: story.echo(
+                    "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
+                    root.source,
+                ),
+                on_mismatch=lambda: story.echo(
+                    "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
+                    root.source,
+                ),
+            ),
+        )
         bus.pulse_in(1, bus.OutboundPrompt(to=root.source, text="inhale deeply"))
         return OK
 
