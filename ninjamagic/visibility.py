@@ -41,6 +41,7 @@ def notify_movement(sig: bus.PositionChanged):
                 map_id=sig.to_map_id,
                 x=sig.to_x,
                 y=sig.to_y,
+                quiet=sig.quiet,
             ),
             *[
                 bus.OutboundTile(
@@ -118,6 +119,7 @@ def notify_movement(sig: bus.PositionChanged):
                     map_id=sig.to_map_id,
                     x=sig.to_x,
                     y=sig.to_y,
+                    quiet=sig.quiet,
                 ),
             )
             if sig_glyph:
@@ -156,6 +158,7 @@ def notify_movement(sig: bus.PositionChanged):
                     map_id=o_pos.map_id,
                     x=o_pos.x,
                     y=o_pos.y,
+                    quiet=sig.quiet,
                 )
             )
             if o_glyph:
@@ -192,6 +195,7 @@ def notify_movement(sig: bus.PositionChanged):
                     map_id=sig.to_map_id,
                     x=sig.to_x,
                     y=sig.to_y,
+                    quiet=sig.quiet,
                 )
             )
             if sig_glyph:

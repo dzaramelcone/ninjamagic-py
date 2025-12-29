@@ -39,6 +39,10 @@ export interface Pos {
      * @generated from protobuf field: int32 y = 4
      */
     y: number;
+    /**
+     * @generated from protobuf field: bool quiet = 5
+     */
+    quiet: boolean;
 }
 /**
  * @generated from protobuf message ninjamagic.Chip
@@ -391,7 +395,8 @@ class Pos$Type extends MessageType<Pos> {
             { no: 1, name: "id", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 2, name: "map_id", kind: "scalar", localName: "map_id", T: 13 /*ScalarType.UINT32*/ },
             { no: 3, name: "x", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
-            { no: 4, name: "y", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
+            { no: 4, name: "y", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 5, name: "quiet", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
         ]);
     }
     create(value?: PartialMessage<Pos>): Pos {
@@ -400,6 +405,7 @@ class Pos$Type extends MessageType<Pos> {
         message.map_id = 0;
         message.x = 0;
         message.y = 0;
+        message.quiet = false;
         if (value !== undefined)
             reflectionMergePartial<Pos>(this, message, value);
         return message;
@@ -420,6 +426,9 @@ class Pos$Type extends MessageType<Pos> {
                     break;
                 case /* int32 y */ 4:
                     message.y = reader.int32();
+                    break;
+                case /* bool quiet */ 5:
+                    message.quiet = reader.bool();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -445,6 +454,9 @@ class Pos$Type extends MessageType<Pos> {
         /* int32 y = 4; */
         if (message.y !== 0)
             writer.tag(4, WireType.Varint).int32(message.y);
+        /* bool quiet = 5; */
+        if (message.quiet !== false)
+            writer.tag(5, WireType.Varint).bool(message.quiet);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

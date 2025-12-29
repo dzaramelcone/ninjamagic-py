@@ -6,14 +6,24 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
+    Container,
     Defending,
     EntityId,
     Health,
     Lag,
+    Location,
+    Noun,
     Prompt,
     Skills,
+    Slot,
     Stance,
+    Stowed,
     Stunned,
+    Wearable,
+    get_contents,
+    get_hands,
+    get_stored,
+    get_worn,
     stance_is,
     transform,
 )
@@ -57,8 +67,51 @@ class Command(Protocol):
 class Look(Command):
     text: str = "look"
 
-    def trigger(self, _: bus.Inbound) -> Out:
-        return False, "Look at what?"
+    def trigger(self, root: bus.Inbound) -> Out:
+        raw = root.text.strip()
+        parsed = raw.replace(" in ", " ")
+        look_in = parsed != raw
+        if not look_in:
+            return False, "Look at what?"
+
+        __, _, rest = parsed.partition(" ")
+        if not rest:
+            return False, "Look in what?"
+        match = match_contents(root.source, rest)
+        match = match or next(
+            reach.find(
+                root.source,
+                rest,
+                reach.adjacent,
+                with_components=(Container,),
+            ),
+            None,
+        )
+        if not match:
+            return False, "Look in what?"
+        eid, c_noun, __ = match
+
+        if not esper.try_component(eid, Container):
+            return False, f"You consider the inner beauty of {c_noun.definite()}."
+
+        joined = util.INFLECTOR.join(
+            [s_noun.indefinite() for _, s_noun, __ in get_contents(eid)]
+        )
+        if not joined:
+            bus.pulse(
+                bus.Outbound(
+                    to=root.source,
+                    text=f"{c_noun.definite()} has nothing in it.".capitalize(),
+                )
+            )
+            return OK
+
+        bus.pulse(
+            bus.Outbound(
+                to=root.source, text=f"In {c_noun.indefinite()}, you see {joined}."
+            )
+        )
+        return OK
 
 
 class Move(Command):
@@ -225,21 +278,281 @@ class Stress(Command):
         return OK
 
 
+class Get(Command):
+    text: str = "get"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        l_hand, r_hand = get_hands(root.source)
+        if l_hand and r_hand:
+            return False, "Your hands are full!"
+        dest = Slot.LEFT_HAND if r_hand else Slot.RIGHT_HAND
+
+        cmd = root.text.strip().replace(" in ", " ")
+        cmd, _, rest = cmd.partition(" ")
+        first, _, second = rest.partition(" ")
+        if not first:
+            return False, "Get what?"
+
+        if second:
+            if not (container := match_contents(root.source, second)):
+                return False, "Get from where?"
+            c_eid, _, __ = container
+            if not (stored := match_contents(c_eid, first)):
+                return False, "That isn't in there."
+            c_eid, _, __ = stored
+            story.echo(
+                "{0} {0:gets} {1} from {2}.",
+                root.source,
+                c_eid,
+                c_eid,
+                range=reach.visible,
+            )
+            bus.pulse(bus.MoveEntity(source=c_eid, container=root.source, slot=dest))
+            return OK
+
+        if match := next(
+            (
+                (c_eid, (s_eid, s_noun, s_slot))
+                for c_eid, (s_eid, s_noun, s_slot) in get_stored(root.source)
+                if s_noun.matches(first)
+            ),
+            None,
+        ):
+            c_eid, (s_eid, _, __) = match
+            story.echo(
+                "{0} {0:gets} {1} from {2}.",
+                root.source,
+                s_eid,
+                c_eid,
+                range=reach.visible,
+            )
+            bus.pulse(bus.MoveEntity(source=s_eid, container=root.source, slot=dest))
+            return OK
+
+        if match := next(
+            reach.find(
+                root.source,
+                rest,
+                reach.adjacent,
+                with_components=(Noun, Location, Slot),
+            ),
+            None,
+        ):
+            c_eid, _, __ = match
+            story.echo("{0} {0:gets} {1}.", root.source, c_eid, range=reach.visible)
+            bus.pulse(
+                bus.MoveEntity(
+                    source=c_eid,
+                    container=root.source,
+                    slot=dest,
+                )
+            )
+            return OK
+
+        return False, "Get what?"
+
+
+def match_hands(source: EntityId, token: str) -> tuple[int, Noun, Slot] | None:
+    l_hand, r_hand = get_hands(source)
+    if r_hand and r_hand[1].matches(token):
+        return r_hand
+    elif l_hand and l_hand[1].matches(token):
+        return l_hand
+    return None
+
+
+def match_contents(source: EntityId, token: str) -> tuple[int, Noun, Slot] | None:
+    return next((i for i in get_contents(source) if i[1].matches(token)), None)
+
+
+class Drop(Command):
+    text: str = "drop"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        l_hand, r_hand = get_hands(root.source)
+        if not l_hand and not r_hand:
+            return False, "Your hands are empty!"
+
+        __, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Drop what?"
+
+        match = None
+        if rest == "right":
+            match = r_hand
+        if rest == "left":
+            match = l_hand
+        match = match or match_hands(root.source, rest)
+        if not match:
+            return False, "Drop what?"
+
+        eid, _, __ = match
+        loc = transform(root.source)
+        story.echo("{0} {0:drops} {1}.", root.source, eid, range=reach.visible)
+        bus.pulse(
+            bus.MovePosition(
+                source=eid, to_map_id=loc.map_id, to_y=loc.y, to_x=loc.x, quiet=True
+            )
+        )
+        return OK
+
+
+class Wear(Command):
+    text: str = "wear"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        __, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Wear what?"
+        match = match_hands(root.source, rest)
+        if not match:
+            return False, "Wear what?"
+        eid, _, __ = match
+        if not esper.try_component(eid, Wearable):
+            return False, "You can't wear that."
+
+        slot = esper.component_for_entity(eid, Wearable).slot
+        story.echo("{0} {0:wears} {1}.", root.source, eid, range=reach.visible)
+        bus.pulse(bus.MoveEntity(source=eid, container=root.source, slot=slot))
+        return OK
+
+
+class Remove(Command):
+    text: str = "remove"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        l_hand, r_hand = get_hands(root.source)
+        if l_hand and r_hand:
+            return False, "Your hands are full!"
+        dest = Slot.LEFT_HAND if r_hand else Slot.RIGHT_HAND
+
+        __, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Remove what?"
+
+        worn = get_worn(root.source)
+        match = next((item for item in worn if item[1].matches(rest)), None)
+        if not match:
+            return False, "Remove what?"
+
+        eid, _, __ = match
+        story.echo("{0} {0:removes} {1}.", root.source, eid, range=reach.visible)
+        bus.pulse(bus.MoveEntity(source=eid, container=root.source, slot=dest))
+        return OK
+
+
+class Put(Command):
+    text: str = "put"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        cmd = root.text.strip().replace(" in ", " ")
+        cmd, _, rest = cmd.partition(" ")
+        first, _, second = rest.partition(" ")
+        if not first or not (stored := match_contents(root.source, first)):
+            return False, "Put what?"
+        s_eid, _, __ = stored
+
+        c_eid = None
+        if not second:
+            return False, "Put that where?"
+
+        container = match_contents(root.source, second)
+        if not container:
+            return False, "Put that where?"
+
+        c_eid, _, __ = container
+        if not esper.try_component(c_eid, Container):
+            return False, "You can't put that there."
+
+        if s_eid == c_eid:
+            return (
+                False,
+                "You consider flipping that inside out for a moment.",
+            )
+
+        story.echo(
+            "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
+        )
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        return OK
+
+
+class Stow(Command):
+    text: str = "stow"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        cmd = root.text.strip().replace(" in ", " ")
+        cmd, _, rest = cmd.partition(" ")
+        first, _, second = rest.partition(" ")
+        if not first or not (stored := match_contents(root.source, first)):
+            return False, "Stow what?"
+
+        s_eid, _, __ = stored
+        if not second and esper.try_component(root.source, Stowed):
+            c_eid = esper.component_for_entity(root.source, Stowed).container
+        elif second and (container := match_contents(root.source, second)):
+            c_eid, _, __ = container
+        else:
+            return False, "Stow that where?"
+
+        if not esper.try_component(c_eid, Container):
+            return False, "You can't stow that there."
+
+        if s_eid == c_eid:
+            return (
+                False,
+                "You consider flipping that inside out, but decide against it.",
+            )
+
+        story.echo(
+            "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
+        )
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        esper.add_component(root.source, Stowed(container=c_eid))
+        return OK
+
+
+class Inventory(Command):
+    text: str = "inventory"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        l_hand, r_hand = hands = get_hands(root.source)
+        inv = get_contents(root.source)
+        h_msg = ""
+
+        if l_hand and r_hand:
+            _, r_noun, _ = r_hand
+            _, l_noun, _ = l_hand
+            h_msg = f"You have {r_noun} in your right hand and {l_noun} in your left."
+        elif r_hand:
+            _, noun, _ = r_hand
+            h_msg = f"You have {noun} in your right hand."
+        elif l_hand:
+            _, noun, _ = l_hand
+            h_msg = f"You have {noun} in your left hand."
+        else:
+            h_msg = ""
+
+        w_msg = util.INFLECTOR.join([i[1].indefinite() for i in inv if i not in hands])
+        w_msg = f"You are wearing {w_msg}." if w_msg else "You're naked!"
+
+        bus.pulse(
+            bus.Outbound(
+                to=root.source,
+                text=f"{h_msg}{"\n" if h_msg else ""}{w_msg}",
+            )
+        )
+        return OK
+
+
 class Recall(Command):
     text: str = "recall"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        loc = transform(root.source)
         to_map_id, to_y, to_x = get_recall(root.source)
         bus.pulse(
-            bus.PositionChanged(
-                source=root.source,
-                from_map_id=loc.map_id,
-                from_y=loc.y,
-                from_x=loc.x,
-                to_map_id=to_map_id,
-                to_y=to_y,
-                to_x=to_x,
+            bus.MovePosition(
+                source=root.source, to_map_id=to_map_id, to_y=to_y, to_x=to_x
             )
         )
         return OK
@@ -260,4 +573,11 @@ commands: list[Command] = [
     Fart(),
     Stress(),
     Recall(),
+    Inventory(),
+    Get(),
+    Put(),
+    Stow(),
+    Drop(),
+    Wear(),
+    Remove(),
 ]

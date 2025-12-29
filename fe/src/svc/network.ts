@@ -115,6 +115,7 @@ function handlePos(newPos: Pos) {
   setPosition(newPos.id, newPos.map_id, newPos.x, newPos.y);
 
   if (!playerPrevPos) return;
+  if (newPos.quiet) return;
   const afterState = useGameStore.getState();
   const afterEntities = afterState.entities as Record<
     number,
