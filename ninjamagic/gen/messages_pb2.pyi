@@ -35,10 +35,12 @@ class Pos(google.protobuf.message.Message):
     MAP_ID_FIELD_NUMBER: builtins.int
     X_FIELD_NUMBER: builtins.int
     Y_FIELD_NUMBER: builtins.int
+    QUIET_FIELD_NUMBER: builtins.int
     id: builtins.int
     map_id: builtins.int
     x: builtins.int
     y: builtins.int
+    quiet: builtins.bool
     def __init__(
         self,
         *,
@@ -46,8 +48,9 @@ class Pos(google.protobuf.message.Message):
         map_id: builtins.int = ...,
         x: builtins.int = ...,
         y: builtins.int = ...,
+        quiet: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "map_id", b"map_id", "x", b"x", "y", b"y"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "map_id", b"map_id", "quiet", b"quiet", "x", b"x", "y", b"y"]) -> None: ...
 
 global___Pos = Pos
 

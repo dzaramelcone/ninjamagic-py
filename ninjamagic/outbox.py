@@ -128,6 +128,7 @@ def try_insert(
             pos.map_id = sig.map_id
             pos.x = sig.x
             pos.y = sig.y
+            pos.quiet = sig.quiet
             return True
         case bus.OutboundChipSet():
             for id, map_id, glyph, h, s, v, a in sig.chipset:

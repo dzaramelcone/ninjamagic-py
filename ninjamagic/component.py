@@ -1,5 +1,6 @@
 from dataclasses import dataclass as component, field, fields
-from typing import Literal, TypeVar
+from enum import StrEnum, auto
+from typing import Literal, NewType, TypeVar
 
 import esper
 from fastapi import WebSocket
@@ -7,90 +8,11 @@ from fastapi import WebSocket
 from ninjamagic import util
 from ninjamagic.util import Num, Pronoun, Pronouns
 
-MAX_HEALTH = 100.0
 TokenVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
 ]
-Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
-Conditions = Literal["normal", "unconscious", "in shock", "dead"]
-ActId = int
-CharId = int
-Chip = tuple[int, int, int, float, float, float]
-Chips = dict[tuple[int, int], bytearray]
-ChipSet = list[Chip]
-Connection = WebSocket
-Glyph = tuple[str, float, float, float]
-EntityId = int
-Gas = dict[tuple[int, int], float]
-Lag = float
-Prompt = str
-OwnerId = int
-Size = tuple[int, int]
-Stamina = float
 
-
-@component(slots=True)
-class Health:
-    cur: float = 100.0
-    stress: float = 0.0
-    aggravated_stress: float = 0.0
-    condition: Conditions = "normal"
-
-
-@component(slots=True)
-class Stunned:
-    end: float
-
-
-class DoubleDamage: ...
-
-
-@component(slots=True)
-class Stance:
-    cur: Stances = "standing"
-
-
-@component(slots=True, kw_only=True)
-class FightTimer:
-    last_atk_proc: float
-    last_def_proc: float
-    last_refresh: float
-
-
-@component(slots=True, kw_only=True)
-class Defending:
-    verb: TokenVerb
-
-
-@component(slots=True, kw_only=True)
-class Stats:
-    grace: int = 0
-    grit: int = 0
-    wit: int = 0
-
-
-@component(slots=True, kw_only=True)
-class Skill:
-    name: str
-    rank: int = 0
-    tnl: float = 0
-
-
-@component(slots=True, kw_only=True)
-class Skills:
-    martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
-    evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
-    generation: int = 0
-
-    def __iter__(self):
-        yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
-
-
-@component(slots=True, kw_only=True)
-class Transform:
-    map_id: EntityId
-    x: int
-    y: int
+MAX_HEALTH = 100.0
 
 
 @component(slots=True, kw_only=True)
@@ -123,6 +45,53 @@ class AABB:
         self.right = max(self.right, x)
 
 
+ActId = NewType("ActId", int)
+CharId = NewType("CharId", int)
+Chip = tuple[int, int, int, float, float, float]
+Chips = dict[tuple[int, int], bytearray]
+ChipSet = list[Chip]
+Conditions = Literal["normal", "unconscious", "in shock", "dead"]
+Connection = WebSocket
+
+
+class Container: ...
+
+
+class DoubleDamage: ...
+
+
+@component(slots=True, kw_only=True)
+class Defending:
+    verb: TokenVerb
+
+
+EntityId = int
+
+
+@component(slots=True, kw_only=True)
+class FightTimer:
+    last_atk_proc: float
+    last_def_proc: float
+    last_refresh: float
+
+
+Gas = NewType("Gas", dict[tuple[int, int], float])
+Glyph = NewType("Glyph", tuple[str, float, float, float])
+
+
+@component(slots=True)
+class Health:
+    cur: float = 100.0
+    stress: float = 0.0
+    aggravated_stress: float = 0.0
+    condition: Conditions = "normal"
+
+
+Lag = NewType("Lag", float)
+Level = NewType("Level", int)
+Location = NewType("Location", EntityId)
+
+
 @component(slots=True, frozen=True)
 class Noun:
     value: str = "thing"
@@ -140,6 +109,13 @@ class Noun:
             return self.value
         return f"the {self.value}"
 
+    def indefinite(self) -> str:
+        if self.value == "you":
+            return "you"
+        if self.value[0].isupper():
+            return self.value
+        return util.INFLECTOR.a(self.value)
+
     def __getattr__(self, key: str):
         return getattr(self.value, key)
 
@@ -148,7 +124,7 @@ class Noun:
 
     def __format__(self, format_spec: str) -> str:
         if not format_spec:
-            return self.definite()
+            return self.indefinite()
         if format_spec == "s":
             return util.possessive(self.definite())
         if format_spec == "noun":
@@ -177,6 +153,76 @@ class Noun:
 
 
 YOU = Noun(value="you", pronoun=Pronouns.YOU, num=util.PLURAL)
+OwnerId = NewType("OwnerId", int)
+Prompt = NewType("Prompt", str)
+Size = tuple[int, int]
+
+
+@component(slots=True, kw_only=True)
+class Skill:
+    name: str
+    rank: int = 0
+    tnl: float = 0
+
+
+@component(slots=True, kw_only=True)
+class Skills:
+    martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
+    evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
+    generation: int = 0
+
+    def __iter__(self):
+        yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
+
+
+@component(slots=True, kw_only=True)
+class Stowed:
+    container: EntityId
+
+
+class Slot(StrEnum):
+    UNSET = ""
+    RIGHT_HAND = "right hand"
+    LEFT_HAND = "left hand"
+    BACK = auto()
+    SHOULDER = auto()
+    ARMOR = auto()
+    HEAD = auto()
+    FEET = auto()
+
+
+Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
+
+
+@component(slots=True)
+class Stance:
+    cur: Stances = "standing"
+
+
+@component(slots=True, kw_only=True)
+class Stats:
+    grace: int = 0
+    grit: int = 0
+    wit: int = 0
+
+
+@component(slots=True)
+class Stunned:
+    end: float
+
+
+@component(slots=True, kw_only=True)
+class Transform:
+    map_id: EntityId
+    x: int
+    y: int
+
+
+@component(slots=True, kw_only=True)
+class Wearable:
+    slot: Slot
+
+
 T = TypeVar("T")
 
 
@@ -214,3 +260,44 @@ def stance(entity: EntityId) -> Stance:
 
 def stance_is(entity: EntityId, check: Stances) -> bool:
     return stance(entity).cur == check
+
+
+def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
+    return [
+        (eid, noun, slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        if loc == source
+    ]
+
+
+def get_stored(source: EntityId) -> list[tuple[EntityId, tuple[EntityId, Noun, Slot]]]:
+    return [
+        (eid, item)
+        for eid, (loc, _, _) in esper.get_components(Location, Slot, Container)
+        if loc == source
+        for item in get_contents(eid)
+    ]
+
+
+def get_hands(
+    source: EntityId,
+) -> tuple[tuple[EntityId, Noun, Slot] | None, tuple[EntityId, Noun, Slot] | None]:
+    out = (None, None)
+    for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot):
+        if loc != source:
+            continue
+        if slot == Slot.LEFT_HAND:
+            out = ((eid, noun, slot), out[1])
+        if slot == Slot.RIGHT_HAND:
+            out = (out[0], (eid, noun, slot))
+    return out
+
+
+def get_worn(
+    source: EntityId,
+) -> list[tuple[EntityId, Noun, Slot]]:
+    return [
+        (eid, noun, slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
+    ]

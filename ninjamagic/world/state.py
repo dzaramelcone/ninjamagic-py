@@ -4,14 +4,18 @@ from ninjamagic import bus
 from ninjamagic.component import (
     Chips,
     ChipSet,
+    Container,
     EntityId,
     Glyph,
     Health,
+    Location,
     Noun,
     Skills,
+    Slot,
     Stance,
     Stats,
     Transform,
+    Wearable,
 )
 from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W, Pronouns
 from ninjamagic.world import simple
@@ -86,6 +90,9 @@ def build_hub(map_id: EntityId, chips: Chips):
     lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
     esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
     esper.add_component(lily_pad, Noun(value="lily pad", pronoun=Pronouns.IT))
+    esper.add_component(lily_pad, 0, Location)
+    esper.add_component(lily_pad, Slot.UNSET, Slot)
+    esper.add_component(lily_pad, Wearable(slot=Slot.UNSET))
 
     fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
     esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
@@ -94,6 +101,17 @@ def build_hub(map_id: EntityId, chips: Chips):
     wildflower = esper.create_entity(Transform(map_id=map_id, y=4, x=11))
     esper.add_component(wildflower, ("⚘", 0.73888, 0.34, 1.0), Glyph)
     esper.add_component(wildflower, Noun(value="wildflower", pronoun=Pronouns.IT))
+    esper.add_component(wildflower, 0, Location)
+    esper.add_component(wildflower, Slot.UNSET, Slot)
+    esper.add_component(wildflower, Wearable(slot=Slot.UNSET))
+
+    backpack = esper.create_entity(Transform(map_id=map_id, y=4, x=9))
+    esper.add_component(backpack, ("]", 47 / 360, 0.60, 0.85), Glyph)
+    esper.add_component(backpack, Noun(value="backpack", pronoun=Pronouns.IT))
+    esper.add_component(backpack, 0, Location)
+    esper.add_component(backpack, Slot.UNSET, Slot)
+    esper.add_component(backpack, Wearable(slot=Slot.SHOULDER))
+    esper.add_component(backpack, Container())
 
     # fmt: off
     chips[(0,0)] = bytearray([
