@@ -89,11 +89,7 @@ class Health:
 
 Lag = float
 Level = int
-
-
-@component(slots=True)
-class Location:
-    location_id: EntityId
+Location = int
 
 
 @component(slots=True, frozen=True)
@@ -275,9 +271,11 @@ def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
 
 
 def get_stored(source: EntityId) -> list[tuple[EntityId, tuple[EntityId, Noun, Slot]]]:
-    # can optimize by searching only for Container tagged items
     return [
-        (eid, item) for eid, _, __ in get_contents(source) for item in get_contents(eid)
+        (eid, item)
+        for eid, (loc, _, _) in esper.get_components(Location, Slot, Container)
+        if loc == source
+        for item in get_contents(eid)
     ]
 
 

@@ -1,7 +1,13 @@
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Connection, Location, Slot, Transform, transform
+from ninjamagic.component import (
+    Connection,
+    Location,
+    Slot,
+    Transform,
+    transform,
+)
 from ninjamagic.world.state import can_enter
 
 
@@ -21,7 +27,7 @@ def process():
             )
         )
         if esper.has_component(sig.source, Location):
-            esper.add_component(sig.source, 0, Location)
+            esper.add_component(sig.source, sig.to_map_id, Location)
         if esper.has_component(sig.source, Slot):
             esper.add_component(sig.source, Slot.UNSET)
 

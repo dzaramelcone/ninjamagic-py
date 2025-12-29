@@ -74,7 +74,7 @@ class Look(Command):
         if not look_in:
             return False, "Look at what?"
 
-        __, _, rest = parsed.partition(" ")
+        _, _, rest = parsed.partition(" ")
         if not rest:
             return False, "Look in what?"
         match = match_contents(root.source, rest)
@@ -89,13 +89,13 @@ class Look(Command):
         )
         if not match:
             return False, "Look in what?"
-        eid, c_noun, __ = match
+        eid, c_noun, _ = match
 
         if not esper.try_component(eid, Container):
             return False, f"You consider the inner beauty of {c_noun.definite()}."
 
         joined = util.INFLECTOR.join(
-            [s_noun.indefinite() for _, s_noun, __ in get_contents(eid)]
+            [s_noun.indefinite() for _, s_noun, _ in get_contents(eid)]
         )
         if not joined:
             bus.pulse(
@@ -296,14 +296,14 @@ class Get(Command):
         if second:
             if not (container := match_contents(root.source, second)):
                 return False, "Get from where?"
-            c_eid, _, __ = container
+            c_eid, _, _ = container
             if not (stored := match_contents(c_eid, first)):
                 return False, "That isn't in there."
-            c_eid, _, __ = stored
+            s_eid, _, _ = stored
             story.echo(
                 "{0} {0:gets} {1} from {2}.",
                 root.source,
-                c_eid,
+                s_eid,
                 c_eid,
                 range=reach.visible,
             )
@@ -318,7 +318,7 @@ class Get(Command):
             ),
             None,
         ):
-            c_eid, (s_eid, _, __) = match
+            c_eid, (s_eid, _, _) = match
             story.echo(
                 "{0} {0:gets} {1} from {2}.",
                 root.source,
@@ -338,7 +338,7 @@ class Get(Command):
             ),
             None,
         ):
-            c_eid, _, __ = match
+            c_eid, _, _ = match
             story.echo("{0} {0:gets} {1}.", root.source, c_eid, range=reach.visible)
             bus.pulse(
                 bus.MoveEntity(
@@ -373,7 +373,7 @@ class Drop(Command):
         if not l_hand and not r_hand:
             return False, "Your hands are empty!"
 
-        __, _, rest = root.text.partition(" ")
+        _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "Drop what?"
 
@@ -386,7 +386,7 @@ class Drop(Command):
         if not match:
             return False, "Drop what?"
 
-        eid, _, __ = match
+        eid, _, _ = match
         loc = transform(root.source)
         story.echo("{0} {0:drops} {1}.", root.source, eid, range=reach.visible)
         bus.pulse(
@@ -401,13 +401,13 @@ class Wear(Command):
     text: str = "wear"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        __, _, rest = root.text.partition(" ")
+        _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "Wear what?"
         match = match_hands(root.source, rest)
         if not match:
             return False, "Wear what?"
-        eid, _, __ = match
+        eid, _, _ = match
         if not esper.try_component(eid, Wearable):
             return False, "You can't wear that."
 
@@ -426,7 +426,7 @@ class Remove(Command):
             return False, "Your hands are full!"
         dest = Slot.LEFT_HAND if r_hand else Slot.RIGHT_HAND
 
-        __, _, rest = root.text.partition(" ")
+        _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "Remove what?"
 
@@ -435,7 +435,7 @@ class Remove(Command):
         if not match:
             return False, "Remove what?"
 
-        eid, _, __ = match
+        eid, _, _ = match
         story.echo("{0} {0:removes} {1}.", root.source, eid, range=reach.visible)
         bus.pulse(bus.MoveEntity(source=eid, container=root.source, slot=dest))
         return OK
@@ -448,9 +448,9 @@ class Put(Command):
         cmd = root.text.strip().replace(" in ", " ")
         cmd, _, rest = cmd.partition(" ")
         first, _, second = rest.partition(" ")
-        if not first or not (stored := match_contents(root.source, first)):
+        if not first or not (stored := match_hands(root.source, first)):
             return False, "Put what?"
-        s_eid, _, __ = stored
+        s_eid, _, _ = stored
 
         c_eid = None
         if not second:
@@ -460,7 +460,7 @@ class Put(Command):
         if not container:
             return False, "Put that where?"
 
-        c_eid, _, __ = container
+        c_eid, _, _ = container
         if not esper.try_component(c_eid, Container):
             return False, "You can't put that there."
 
@@ -523,13 +523,13 @@ class Inventory(Command):
         if l_hand and r_hand:
             _, r_noun, _ = r_hand
             _, l_noun, _ = l_hand
-            h_msg = f"You have {r_noun} in your right hand and {l_noun} in your left."
+            h_msg = f"You have {r_noun} in your right hand and {l_noun} in your left.\n"
         elif r_hand:
             _, noun, _ = r_hand
-            h_msg = f"You have {noun} in your right hand."
+            h_msg = f"You have {noun} in your right hand.\n"
         elif l_hand:
             _, noun, _ = l_hand
-            h_msg = f"You have {noun} in your left hand."
+            h_msg = f"You have {noun} in your left hand.\n"
         else:
             h_msg = ""
 
@@ -539,7 +539,7 @@ class Inventory(Command):
         bus.pulse(
             bus.Outbound(
                 to=root.source,
-                text=f"{h_msg}{"\n" if h_msg else ""}{w_msg}",
+                text=f"{h_msg}{w_msg}",
             )
         )
         return OK
@@ -580,4 +580,5 @@ commands: list[Command] = [
     Drop(),
     Wear(),
     Remove(),
+    Swap(),
 ]
