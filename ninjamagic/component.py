@@ -1,6 +1,6 @@
 from dataclasses import dataclass as component, field, fields
 from enum import StrEnum, auto
-from typing import Literal, TypeVar
+from typing import Literal, NewType, TypeVar
 
 import esper
 from fastapi import WebSocket
@@ -45,8 +45,8 @@ class AABB:
         self.right = max(self.right, x)
 
 
-ActId = int
-CharId = int
+ActId = NewType("ActId", int)
+CharId = NewType("CharId", int)
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
@@ -75,8 +75,8 @@ class FightTimer:
     last_refresh: float
 
 
-Gas = dict[tuple[int, int], float]
-Glyph = tuple[str, float, float, float]
+Gas = NewType("Gas", dict[tuple[int, int], float])
+Glyph = NewType("Glyph", tuple[str, float, float, float])
 
 
 @component(slots=True)
@@ -87,9 +87,9 @@ class Health:
     condition: Conditions = "normal"
 
 
-Lag = float
-Level = int
-Location = int
+Lag = NewType("Lag", float)
+Level = NewType("Level", int)
+Location = NewType("Location", EntityId)
 
 
 @component(slots=True, frozen=True)
@@ -153,8 +153,8 @@ class Noun:
 
 
 YOU = Noun(value="you", pronoun=Pronouns.YOU, num=util.PLURAL)
-OwnerId = int
-Prompt = str
+OwnerId = NewType("OwnerId", int)
+Prompt = NewType("Prompt", str)
 Size = tuple[int, int]
 
 
