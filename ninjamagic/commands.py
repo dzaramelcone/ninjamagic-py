@@ -68,49 +68,52 @@ class Look(Command):
     text: str = "look"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        raw = root.text.strip()
+        raw = root.text.strip().replace(" at ", " ")
         parsed = raw.replace(" in ", " ")
         look_in = parsed != raw
-        if not look_in:
-            return False, "Look at what?"
 
         _, _, rest = parsed.partition(" ")
         if not rest:
-            return False, "Look in what?"
-        match = match_contents(root.source, rest)
-        match = match or next(
-            reach.find(
-                root.source,
-                rest,
-                reach.adjacent,
-                with_components=(Container,),
-            ),
-            None,
-        )
-        if not match:
-            return False, "Look in what?"
-        eid, c_noun, _ = match
+            return False, f"Look {"in" if look_in else "at"} what?"
 
-        if not esper.try_component(eid, Container):
-            return False, f"You consider the inner beauty of {c_noun.definite()}."
-
-        joined = util.INFLECTOR.join(
-            [s_noun.indefinite() for _, s_noun, _ in get_contents(eid)]
-        )
-        if not joined:
+        if look_in:
+            match = match_contents(root.source, rest)
+            match = match or next(
+                reach.find(
+                    root.source,
+                    rest,
+                    reach.adjacent,
+                    with_components=(Container,),
+                ),
+                None,
+            )
+            if not match:
+                return False, "Look in what?"
+            eid, c_noun, _ = match
+            if not esper.try_component(eid, Container):
+                return False, f"You consider the inner beauty of {c_noun.definite()}."
+            joined = util.INFLECTOR.join(
+                [s_noun.indefinite() for _, s_noun, _ in get_contents(eid)]
+            )
             bus.pulse(
                 bus.Outbound(
                     to=root.source,
-                    text=f"{c_noun.definite()} has nothing in it.".capitalize(),
+                    text=(
+                        f"In {c_noun.indefinite()}, you see {joined}."
+                        if joined
+                        else f"{c_noun.definite()} has nothing in it.".capitalize()
+                    ),
                 )
             )
             return OK
 
-        bus.pulse(
-            bus.Outbound(
-                to=root.source, text=f"In {c_noun.indefinite()}, you see {joined}."
-            )
+        match = next(
+            reach.find(source=root.source, prefix=rest, in_range=reach.visible), None
         )
+        if not match:
+            return False, "Look at what?"
+        eid, _, _ = match
+        story.echo("{0} {0:looks} at {1}.", root.source, eid)
         return OK
 
 
