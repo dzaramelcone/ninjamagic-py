@@ -4,27 +4,31 @@ import math
 import random
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, NewType
 
 import inflect
 
 from ninjamagic.config import settings
 
+Looptime = NewType("Looptime", float)
+
 FOUR_DIRS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
 EIGHT_DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 EPSILON = 1e-12
-# TODO: Clean up the RNG global
+
+# TODO: Clean up the RNG and loop global
 RNG = random.Random(x=settings.random_seed)
 INFLECTOR = inflect.engine()
-SINGULAR = 1
 PLURAL = 2
+SINGULAR = 1
 Num = Literal[1, 2]
+LOOP: asyncio.AbstractEventLoop | None = None
 
 
 def conjugate(word: str, num: Num) -> str:
+    if word == "lies":
+        return "lie" if num == PLURAL else "lies"
     out = INFLECTOR.plural_verb(word, num)
-    if word[-3:] == "ies" and out[-1] == "y":
-        return word[:-1]
     return out
 
 
@@ -151,7 +155,9 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
     return a + (b - a) * RNG.betavariate(α, β)
 
 
-def proc(prev: float, cur: float, odds: float = 0, interval: float = 0) -> bool:
+def proc(
+    prev: Looptime, cur: Looptime, odds: float = 0, interval: Looptime = 0
+) -> bool:
     odds = odds or get_proc_odds()
     if not odds:
         return False
@@ -162,7 +168,7 @@ def proc(prev: float, cur: float, odds: float = 0, interval: float = 0) -> bool:
     return RNG.random() < 1 - math.exp(-λ * δ)
 
 
-def delta_for_odds(target: float = 0, odds: float = 0, interval: float = 0) -> float:
+def delta_for_odds(target: float = 0, odds: float = 0, interval: Looptime = 0) -> float:
     odds = odds or get_proc_odds()
     if not odds:
         return 0
@@ -237,18 +243,14 @@ BUILD_HTML = open("ninjamagic/static/gen/index.html").read()
 LOGIN_HTML = open("ninjamagic/static/login.html").read()
 CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
 
-loop: asyncio.AbstractEventLoop | None = None
-Walltime = float
+
+def get_looptime() -> Looptime:
+    global LOOP
+    LOOP = LOOP or asyncio.get_running_loop()
+    return LOOP.time()
 
 
-def get_walltime() -> Walltime:
-    global loop
-    if not loop:
-        loop = asyncio.get_running_loop()
-    return loop.time()
-
-
-def get_melee_delay() -> float:
+def get_melee_delay() -> Looptime:
     return settings.attack_len
 
 

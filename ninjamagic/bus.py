@@ -15,6 +15,7 @@ from ninjamagic.component import (
     Conditions,
     EntityId,
     Gas,
+    Prompt,
     Skill,
     Slot,
     Stances,
@@ -23,7 +24,7 @@ from ninjamagic.component import (
 )
 from ninjamagic.gen.models import Character
 from ninjamagic.reach import Selector, adjacent
-from ninjamagic.util import Compass, Walltime, get_walltime, serial
+from ninjamagic.util import Compass, Looptime, get_looptime, serial
 
 
 class Signal:
@@ -64,6 +65,7 @@ class Inbound(Signal):
 class InboundPrompt(Signal):
     source: EntityId
     text: str
+    prompt: Prompt
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -197,7 +199,7 @@ class Act(Signal):
     source: EntityId
     delay: float
     then: Signal
-    start: Walltime = field(default_factory=get_walltime)
+    start: Looptime = field(default_factory=get_looptime)
     id: ActId = field(default_factory=serial)
 
     @property

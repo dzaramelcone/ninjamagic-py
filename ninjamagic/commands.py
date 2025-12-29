@@ -28,7 +28,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.util import Compass, get_melee_delay
+from ninjamagic.util import Compass, get_looptime, get_melee_delay
 from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class Attack(Command):
         if health and health.condition != "normal":
             return False, f"They're {health.condition}!"
 
-        story.echo("{0} {0:draws} back {0:their} fist..", root.source, target)
+        story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
         bus.pulse(
             bus.Act(
                 source=root.source,
@@ -178,7 +178,7 @@ class Block(Command):
     def trigger(self, root: bus.Inbound) -> Out:
         lag_len = settings.block_len + settings.block_miss_len
         this_block = Defending(verb="block")
-        esper.add_component(root.source, util.get_walltime() + lag_len, Lag)
+        esper.add_component(root.source, util.get_looptime() + lag_len, Lag)
         esper.add_component(root.source, this_block)
         bus.pulse(
             bus.Interrupt(source=root.source),
@@ -263,7 +263,29 @@ class Fart(Command):
         story.echo("{0} {0:farts}.", root.source)
         bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
 
-        esper.add_component(root.source, "inhale deeply", Prompt)
+        esper.add_component(
+            root.source,
+            Prompt(
+                text="inhale deeply",
+                end=get_looptime() + 4.0,
+                on_success=lambda: story.echo(
+                    "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
+                    root.source,
+                ),
+                on_mismatch=lambda: story.echo(
+                    "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
+                    root.source,
+                ),
+                on_expired_success=lambda: story.echo(
+                    "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
+                    root.source,
+                ),
+                on_expired_mismatch=lambda: story.echo(
+                    "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
+                    root.source,
+                ),
+            ),
+        )
         bus.pulse_in(1, bus.OutboundPrompt(to=root.source, text="inhale deeply"))
         return OK
 

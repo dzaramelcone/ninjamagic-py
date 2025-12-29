@@ -11,6 +11,10 @@ def process():
         if not inb:
             continue
 
+        # TODO: Preprocessor / Aliases
+        if inb[0] == "'":
+            inb = f"say {inb[1:]}"
+
         cmd, _, _ = inb.partition(" ")
         match = None
         for x in commands.commands:
