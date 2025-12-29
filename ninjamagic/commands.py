@@ -276,6 +276,14 @@ class Fart(Command):
                     "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
                     root.source,
                 ),
+                on_expired_success=lambda: story.echo(
+                    "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
+                    root.source,
+                ),
+                on_expired_mismatch=lambda: story.echo(
+                    "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
+                    root.source,
+                ),
             ),
         )
         bus.pulse_in(1, bus.OutboundPrompt(to=root.source, text="inhale deeply"))

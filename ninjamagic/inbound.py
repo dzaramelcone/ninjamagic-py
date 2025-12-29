@@ -14,19 +14,24 @@ DEQUE_MAXLEN = 20
 def process(now: float):
     for sig in bus.iter(bus.InboundPrompt):
         esper.remove_component(sig.source, Prompt)
-        if sig.prompt.end < now:
+
+        prompt = sig.prompt
+        matched = sig.prompt.text == sig.text
+        expired = sig.prompt.end < now
+        match (matched, expired):
+            case (True, False):
+                handler = prompt.on_success
+            case (True, True):
+                handler = prompt.on_expired_success
+            case (False, False):
+                handler = prompt.on_mismatch
+            case (False, True):
+                handler = prompt.on_expired_mismatch
+
+        if handler:
+            handler()
+        else:
             bus.pulse(bus.Inbound(source=sig.source, text=sig.text))
-            continue
-
-        if sig.prompt.text != sig.text:
-            if sig.prompt.on_mismatch:
-                sig.prompt.on_mismatch()
-            else:
-                bus.pulse(bus.Inbound(source=sig.source, text=sig.text))
-            continue
-
-        if sig.prompt.on_success:
-            sig.prompt.on_success()
 
     for sig in bus.iter(bus.Inbound):
         lag = esper.try_component(sig.source, Lag) or -1

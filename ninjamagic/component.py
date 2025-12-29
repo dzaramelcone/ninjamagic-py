@@ -164,6 +164,8 @@ class Prompt:
     end: Walltime | None = None
     on_success: Callable | None = None
     on_mismatch: Callable | None = None
+    on_expired_success: Callable | None = None
+    on_expired_mismatch: Callable | None = None
 
 
 @component(slots=True, kw_only=True)
