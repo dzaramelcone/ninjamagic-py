@@ -11,6 +11,7 @@ message Pos {
   uint32 map_id = 2;
   int32 x = 3;
   int32 y = 4;
+  bool quiet = 5;
 }
 
 message Chip {

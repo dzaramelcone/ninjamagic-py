@@ -16,6 +16,7 @@ from ninjamagic.component import (
     EntityId,
     Gas,
     Skill,
+    Slot,
     Stances,
     TokenVerb,
     Transform,
@@ -93,16 +94,37 @@ class MoveCompass(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class MovePosition(Signal):
+    "An entity move to a specific location."
+
+    source: EntityId
+    to_map_id: EntityId
+    to_y: int
+    to_x: int
+    quiet: bool = False
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class MoveEntity(Signal):
+    "An entity move into another entity."
+
+    source: EntityId
+    container: EntityId
+    slot: Slot
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class PositionChanged(Signal):
     "An entity's position changed."
 
     source: EntityId
     from_map_id: EntityId
-    from_x: int
     from_y: int
+    from_x: int
     to_map_id: EntityId
-    to_x: int
     to_y: int
+    to_x: int
+    quiet: bool = False
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -317,6 +339,7 @@ class OutboundMove(Signal):
     map_id: EntityId
     x: int
     y: int
+    quiet: bool = False
 
 
 @signal(frozen=True, slots=True, kw_only=True)
