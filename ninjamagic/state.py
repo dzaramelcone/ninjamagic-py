@@ -18,6 +18,7 @@ from ninjamagic import (
     gas,
     inbound,
     move,
+    nightclock,
     outbox,
     parser,
     proc,
@@ -75,6 +76,7 @@ class State:
             prev_ns = frame_start_ns
 
             # invoke systems        #
+            nightclock.process()
             conn.process()
             inbound.process(now=now)
             parser.process()

@@ -5,7 +5,7 @@ import pytest
 from ninjamagic.component import Health, Noun, Skill, Skills, Transform
 from ninjamagic.util import VIEW_STRIDE, Pronouns, get_melee_delay
 from ninjamagic.world.state import TEST
-from tests.util import FakeUserSetup
+from tests.conftest import FakeUserSetup
 
 H, W = VIEW_STRIDE
 INSIDE = W

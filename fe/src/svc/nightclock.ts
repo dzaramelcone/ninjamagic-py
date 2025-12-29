@@ -2,7 +2,7 @@
 import { useGameStore } from "../state";
 
 export const SECONDS_PER_NIGHT = 18 * 60;
-export const SECONDS_PER_NIGHTSTORM = 10;
+export const SECONDS_PER_NIGHTSTORM = 25;
 export const HOURS_PER_NIGHT = 20;
 
 export const BASE_NIGHTYEAR = 200;

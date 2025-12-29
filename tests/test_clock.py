@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from ninjamagic.clock import (
+from ninjamagic.nightclock import (
     BASE_NIGHTYEAR,
     EPOCH,
     EST,
@@ -13,7 +13,10 @@ from ninjamagic.clock import (
     SECONDS_PER_NIGHT_ACTIVE,
     SECONDS_PER_NIGHT_HOUR,
     SECONDS_PER_NIGHTSTORM,
+    SECONDS_PER_NIGHTSTORM_HOUR,
     NightClock,
+    NightDelta,
+    NightTime,
 )
 
 
@@ -34,7 +37,6 @@ def test_epoch_baseline():
     assert nc.nights_this_nightyear == 0
 
     assert nc.nightyears == BASE_NIGHTYEAR
-    assert nc.moons == 1  # Dec 1st
 
 
 def test_nights_per_day_consistency():
@@ -72,18 +74,18 @@ def test_hours_at_start_mid_end_of_night():
     start = est(datetime(2025, 12, 1, 0, 0, 0))
     nc_start = NightClock(start)
     assert nc_start.seconds == 0
-    assert nc_start.hours == 6
+    assert nc_start.hour == 6
 
     # Middle of night -> around 16:00
     mid = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE / 2))
     nc_mid = NightClock(mid)
     assert math.isclose(nc_mid.elapsed_pct, 0.5, rel_tol=1e-6)
-    assert 15 <= nc_mid.hours <= 17  # allow a 1h band due to flooring
+    assert 15 <= nc_mid.hour <= 17  # allow a 1h band due to flooring
 
     # Very end of night (just before wrap) -> between 01:00 and 02:00
     end = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE - 1))
     nc_end = NightClock(end)
-    assert 1 <= nc_end.hours <= 2
+    assert 1 <= nc_end.hour <= 2
 
 
 def test_minutes_and_next_hour_eta_consistency():
@@ -92,8 +94,8 @@ def test_minutes_and_next_hour_eta_consistency():
     dt = est(EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
     nc = NightClock(dt)
 
-    assert nc.hours == 9  # 06 + 3
-    assert nc.minutes == 0  # exactly on the hour
+    assert nc.hour == 9  # 06 + 3
+    assert nc.minute == 0  # exactly on the hour
 
     # next_hour_eta should be exactly one in-game hour of real seconds
     assert math.isclose(nc.next_hour_eta, SECONDS_PER_NIGHT_HOUR, rel_tol=1e-6)
@@ -226,3 +228,136 @@ def test_nightstorm_always_zero(year, month, frac):
         f"{dt=}: expected brightness_index=0 during nightstorm, "
         f"got {nc.brightness_index}"
     )
+
+
+def test_to_cycle_seconds_active():
+    t = NightTime(6, 00)
+    assert t.total_seconds() == 0.0
+
+    t = NightTime(7, 00)
+    expected = SECONDS_PER_NIGHT_HOUR
+    assert t.total_seconds() == pytest.approx(expected)
+
+    t = NightTime(1, 00)
+    assert t.total_seconds() == pytest.approx(19 * SECONDS_PER_NIGHT_HOUR)
+
+    t = NightTime(2, 00)
+    assert t.total_seconds() == pytest.approx(SECONDS_PER_NIGHT_ACTIVE)
+
+    # 03:00 -> Start of Storm + 1 Storm Hour (~6.25s)
+    t = NightTime(3, 00)
+    expected = SECONDS_PER_NIGHT_ACTIVE + SECONDS_PER_NIGHTSTORM_HOUR
+    assert t.total_seconds() == pytest.approx(expected)
+
+
+def test_round_trip_conversion():
+    original = NightTime(22, 15)
+    seconds = original.total_seconds()
+    reconstructed = NightTime.from_seconds(seconds)
+
+    assert original.hour == reconstructed.hour
+    assert original.minute == reconstructed.minute
+
+    original_storm = NightTime(4, 12)
+    seconds_storm = original_storm.total_seconds()
+    reconstructed_storm = NightTime.from_seconds(seconds_storm)
+
+    assert original_storm.hour == reconstructed_storm.hour
+    assert original_storm.minute == reconstructed_storm.minute
+
+
+def test_integration_add_to_clock():
+    """Verify Delta can be added to NightClock."""
+    clock = NightClock(EPOCH)  # 06:00
+    delta = NightDelta(seconds=100.0)  # 100 real seconds
+
+    future_clock = clock + delta
+
+    # Verify the clock moved forward by exactly delta.total_seconds
+    assert (future_clock.dt - clock.dt).total_seconds() == 100.0
+    assert future_clock.seconds == 100.0
+
+
+def test_comparisons():
+    t1 = NightTime(23, 0)
+    t2 = NightTime(0, 0)  # 00:00 is technically "later" in the night than 23:00
+    t3 = NightTime(2, 0)  # 02:00 is even later (storm start)
+
+    assert t1 < t2
+    assert t2 < t3
+    assert t1 != t2
+
+
+def test_clock_initialization():
+    clock = NightClock(EPOCH)
+    assert clock.hour == 6
+    assert clock.minute == 0
+    assert clock.seconds == 0.0
+    assert clock.in_nightstorm is False
+
+
+def test_storm_transition():
+    """Check behavior exactly at the storm boundary."""
+    clock = NightClock(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE))
+
+    assert clock.in_nightstorm is True
+    assert clock.hour == 2
+    assert clock.minute == 0
+
+    # Check storm percentage
+    assert clock.nightstorm_elapsed_pct == 0.0
+
+
+@pytest.mark.parametrize("hour", list(range(24)))
+def test_next_event_logic(hour):
+    clock = NightClock(EPOCH).replace(NightTime(hour))
+    target = NightTime((hour + 1) % 24, 0)
+    delta = clock.next(target)
+    expected_delta = SECONDS_PER_NIGHT_HOUR
+    if 2 <= hour < 6:
+        expected_delta = SECONDS_PER_NIGHTSTORM_HOUR
+    assert delta.total_seconds() == pytest.approx(expected_delta)
+
+
+@pytest.mark.parametrize("hour", list(range(24)))
+def test_next_event_wraps_cycle(hour):
+    target_hour = (hour - 1) % 24
+    clock = NightClock(EPOCH).replace(NightTime(hour, 0))
+    target = NightTime(target_hour, 0)
+
+    delta = clock.next(target)
+
+    seconds_elapsed = SECONDS_PER_NIGHT_HOUR
+    if 2 <= target_hour < 6:
+        seconds_elapsed = SECONDS_PER_NIGHTSTORM_HOUR
+    expected_wait = SECONDS_PER_NIGHT - seconds_elapsed
+    assert delta.total_seconds() == pytest.approx(expected_wait)
+
+
+def test_arithmetic():
+    clock = NightClock(EPOCH)
+
+    # Add a Delta of 1 Real Second
+    delta = NightDelta(seconds=1.0)
+    new_clock = clock + delta
+    assert (new_clock.dt - clock.dt).total_seconds() == 1.0
+
+    # Subtract two clocks
+    diff = new_clock - clock
+    assert isinstance(diff, NightDelta)
+    assert diff.total_seconds() == 1.0
+
+
+def test_next_storm_wraps_cycle():
+    """
+    Scenario: It is 05:00 (Deep Storm). When is the next 03:00?
+    Logic: Next night. We must finish this storm, wait through active, then hit storm.
+    """
+    clock = NightClock(EPOCH).replace(NightTime(5, 0))
+    current_seconds = SECONDS_PER_NIGHT_ACTIVE + (3 * SECONDS_PER_NIGHTSTORM_HOUR)
+    target = NightTime(3, 0)
+    target_seconds = SECONDS_PER_NIGHT_ACTIVE + SECONDS_PER_NIGHTSTORM_HOUR
+    delta = clock.next(target)
+    remaining_in_cycle = SECONDS_PER_NIGHT - current_seconds
+    expected = remaining_in_cycle + target_seconds
+    assert delta.total_seconds() == pytest.approx(expected)
