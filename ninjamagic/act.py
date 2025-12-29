@@ -4,7 +4,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import ActId, EntityId
-from ninjamagic.util import Walltime
+from ninjamagic.util import Looptime
 
 pq: list[bus.Act] = []
 current: dict[EntityId, ActId] = {}
@@ -14,7 +14,7 @@ def is_busy(entity: EntityId):
     return entity in current
 
 
-def process(now: Walltime) -> None:
+def process(now: Looptime) -> None:
     for interrupt in bus.iter(bus.Interrupt):
         current.pop(interrupt.source, None)
 

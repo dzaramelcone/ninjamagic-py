@@ -4,7 +4,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import EntityId, Lag, Prompt
-from ninjamagic.util import Walltime
+from ninjamagic.util import Looptime
 
 pending: defaultdict[EntityId, deque[bus.Inbound]] = defaultdict(deque)
 clean: list[EntityId] = []
@@ -12,7 +12,7 @@ SPAM_PENALTY: float = 0.275
 DEQUE_MAXLEN = 20
 
 
-def process(now: Walltime):
+def process(now: Looptime):
     for sig in bus.iter(bus.InboundPrompt):
         esper.remove_component(sig.source, Prompt)
 

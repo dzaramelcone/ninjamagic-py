@@ -5,10 +5,10 @@ import esper
 from ninjamagic import bus, story
 from ninjamagic.component import DoubleDamage, Stunned
 from ninjamagic.config import settings
-from ninjamagic.util import Walltime
+from ninjamagic.util import Looptime
 
 
-def process(now: Walltime) -> None:
+def process(now: Looptime) -> None:
     for eid, stun in esper.get_component(Stunned):
         if stun.end <= now:
             esper.remove_component(eid, Stunned)

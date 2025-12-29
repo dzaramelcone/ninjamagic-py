@@ -24,7 +24,7 @@ from ninjamagic import (
     regen,
     visibility,
 )
-from ninjamagic.util import get_walltime
+from ninjamagic.util import get_looptime
 
 TPS = 240.0
 STEP = 1.0 / TPS
@@ -64,8 +64,7 @@ class State:
 
     async def step(self) -> None:
         last_logged_sec = 0
-        loop = asyncio.get_running_loop()
-        deadline = get_walltime()
+        now = deadline = get_looptime()
         prev_ns = time.perf_counter_ns()
 
         jitter_ema = 0.0
@@ -77,13 +76,13 @@ class State:
 
             # invoke systems        #
             conn.process()
-            inbound.process(now=get_walltime())
+            inbound.process(now=now)
             parser.process()
-            regen.process(now=get_walltime())
-            gas.process(now=get_walltime())
-            act.process(now=get_walltime())
-            combat.process(now=get_walltime())
-            proc.process(now=get_walltime())
+            regen.process(now=now)
+            gas.process(now=now)
+            act.process(now=now)
+            combat.process(now=now)
+            proc.process(now=now)
             move.process()
             visibility.process()
             experience.process()
@@ -94,13 +93,13 @@ class State:
             esper.clear_dead_entities()
 
             deadline += STEP
-            delay = deadline - get_walltime()
+            delay = deadline - get_looptime()
             if delay > 0:
                 pause = delay - 0.001
                 if pause > 0:
                     await asyncio.sleep(pause)
                 while True:
-                    remaining = deadline - get_walltime()
+                    remaining = deadline - get_looptime()
                     if remaining <= 0:
                         break
                     await asyncio.sleep(0)
@@ -108,9 +107,9 @@ class State:
                 # We're late.
                 late = -delay
                 if late > MAX_LATE_RESET:
-                    deadline = get_walltime()
+                    deadline = get_looptime()
 
-            now = get_walltime()
+            now = get_looptime()
             jitter = now - deadline
             jitter_ema = (1 - ALPHA) * jitter_ema + ALPHA * jitter
             current_sec = int(now)

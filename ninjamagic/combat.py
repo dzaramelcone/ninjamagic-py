@@ -18,7 +18,7 @@ from ninjamagic.component import (
 )
 from ninjamagic.util import (
     RNG,
-    Walltime,
+    Looptime,
     contest,
     delta_for_odds,
     get_melee_delay,
@@ -27,7 +27,7 @@ from ninjamagic.util import (
 from ninjamagic.world.state import get_recall
 
 
-def touch_fight_timer(entity: EntityId, now: Walltime) -> FightTimer:
+def touch_fight_timer(entity: EntityId, now: Looptime) -> FightTimer:
     if ft := esper.try_component(entity, FightTimer):
         ft.last_refresh = now
     else:
@@ -40,7 +40,7 @@ def touch_fight_timer(entity: EntityId, now: Walltime) -> FightTimer:
     return ft
 
 
-def process(now: Walltime):
+def process(now: Looptime):
     for sig in bus.iter(bus.Melee):
         # TODO move into validations
         source, target = sig.source, sig.target

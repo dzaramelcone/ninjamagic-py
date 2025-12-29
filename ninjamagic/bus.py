@@ -24,7 +24,7 @@ from ninjamagic.component import (
 )
 from ninjamagic.gen.models import Character
 from ninjamagic.reach import Selector, adjacent
-from ninjamagic.util import Compass, Walltime, get_walltime, serial
+from ninjamagic.util import Compass, Looptime, get_looptime, serial
 
 
 class Signal:
@@ -199,7 +199,7 @@ class Act(Signal):
     source: EntityId
     delay: float
     then: Signal
-    start: Walltime = field(default_factory=get_walltime)
+    start: Looptime = field(default_factory=get_looptime)
     id: ActId = field(default_factory=serial)
 
     @property

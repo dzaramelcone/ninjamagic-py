@@ -28,7 +28,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
-from ninjamagic.util import Compass, get_melee_delay, get_walltime
+from ninjamagic.util import Compass, get_looptime, get_melee_delay
 from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class Block(Command):
     def trigger(self, root: bus.Inbound) -> Out:
         lag_len = settings.block_len + settings.block_miss_len
         this_block = Defending(verb="block")
-        esper.add_component(root.source, util.get_walltime() + lag_len, Lag)
+        esper.add_component(root.source, util.get_looptime() + lag_len, Lag)
         esper.add_component(root.source, this_block)
         bus.pulse(
             bus.Interrupt(source=root.source),
@@ -267,7 +267,7 @@ class Fart(Command):
             root.source,
             Prompt(
                 text="inhale deeply",
-                end=get_walltime() + 4.0,
+                end=get_looptime() + 4.0,
                 on_success=lambda: story.echo(
                     "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
                     root.source,

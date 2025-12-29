@@ -10,7 +10,7 @@ import inflect
 
 from ninjamagic.config import settings
 
-Walltime = NewType("Walltime", float)
+Looptime = NewType("Looptime", float)
 
 FOUR_DIRS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
 EIGHT_DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
@@ -155,7 +155,9 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
     return a + (b - a) * RNG.betavariate(α, β)
 
 
-def proc(prev: Walltime, cur: float, odds: float = 0, interval: float = 0) -> bool:
+def proc(
+    prev: Looptime, cur: Looptime, odds: float = 0, interval: Looptime = 0
+) -> bool:
     odds = odds or get_proc_odds()
     if not odds:
         return False
@@ -166,7 +168,7 @@ def proc(prev: Walltime, cur: float, odds: float = 0, interval: float = 0) -> bo
     return RNG.random() < 1 - math.exp(-λ * δ)
 
 
-def delta_for_odds(target: float = 0, odds: float = 0, interval: float = 0) -> float:
+def delta_for_odds(target: float = 0, odds: float = 0, interval: Looptime = 0) -> float:
     odds = odds or get_proc_odds()
     if not odds:
         return 0
@@ -242,13 +244,13 @@ LOGIN_HTML = open("ninjamagic/static/login.html").read()
 CHARGEN_HTML = open("ninjamagic/static/chargen.html").read()
 
 
-def get_walltime() -> Walltime:
+def get_looptime() -> Looptime:
     global LOOP
     LOOP = LOOP or asyncio.get_running_loop()
     return LOOP.time()
 
 
-def get_melee_delay() -> float:
+def get_melee_delay() -> Looptime:
     return settings.attack_len
 
 

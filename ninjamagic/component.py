@@ -7,7 +7,7 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
-from ninjamagic.util import Num, Pronoun, Pronouns, Walltime
+from ninjamagic.util import Looptime, Num, Pronoun, Pronouns
 
 TokenVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
@@ -71,9 +71,9 @@ EntityId = int
 
 @component(slots=True, kw_only=True)
 class FightTimer:
-    last_atk_proc: Walltime
-    last_def_proc: Walltime
-    last_refresh: Walltime
+    last_atk_proc: Looptime
+    last_def_proc: Looptime
+    last_refresh: Looptime
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
@@ -161,7 +161,7 @@ Size = tuple[int, int]
 @component(slots=True, kw_only=True)
 class Prompt:
     text: str
-    end: Walltime = 0
+    end: Looptime = 0
     on_success: Callable | None = None
     on_mismatch: Callable | None = None
     on_expired_success: Callable | None = None
@@ -218,7 +218,7 @@ class Stats:
 
 @component(slots=True)
 class Stunned:
-    end: Walltime
+    end: Looptime
 
 
 @component(slots=True, kw_only=True)
