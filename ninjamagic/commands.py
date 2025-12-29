@@ -484,14 +484,33 @@ class Stow(Command):
         cmd = root.text.strip().replace(" in ", " ")
         cmd, _, rest = cmd.partition(" ")
         first, _, second = rest.partition(" ")
-        if not first or not (stored := match_contents(root.source, first)):
+        if not first:
             return False, "Stow what?"
 
-        s_eid, _, __ = stored
+        match = match_hands(root.source, first)
+        if not match:
+            # Check on the floor if they have a free hand.
+            l_hand, r_hand = get_hands(root.source)
+            match = next(
+                reach.find(
+                    root.source,
+                    first,
+                    reach.adjacent,
+                    with_components=(Noun, Location, Slot),
+                ),
+                None,
+            )
+            if match and l_hand and r_hand:
+                return False, "Your hands are full!"
+
+        if not match:
+            return False, "Stow what?"
+
+        s_eid, _, _ = match
         if not second and esper.try_component(root.source, Stowed):
             c_eid = esper.component_for_entity(root.source, Stowed).container
         elif second and (container := match_contents(root.source, second)):
-            c_eid, _, __ = container
+            c_eid, _, _ = container
         else:
             return False, "Stow that where?"
 
@@ -499,10 +518,7 @@ class Stow(Command):
             return False, "You can't stow that there."
 
         if s_eid == c_eid:
-            return (
-                False,
-                "You consider flipping that inside out, but decide against it.",
-            )
+            return (False, "You consider flipping it inside out, but decide not to.")
 
         story.echo(
             "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
