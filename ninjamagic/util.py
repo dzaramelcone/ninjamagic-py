@@ -2,6 +2,7 @@ import asyncio
 import itertools
 import math
 import random
+from collections.abc import MutableSequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal, NewType
@@ -25,7 +26,7 @@ Num = Literal[1, 2]
 LOOP: asyncio.AbstractEventLoop | None = None
 
 
-def pop_random(q: list):
+def pop_random[T](q: MutableSequence[T]) -> T:
     k = RNG.randrange(len(q))
     q[k], q[-1] = q[-1], q[k]
     return q.pop()

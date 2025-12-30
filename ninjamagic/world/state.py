@@ -189,7 +189,7 @@ def get_random_nearby_location(loc: Transform) -> tuple[int, int]:
                 continue
             if not can_enter(map_id=loc.map_id, y=ny, x=nx):
                 continue
-            if abs(ny - loc.y) ** 2 + abs(nx - loc.x) ** 2 > 25:
+            if (ny - loc.y) ** 2 + (nx - loc.x) ** 2 > 25:
                 continue
             q.append(n)
             seen.append(n)
