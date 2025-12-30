@@ -4,11 +4,12 @@ from ninjamagic import bus
 from ninjamagic.component import (
     Chips,
     ChipSet,
+    ContainedBy,
     Container,
     EntityId,
+    ForageEnvironment,
     Glyph,
     Health,
-    Location,
     Noun,
     Skills,
     Slot,
@@ -17,7 +18,15 @@ from ninjamagic.component import (
     Transform,
     Wearable,
 )
-from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W, Pronouns
+from ninjamagic.util import (
+    EIGHT_DIRS,
+    RNG,
+    TILE_STRIDE,
+    TILE_STRIDE_H,
+    TILE_STRIDE_W,
+    Pronouns,
+    pop_random,
+)
 from ninjamagic.world import simple
 
 
@@ -43,7 +52,9 @@ def build_nowhere() -> EntityId:
 
 
 def build_demo() -> EntityId:
-    out = esper.create_entity()
+    out = esper.create_entity(
+        ForageEnvironment(default=("cave", 30), coords={(0, 0): ("forest", 0)})
+    )
     chips = simple.build_level(lut=[1, 2])
 
     chipset = [
@@ -51,7 +62,7 @@ def build_demo() -> EntityId:
         (0, out, ord(" "), 1.0, 1.0, 1.0, 1.0),
         (1, out, ord("."), 0.52777, 0.5, 0.9, 1.0),
         (2, out, ord("#"), 0.10, 0.10, 0.40, 1.0),
-        (3, out, ord("☵"), 0.58, 0.85, 0.85, 1.0),
+        (3, out, ord("≈"), 0.58, 0.85, 0.85, 1.0),
         (4, out, ord("Ϙ"), 0.33, 0.65, 0.55, 1.0),
         (5, out, ord("ϒ"), 0.08, 0.30, 0.35, 1.0),
     ]
@@ -89,28 +100,21 @@ def build_hub(map_id: EntityId, chips: Chips):
 
     lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
     esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
-    esper.add_component(lily_pad, Noun(value="lily pad", pronoun=Pronouns.IT))
-    esper.add_component(lily_pad, 0, Location)
-    esper.add_component(lily_pad, Slot.UNSET, Slot)
-    esper.add_component(lily_pad, Wearable(slot=Slot.UNSET))
+    esper.add_component(lily_pad, Noun(value="lily pad"))
+    esper.add_component(lily_pad, 0, ContainedBy)
+    esper.add_component(lily_pad, Slot.ANY, Slot)
+    esper.add_component(lily_pad, Wearable(slot=Slot.ANY))
 
     fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
     esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
     esper.add_component(fern, Noun(value="fern", pronoun=Pronouns.IT))
 
-    wildflower = esper.create_entity(Transform(map_id=map_id, y=4, x=11))
-    esper.add_component(wildflower, ("⚘", 0.73888, 0.34, 1.0), Glyph)
-    esper.add_component(wildflower, Noun(value="wildflower", pronoun=Pronouns.IT))
-    esper.add_component(wildflower, 0, Location)
-    esper.add_component(wildflower, Slot.UNSET, Slot)
-    esper.add_component(wildflower, Wearable(slot=Slot.UNSET))
-
     backpack = esper.create_entity(Transform(map_id=map_id, y=4, x=9))
     esper.add_component(backpack, ("]", 47 / 360, 0.60, 0.85), Glyph)
-    esper.add_component(backpack, Noun(value="backpack", pronoun=Pronouns.IT))
-    esper.add_component(backpack, 0, Location)
-    esper.add_component(backpack, Slot.UNSET, Slot)
-    esper.add_component(backpack, Wearable(slot=Slot.SHOULDER))
+    esper.add_component(backpack, Noun(value="backpack"))
+    esper.add_component(backpack, 0, ContainedBy)
+    esper.add_component(backpack, Slot.ANY, Slot)
+    esper.add_component(backpack, Wearable(slot=Slot.BACK))
     esper.add_component(backpack, Container())
 
     # fmt: off
@@ -163,3 +167,23 @@ DEMO = build_demo()
 
 def get_recall(_: EntityId) -> tuple[int, int, int]:
     return 2, 8, 8
+
+
+def get_random_nearby_location(loc: Transform) -> tuple[int, int]:
+    q = [(loc.y, loc.x)]
+    seen = list(q)
+    while q:
+        if len(seen) > 10:
+            break
+        y, x = pop_random(q)
+        for dy, dx in EIGHT_DIRS:
+            n = ny, nx = y + dy, x + dx
+            if n in seen:
+                continue
+            if not can_enter(map_id=loc.map_id, y=ny, x=nx):
+                continue
+            if (ny - loc.y) ** 2 + (nx - loc.x) ** 2 > 25:
+                continue
+            q.append(n)
+            seen.append(n)
+    return RNG.choice(seen)

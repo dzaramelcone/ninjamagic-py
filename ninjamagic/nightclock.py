@@ -368,15 +368,18 @@ pq = list[Cue]()
 clock = NightClock()
 
 
+def cue_at(sig: bus.Signal, at: NightClock, recur: Rule | None = None) -> None:
+    heapq.heappush(pq, (at, serial(), sig, recur))
+
+
 def cue(
     sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
 ) -> None:
-    time = time or NightTime()
-    eta = clock + clock.next(time)
-    heapq.heappush(pq, (eta, serial(), sig, recur))
+    eta = clock + clock.next(time or NightTime())
+    cue_at(sig, eta, recur)
 
 
-def every(delta: NightDelta, *, count: int = 1, forever: bool = False) -> Rule:
+def recurring(delta: NightDelta, *, count: int = 1, forever: bool = False) -> Rule:
     i = 0
     while forever or i < count:
         yield delta
