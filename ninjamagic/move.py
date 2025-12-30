@@ -58,8 +58,7 @@ def process():
         esper.add_component(sig.source, sig.container, ContainedBy)
         esper.add_component(sig.source, sig.slot)
 
-        if esper.has_component(sig.source, Transform):
-            loc = transform(sig.source)
+        if loc := esper.try_component(sig.source, Transform):
             bus.pulse(
                 bus.PositionChanged(
                     source=sig.source,
