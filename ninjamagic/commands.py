@@ -517,7 +517,7 @@ class Put(Command):
         story.echo(
             "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
         )
-        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         return OK
 
 
@@ -571,7 +571,7 @@ class Stow(Command):
         story.echo(
             "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
         )
-        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         esper.add_component(root.source, Stowed(container=c_eid))
         return OK
 

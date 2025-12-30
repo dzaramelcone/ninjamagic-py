@@ -220,7 +220,7 @@ class Stowed:
 
 
 class Slot(StrEnum):
-    UNSET = ""
+    ANY = ""
     RIGHT_HAND = "right hand"
     LEFT_HAND = "left hand"
     BACK = auto()

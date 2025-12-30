@@ -88,7 +88,7 @@ def create_foraged_item(
     glyph: Glyph = ("♣", 0.33, 0.65, 0.55),
     wearable: Wearable | None = None,
 ) -> EntityId:
-    out = esper.create_entity(transform, noun, Slot.UNSET)
+    out = esper.create_entity(transform, noun, Slot.ANY)
     esper.add_component(out, glyph, Glyph)
     esper.add_component(out, 0, ContainedBy)
     esper.add_component(out, forage_roll, Level)
@@ -194,7 +194,7 @@ FORAGE_TABLE: dict[Biomes, list[ForageFactory]] = {
         partial(
             create_foraged_item,
             noun=Noun(value="wildflower"),
-            wearable=Wearable(slot=Slot.UNSET),
+            wearable=Wearable(slot=Slot.ANY),
             glyph=("⚘", 0.73888, 0.34, 1.0),
         ),
         partial(create_foraged_item, noun=Noun(value="zucchini")),

@@ -29,7 +29,7 @@ def process():
         if esper.has_component(sig.source, ContainedBy):
             esper.add_component(sig.source, 0, ContainedBy)
         if esper.has_component(sig.source, Slot):
-            esper.add_component(sig.source, Slot.UNSET)
+            esper.add_component(sig.source, Slot.ANY)
 
     for sig in bus.iter(bus.MoveCompass):
         loc = transform(sig.source)

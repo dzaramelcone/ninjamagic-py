@@ -102,8 +102,8 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
     esper.add_component(lily_pad, Noun(value="lily pad"))
     esper.add_component(lily_pad, 0, ContainedBy)
-    esper.add_component(lily_pad, Slot.UNSET, Slot)
-    esper.add_component(lily_pad, Wearable(slot=Slot.UNSET))
+    esper.add_component(lily_pad, Slot.ANY, Slot)
+    esper.add_component(lily_pad, Wearable(slot=Slot.ANY))
 
     fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
     esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
@@ -113,7 +113,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(backpack, ("]", 47 / 360, 0.60, 0.85), Glyph)
     esper.add_component(backpack, Noun(value="backpack"))
     esper.add_component(backpack, 0, ContainedBy)
-    esper.add_component(backpack, Slot.UNSET, Slot)
+    esper.add_component(backpack, Slot.ANY, Slot)
     esper.add_component(backpack, Wearable(slot=Slot.BACK))
     esper.add_component(backpack, Container())
 
