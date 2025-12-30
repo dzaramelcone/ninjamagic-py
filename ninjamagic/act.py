@@ -23,7 +23,7 @@ def process(now: Looptime) -> None:
         if current.get(act.source) == act.id:
             del current[act.source]
             if esper.entity_exists(act.source):
-                bus.pulse(act.then)
+                bus.pulse(*act.then)
 
     for act in bus.iter(bus.Act):
         current[act.source] = act.id

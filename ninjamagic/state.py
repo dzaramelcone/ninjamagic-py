@@ -15,6 +15,7 @@ from ninjamagic import (
     conn,
     echo,
     experience,
+    forage,
     gas,
     inbound,
     move,
@@ -83,6 +84,7 @@ class State:
             regen.process(now=now)
             gas.process(now=now)
             act.process(now=now)
+            forage.process()
             combat.process(now=now)
             proc.process(now=now)
             move.process()

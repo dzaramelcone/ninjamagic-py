@@ -7,12 +7,22 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
-from ninjamagic.util import Looptime, Num, Pronoun, Pronouns
+from ninjamagic.util import (
+    TILE_STRIDE_H,
+    TILE_STRIDE_W,
+    Looptime,
+    Num,
+    Pronoun,
+    Pronouns,
+)
 
-TokenVerb = Literal[
+Biomes = Literal["cave", "forest"]
+Conditions = Literal["normal", "unconscious", "in shock", "dead"]
+Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
+ProcVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
 ]
-
+T = TypeVar("T")
 MAX_HEALTH = 100.0
 
 
@@ -51,7 +61,6 @@ CharacterId = NewType("CharacterId", int)
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
-Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Connection = WebSocket
 
 
@@ -63,7 +72,7 @@ class DoubleDamage: ...
 
 @component(slots=True, kw_only=True)
 class Defending:
-    verb: TokenVerb
+    verb: ProcVerb
 
 
 EntityId = int
@@ -94,6 +103,19 @@ Location = NewType("Location", EntityId)
 
 
 @component(slots=True, frozen=True)
+class ForageEnvironment:
+    default: tuple[Biomes, int]
+    coords: dict[tuple[int, int], tuple[Biomes, int]] = field(default_factory=dict)
+
+    def get_environment(self, y: int, x: int) -> tuple[Biomes, int]:
+        y, x = y // TILE_STRIDE_H * TILE_STRIDE_H, x // TILE_STRIDE_W * TILE_STRIDE_W
+        return self.coords.get((y, x), self.default)
+
+
+class Rotting: ...
+
+
+@component(slots=True, frozen=True)
 class Noun:
     value: str = "thing"
     pronoun: Pronoun = Pronouns.IT
@@ -115,6 +137,8 @@ class Noun:
             return "you"
         if self.value[0].isupper():
             return self.value
+        if self.num == util.PLURAL:
+            return f"some {self.value}"
         return util.INFLECTOR.a(self.value)
 
     def __getattr__(self, key: str):
@@ -130,6 +154,8 @@ class Noun:
             return util.possessive(self.definite())
         if format_spec == "noun":
             return self.value
+        if format_spec == "def":
+            return self.definite()
         if format_spec == "hyp":
             if self.hypernyms:
                 return util.RNG.choice(self.hypernyms)
@@ -179,6 +205,9 @@ class Skill:
 class Skills:
     martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
+    foraging: Skill = field(default_factory=lambda: Skill(name="Foraging"))
+    cooking: Skill = field(default_factory=lambda: Skill(name="Cooking"))
+
     generation: int = 0
 
     def __iter__(self):
@@ -199,9 +228,6 @@ class Slot(StrEnum):
     ARMOR = auto()
     HEAD = auto()
     FEET = auto()
-
-
-Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 
 
 @component(slots=True)
@@ -231,9 +257,6 @@ class Transform:
 @component(slots=True, kw_only=True)
 class Wearable:
     slot: Slot
-
-
-T = TypeVar("T")
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

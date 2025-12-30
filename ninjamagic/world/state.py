@@ -6,6 +6,7 @@ from ninjamagic.component import (
     ChipSet,
     Container,
     EntityId,
+    ForageEnvironment,
     Glyph,
     Health,
     Location,
@@ -17,7 +18,15 @@ from ninjamagic.component import (
     Transform,
     Wearable,
 )
-from ninjamagic.util import TILE_STRIDE, TILE_STRIDE_H, TILE_STRIDE_W, Pronouns
+from ninjamagic.util import (
+    EIGHT_DIRS,
+    RNG,
+    TILE_STRIDE,
+    TILE_STRIDE_H,
+    TILE_STRIDE_W,
+    Pronouns,
+    pop_random,
+)
 from ninjamagic.world import simple
 
 
@@ -43,7 +52,9 @@ def build_nowhere() -> EntityId:
 
 
 def build_demo() -> EntityId:
-    out = esper.create_entity()
+    out = esper.create_entity(
+        ForageEnvironment(default=("cave", 30), coords={(0, 0): ("forest", 0)})
+    )
     chips = simple.build_level(lut=[1, 2])
 
     chipset = [
@@ -110,7 +121,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(backpack, Noun(value="backpack", pronoun=Pronouns.IT))
     esper.add_component(backpack, 0, Location)
     esper.add_component(backpack, Slot.UNSET, Slot)
-    esper.add_component(backpack, Wearable(slot=Slot.SHOULDER))
+    esper.add_component(backpack, Wearable(slot=Slot.BACK))
     esper.add_component(backpack, Container())
 
     # fmt: off
@@ -163,3 +174,23 @@ DEMO = build_demo()
 
 def get_recall(_: EntityId) -> tuple[int, int, int]:
     return 2, 8, 8
+
+
+def get_random_nearby_location(loc: Transform) -> tuple[int, int]:
+    q = [(loc.y, loc.x)]
+    seen = list(q)
+    while q:
+        if len(seen) > 10:
+            break
+        y, x = pop_random(q)
+        for dy, dx in EIGHT_DIRS:
+            n = ny, nx = y + dy, x + dx
+            if n in seen:
+                continue
+            if not can_enter(map_id=loc.map_id, y=ny, x=nx):
+                continue
+            if abs(ny - loc.y) ** 2 + abs(nx - loc.x) ** 2 > 25:
+                continue
+            q.append(n)
+            seen.append(n)
+    return RNG.choice(seen)

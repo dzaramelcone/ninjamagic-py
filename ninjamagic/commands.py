@@ -163,7 +163,25 @@ class Attack(Command):
             bus.Act(
                 source=root.source,
                 delay=get_melee_delay(),
-                then=bus.Melee(source=root.source, target=target, verb="punch"),
+                then=(bus.Melee(source=root.source, target=target, verb="punch"),),
+            ),
+            bus.HealthChanged(source=root.source, stress_change=1.0),
+        )
+        return OK
+
+
+class Forage(Command):
+    text: str = "forage"
+    requires_standing: bool = True
+    requires_not_busy: bool = True
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        story.echo("{0} {0:begins} to forage...", root.source)
+        bus.pulse(
+            bus.Act(
+                source=root.source,
+                delay=get_melee_delay(),
+                then=(bus.Forage(source=root.source),),
             ),
             bus.HealthChanged(source=root.source, stress_change=1.0),
         )
@@ -671,4 +689,5 @@ commands: list[Command] = [
     Wear(),
     Remove(),
     Swap(),
+    Forage(),
 ]

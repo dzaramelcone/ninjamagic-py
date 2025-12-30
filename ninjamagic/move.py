@@ -27,7 +27,7 @@ def process():
             )
         )
         if esper.has_component(sig.source, Location):
-            esper.add_component(sig.source, sig.to_map_id, Location)
+            esper.add_component(sig.source, 0, Location)
         if esper.has_component(sig.source, Slot):
             esper.add_component(sig.source, Slot.UNSET)
 

@@ -25,6 +25,12 @@ Num = Literal[1, 2]
 LOOP: asyncio.AbstractEventLoop | None = None
 
 
+def pop_random(q: list):
+    k = RNG.randrange(len(q))
+    q[k], q[-1] = q[-1], q[k]
+    return q.pop()
+
+
 def conjugate(word: str, num: Num) -> str:
     if word == "lies":
         return "lie" if num == PLURAL else "lies"
