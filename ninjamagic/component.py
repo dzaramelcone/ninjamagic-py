@@ -99,7 +99,7 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
-Location = NewType("Location", EntityId)
+ContainedBy = NewType("ContainedBy", EntityId)
 
 
 @component(slots=True, frozen=True)
@@ -298,7 +298,7 @@ def stance_is(entity: EntityId, check: Stances) -> bool:
 def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
     return [
         (eid, noun, slot)
-        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source
     ]
 
@@ -306,7 +306,7 @@ def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
 def get_stored(source: EntityId) -> list[tuple[EntityId, tuple[EntityId, Noun, Slot]]]:
     return [
         (eid, item)
-        for eid, (loc, _, _) in esper.get_components(Location, Slot, Container)
+        for eid, (loc, _, _) in esper.get_components(ContainedBy, Slot, Container)
         if loc == source
         for item in get_contents(eid)
     ]
@@ -316,7 +316,7 @@ def get_hands(
     source: EntityId,
 ) -> tuple[tuple[EntityId, Noun, Slot] | None, tuple[EntityId, Noun, Slot] | None]:
     out = (None, None)
-    for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot):
+    for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot):
         if loc != source:
             continue
         if slot == Slot.LEFT_HAND:
@@ -331,6 +331,6 @@ def get_worn(
 ) -> list[tuple[EntityId, Noun, Slot]]:
     return [
         (eid, noun, slot)
-        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
     ]

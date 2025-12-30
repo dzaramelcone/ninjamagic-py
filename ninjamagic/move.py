@@ -3,7 +3,7 @@ import esper
 from ninjamagic import bus
 from ninjamagic.component import (
     Connection,
-    Location,
+    ContainedBy,
     Slot,
     Transform,
     transform,
@@ -26,8 +26,8 @@ def process():
                 quiet=sig.quiet,
             )
         )
-        if esper.has_component(sig.source, Location):
-            esper.add_component(sig.source, 0, Location)
+        if esper.has_component(sig.source, ContainedBy):
+            esper.add_component(sig.source, 0, ContainedBy)
         if esper.has_component(sig.source, Slot):
             esper.add_component(sig.source, Slot.UNSET)
 
@@ -55,7 +55,7 @@ def process():
         )
 
     for sig in bus.iter(bus.MoveEntity):
-        esper.add_component(sig.source, sig.container, Location)
+        esper.add_component(sig.source, sig.container, ContainedBy)
         esper.add_component(sig.source, sig.slot)
 
         if esper.has_component(sig.source, Transform):

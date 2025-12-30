@@ -6,12 +6,12 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
+    ContainedBy,
     Container,
     Defending,
     EntityId,
     Health,
     Lag,
-    Location,
     Noun,
     Prompt,
     Skills,
@@ -378,7 +378,7 @@ class Get(Command):
                 root.source,
                 rest,
                 reach.adjacent,
-                with_components=(Noun, Location, Slot),
+                with_components=(Noun, ContainedBy, Slot),
             ),
             None,
         ):
@@ -540,7 +540,7 @@ class Stow(Command):
                     root.source,
                     first,
                     reach.adjacent,
-                    with_components=(Noun, Location, Slot),
+                    with_components=(Noun, ContainedBy, Slot),
                 ),
                 None,
             )
@@ -553,7 +553,7 @@ class Stow(Command):
         s_eid, _, _ = match
         if not second and esper.try_component(root.source, Stowed):
             c_eid = esper.component_for_entity(root.source, Stowed).container
-            loc = esper.try_component(c_eid, Location)
+            loc = esper.try_component(c_eid, ContainedBy)
             if not loc or loc != root.source:
                 esper.remove_component(root.source, Stowed)
                 return False, "Stow that where?"

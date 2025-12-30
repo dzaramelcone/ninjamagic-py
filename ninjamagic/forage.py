@@ -7,11 +7,11 @@ import esper
 from ninjamagic import bus, nightclock, reach, story
 from ninjamagic.component import (
     Biomes,
+    ContainedBy,
     EntityId,
     ForageEnvironment,
     Glyph,
     Level,
-    Location,
     Noun,
     Rotting,
     Slot,
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 def process() -> None:
     for sig in bus.iter(bus.Rot):
         prev, cur = sig.source, sig.source
-        while held_by := esper.try_component(cur, Location):
+        while held_by := esper.try_component(cur, ContainedBy):
             prev, cur = cur, held_by
 
         if esper.try_component(sig.source, Rotting):
@@ -89,7 +89,7 @@ def create_foraged_item(
 ) -> EntityId:
     out = esper.create_entity(transform, noun, Slot.UNSET)
     esper.add_component(out, glyph, Glyph)
-    esper.add_component(out, 0, Location)
+    esper.add_component(out, 0, ContainedBy)
     esper.add_component(out, forage_roll, Level)
     # TODO Make them rot a bit each night.
     # Created timestamp, can get the delta from now, noun can have callable adjective,
