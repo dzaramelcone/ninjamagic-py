@@ -6,12 +6,12 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
+    ContainedBy,
     Container,
     Defending,
     EntityId,
     Health,
     Lag,
-    Location,
     Noun,
     Prompt,
     Skills,
@@ -163,7 +163,25 @@ class Attack(Command):
             bus.Act(
                 source=root.source,
                 delay=get_melee_delay(),
-                then=bus.Melee(source=root.source, target=target, verb="punch"),
+                then=(bus.Melee(source=root.source, target=target, verb="punch"),),
+            ),
+            bus.HealthChanged(source=root.source, stress_change=1.0),
+        )
+        return OK
+
+
+class Forage(Command):
+    text: str = "forage"
+    requires_standing: bool = True
+    requires_not_busy: bool = True
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        story.echo("{0} {0:begins} to forage...", root.source)
+        bus.pulse(
+            bus.Act(
+                source=root.source,
+                delay=get_melee_delay(),
+                then=(bus.Forage(source=root.source),),
             ),
             bus.HealthChanged(source=root.source, stress_change=1.0),
         )
@@ -360,7 +378,7 @@ class Get(Command):
                 root.source,
                 rest,
                 reach.adjacent,
-                with_components=(Noun, Location, Slot),
+                with_components=(Noun, ContainedBy, Slot),
             ),
             None,
         ):
@@ -499,7 +517,7 @@ class Put(Command):
         story.echo(
             "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
         )
-        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         return OK
 
 
@@ -522,7 +540,7 @@ class Stow(Command):
                     root.source,
                     first,
                     reach.adjacent,
-                    with_components=(Noun, Location, Slot),
+                    with_components=(Noun, ContainedBy, Slot),
                 ),
                 None,
             )
@@ -535,7 +553,7 @@ class Stow(Command):
         s_eid, _, _ = match
         if not second and esper.try_component(root.source, Stowed):
             c_eid = esper.component_for_entity(root.source, Stowed).container
-            loc = esper.try_component(c_eid, Location)
+            loc = esper.try_component(c_eid, ContainedBy)
             if not loc or loc != root.source:
                 esper.remove_component(root.source, Stowed)
                 return False, "Stow that where?"
@@ -553,7 +571,7 @@ class Stow(Command):
         story.echo(
             "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
         )
-        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.UNSET))
+        bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         esper.add_component(root.source, Stowed(container=c_eid))
         return OK
 
@@ -671,4 +689,5 @@ commands: list[Command] = [
     Wear(),
     Remove(),
     Swap(),
+    Forage(),
 ]

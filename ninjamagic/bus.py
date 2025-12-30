@@ -15,11 +15,11 @@ from ninjamagic.component import (
     Conditions,
     EntityId,
     Gas,
+    ProcVerb,
     Prompt,
     Skill,
     Slot,
     Stances,
-    TokenVerb,
     Transform,
 )
 from ninjamagic.gen.models import Character
@@ -51,6 +51,11 @@ class Disconnected(Signal):
 
     source: EntityId
     client: WebSocket
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Forage(Signal):
+    source: EntityId
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -175,14 +180,14 @@ class Melee(Signal):
 
     source: EntityId
     target: EntityId
-    verb: TokenVerb
+    verb: ProcVerb
 
 
 @signal(frozen=True, slots=True, kw_only=True)
 class Proc(Signal):
     source: EntityId
     target: EntityId
-    verb: TokenVerb
+    verb: ProcVerb
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -193,12 +198,19 @@ class Die(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class Rot(Signal):
+    "An entity rotted."
+
+    source: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class Act(Signal):
     "An entity act that will pulse `then` at `end`."
 
     source: EntityId
     delay: float
-    then: Signal
+    then: tuple[Signal, ...]
     start: Looptime = field(default_factory=get_looptime)
     id: ActId = field(default_factory=serial)
 

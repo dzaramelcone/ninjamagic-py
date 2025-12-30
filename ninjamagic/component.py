@@ -7,12 +7,22 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
-from ninjamagic.util import Looptime, Num, Pronoun, Pronouns
+from ninjamagic.util import (
+    TILE_STRIDE_H,
+    TILE_STRIDE_W,
+    Looptime,
+    Num,
+    Pronoun,
+    Pronouns,
+)
 
-TokenVerb = Literal[
+Biomes = Literal["cave", "forest"]
+Conditions = Literal["normal", "unconscious", "in shock", "dead"]
+Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
+ProcVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
 ]
-
+T = TypeVar("T")
 MAX_HEALTH = 100.0
 
 
@@ -51,7 +61,6 @@ CharacterId = NewType("CharacterId", int)
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
 ChipSet = list[Chip]
-Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Connection = WebSocket
 
 
@@ -63,7 +72,7 @@ class DoubleDamage: ...
 
 @component(slots=True, kw_only=True)
 class Defending:
-    verb: TokenVerb
+    verb: ProcVerb
 
 
 EntityId = int
@@ -90,7 +99,20 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
-Location = NewType("Location", EntityId)
+ContainedBy = NewType("ContainedBy", EntityId)
+
+
+@component(slots=True, frozen=True)
+class ForageEnvironment:
+    default: tuple[Biomes, int]
+    coords: dict[tuple[int, int], tuple[Biomes, int]] = field(default_factory=dict)
+
+    def get_environment(self, y: int, x: int) -> tuple[Biomes, int]:
+        y, x = y // TILE_STRIDE_H * TILE_STRIDE_H, x // TILE_STRIDE_W * TILE_STRIDE_W
+        return self.coords.get((y, x), self.default)
+
+
+class Rotting: ...
 
 
 @component(slots=True, frozen=True)
@@ -115,6 +137,8 @@ class Noun:
             return "you"
         if self.value[0].isupper():
             return self.value
+        if self.num == util.PLURAL:
+            return f"some {self.value}"
         return util.INFLECTOR.a(self.value)
 
     def __getattr__(self, key: str):
@@ -130,6 +154,8 @@ class Noun:
             return util.possessive(self.definite())
         if format_spec == "noun":
             return self.value
+        if format_spec == "def":
+            return self.definite()
         if format_spec == "hyp":
             if self.hypernyms:
                 return util.RNG.choice(self.hypernyms)
@@ -179,6 +205,9 @@ class Skill:
 class Skills:
     martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
+    foraging: Skill = field(default_factory=lambda: Skill(name="Foraging"))
+    cooking: Skill = field(default_factory=lambda: Skill(name="Cooking"))
+
     generation: int = 0
 
     def __iter__(self):
@@ -191,7 +220,7 @@ class Stowed:
 
 
 class Slot(StrEnum):
-    UNSET = ""
+    ANY = ""
     RIGHT_HAND = "right hand"
     LEFT_HAND = "left hand"
     BACK = auto()
@@ -199,9 +228,6 @@ class Slot(StrEnum):
     ARMOR = auto()
     HEAD = auto()
     FEET = auto()
-
-
-Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
 
 
 @component(slots=True)
@@ -231,9 +257,6 @@ class Transform:
 @component(slots=True, kw_only=True)
 class Wearable:
     slot: Slot
-
-
-T = TypeVar("T")
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:
@@ -275,7 +298,7 @@ def stance_is(entity: EntityId, check: Stances) -> bool:
 def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
     return [
         (eid, noun, slot)
-        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source
     ]
 
@@ -283,7 +306,7 @@ def get_contents(source: EntityId) -> list[tuple[EntityId, Noun, Slot]]:
 def get_stored(source: EntityId) -> list[tuple[EntityId, tuple[EntityId, Noun, Slot]]]:
     return [
         (eid, item)
-        for eid, (loc, _, _) in esper.get_components(Location, Slot, Container)
+        for eid, (loc, _, _) in esper.get_components(ContainedBy, Slot, Container)
         if loc == source
         for item in get_contents(eid)
     ]
@@ -293,7 +316,7 @@ def get_hands(
     source: EntityId,
 ) -> tuple[tuple[EntityId, Noun, Slot] | None, tuple[EntityId, Noun, Slot] | None]:
     out = (None, None)
-    for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot):
+    for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot):
         if loc != source:
             continue
         if slot == Slot.LEFT_HAND:
@@ -308,6 +331,6 @@ def get_worn(
 ) -> list[tuple[EntityId, Noun, Slot]]:
     return [
         (eid, noun, slot)
-        for eid, (noun, loc, slot) in esper.get_components(Noun, Location, Slot)
+        for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
     ]

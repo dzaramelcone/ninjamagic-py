@@ -156,7 +156,7 @@ def process(now: Looptime):
                 bus.Act(
                     source=sig.source,
                     delay=get_melee_delay(),
-                    then=bus.Die(source=sig.source),
+                    then=(bus.Die(source=sig.source),),
                 ),
             )
 
