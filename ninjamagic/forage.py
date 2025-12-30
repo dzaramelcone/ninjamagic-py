@@ -120,7 +120,7 @@ def create_foraged_item(
     return out
 
 
-FORAGE_TABLE: dict[Biomes, ForageFactory] = {
+FORAGE_TABLE: dict[Biomes, list[ForageFactory]] = {
     "cave": [
         partial(create_foraged_item, noun=Noun(value="moss", num=PLURAL)),
     ],
