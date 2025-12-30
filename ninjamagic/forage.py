@@ -28,19 +28,20 @@ log = logging.getLogger(__name__)
 
 
 def process() -> None:
+    # TODO sometimes use the tile for the forage table lookup as well.
     for sig in bus.iter(bus.Rot):
         # TODO: How to handle getting root transform of item?
-        prev, cur = sig.source, sig.source
-        while held_by := esper.try_component(cur, ContainedBy):
-            prev, cur = cur, held_by
+        root = sig.source
+        while container := esper.try_component(root, ContainedBy):
+            root = container
 
         if esper.try_component(sig.source, Rotting):
-            story.echo("{1:def} {1:rots} away.", prev, sig.source)
+            story.echo("{1:def} {1:rots} away.", root, sig.source)
             esper.delete_entity(sig.source)
             continue
 
         esper.add_component(sig.source, Rotting())
-        story.echo("{1:def} {1:begins} to rot.", prev, sig.source)
+        story.echo("{1:def} {1:begins} to rot.", root, sig.source)
 
     for sig in bus.iter(bus.Forage):
         loc = transform(sig.source)
@@ -84,7 +85,7 @@ def create_foraged_item(
     forage_roll: int,
     transform: Transform,
     noun: Noun,
-    glyph: Glyph = ("ო", 0.33, 0.65, 0.55),
+    glyph: Glyph = ("♣", 0.33, 0.65, 0.55),
     wearable: Wearable | None = None,
 ) -> EntityId:
     out = esper.create_entity(transform, noun, Slot.UNSET)
@@ -92,18 +93,14 @@ def create_foraged_item(
     esper.add_component(out, 0, ContainedBy)
     esper.add_component(out, forage_roll, Level)
     # TODO Make them rot a bit each night.
-    # Created timestamp, can get the delta from now, noun can have callable adjective,
-    # and it can modify the item level, cause sickness, disappear, etc.
+    # noun can have callable adjective,
+    # it can modify the item level, cause sickness, disappear, etc.
     if wearable:
         esper.add_component(out, wearable)
-    now = nightclock.NightClock()
-    nightclock.cue_at(
+    nightclock.cue(
         sig=bus.Rot(source=out),
-        at=now + nightclock.NightDelta(nights=2),
-    )
-    nightclock.cue_at(
-        sig=bus.Rot(source=out),
-        at=now + nightclock.NightDelta(nights=4),
+        time=nightclock.NightTime(hour=6),
+        recur=nightclock.recurring(nightclock.NightDelta(nights=1), count=1),
     )
     bus.pulse(
         bus.PositionChanged(
@@ -132,23 +129,74 @@ FORAGE_TABLE: dict[Biomes, list[ForageFactory]] = {
         partial(create_foraged_item, noun=Noun(value="carrot")),
         partial(create_foraged_item, noun=Noun(value="celery root")),
         partial(create_foraged_item, noun=Noun(value="chestnut")),
-        partial(create_foraged_item, noun=Noun(value="chanterelle")),
-        partial(create_foraged_item, noun=Noun(value="egg")),
-        partial(create_foraged_item, noun=Noun(value="gyromitra")),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="chanterelle"),
+            glyph=("♠", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="egg"),
+            glyph=("Ο", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="gyromitra"),
+            glyph=("♠", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="grub"),
+            glyph=("ɕ", 0.73888, 0.34, 1.0),
+        ),
         partial(create_foraged_item, noun=Noun(value="horseradish")),
         partial(create_foraged_item, noun=Noun(value="hazelnut")),
-        partial(create_foraged_item, noun=Noun(value="leek")),
-        partial(create_foraged_item, noun=Noun(value="morel")),
-        partial(create_foraged_item, noun=Noun(value="parsnip")),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="leek"),
+            glyph=("φ", 0.73888, 0.34, 1.0),
+        ),
+        partial(create_foraged_item, noun=Noun(value="mango")),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="morel"),
+            glyph=("♠", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="parsnip"),
+        ),
         partial(create_foraged_item, noun=Noun(value="pear")),
         partial(create_foraged_item, noun=Noun(value="pepper")),
         partial(create_foraged_item, noun=Noun(value="plum")),
         partial(create_foraged_item, noun=Noun(value="radish")),
-        partial(create_foraged_item, noun=Noun(value="ramps", num=PLURAL)),
-        partial(create_foraged_item, noun=Noun(value="sap", num=PLURAL)),
-        partial(create_foraged_item, noun=Noun(value="scallions", num=PLURAL)),
-        partial(create_foraged_item, noun=Noun(value="truffle")),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="ramps", num=PLURAL),
+            glyph=("φ", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="sap", num=PLURAL),
+            glyph=("≈", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="scallions", num=PLURAL),
+            glyph=("φ", 0.73888, 0.34, 1.0),
+        ),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="truffle"),
+            glyph=("♠", 0.73888, 0.34, 1.0),
+        ),
         partial(create_foraged_item, noun=Noun(value="walnuts", num=PLURAL)),
+        partial(
+            create_foraged_item,
+            noun=Noun(value="wildflower"),
+            wearable=Wearable(slot=Slot.UNSET),
+            glyph=("⚘", 0.73888, 0.34, 1.0),
+        ),
         partial(create_foraged_item, noun=Noun(value="zucchini")),
     ],
 }
