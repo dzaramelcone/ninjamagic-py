@@ -29,12 +29,12 @@ log = logging.getLogger(__name__)
 
 def process() -> None:
     for sig in bus.iter(bus.Rot):
+        # TODO: How to handle getting root transform of item?
         prev, cur = sig.source, sig.source
         while held_by := esper.try_component(cur, ContainedBy):
             prev, cur = cur, held_by
 
         if esper.try_component(sig.source, Rotting):
-            # TODO: How to handle getting root transform of item?
             story.echo("{1:def} {1:rots} away.", prev, sig.source)
             esper.delete_entity(sig.source)
             continue
