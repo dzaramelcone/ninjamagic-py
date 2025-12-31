@@ -123,7 +123,7 @@ class MoveCompass(Signal):
 
 @signal(frozen=True, slots=True, kw_only=True)
 class MoveEntity(Signal):
-    "`source` moved into `container` `slot`."
+    "`source` moved into `container` in `slot`."
 
     source: EntityId
     container: EntityId
