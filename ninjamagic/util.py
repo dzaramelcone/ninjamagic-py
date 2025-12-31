@@ -1,5 +1,6 @@
 import asyncio
 import itertools
+import logging
 import math
 import random
 from collections.abc import MutableSequence
@@ -24,6 +25,7 @@ PLURAL = 2
 SINGULAR = 1
 Num = Literal[1, 2]
 LOOP: asyncio.AbstractEventLoop | None = None
+log = logging.getLogger(__name__)
 
 
 def pop_random[T](q: MutableSequence[T]) -> T:
@@ -32,9 +34,18 @@ def pop_random[T](q: MutableSequence[T]) -> T:
     return q.pop()
 
 
+CONJ = {"lies": "lie", "dies": "die"}
+
+
+def tags(**kwargs: object) -> str:
+    return "".join(f"\n    {kw}: {str(v)}" for kw, v in kwargs.items())
+
+
 def conjugate(word: str, num: Num) -> str:
-    if word == "lies":
-        return "lie" if num == PLURAL else "lies"
+    if word in CONJ:
+        if num == PLURAL:
+            return CONJ[word]
+        return word
     out = INFLECTOR.plural_verb(word, num)
     return out
 
@@ -287,6 +298,11 @@ def contest(
     max_mult: float = 12.5,  # clamp: 12.5x
 ) -> ContestResult:
     "Contest two ranks and return mult, attack rank roll, defend rank roll."
+    # ranks per tier grows with rank
+    ranks_per_tier = max(
+        flat_ranks_per_tier,
+        pct_ranks_per_tier * min(attack_rank, defend_rank) + pct_ranks_per_tier_amplify,
+    )
 
     def jitter() -> float:
         return 1.0 + rng.uniform(-jitter_pct, jitter_pct)
@@ -295,13 +311,20 @@ def contest(
         return float(max(0, (ranks + dilute) * jitter()))
 
     attack, defend = roll(attack_rank), roll(defend_rank)
-
-    # ranks needed per tier grows with min skill level
-    ranks_per_tier = max(
-        flat_ranks_per_tier,
-        pct_ranks_per_tier * min(attack, defend) + pct_ranks_per_tier_amplify,
-    )
     tier_delta = (attack - defend) / ranks_per_tier
-    mult = clamp(2**tier_delta, min_mult, max_mult)
+    mult = clamp(1.75**tier_delta, min_mult, max_mult)
 
+    log.info(
+        "contest %s",
+        tags(
+            attack_in=attack_rank,
+            defend_in=defend_rank,
+            jitter=jitter_pct,
+            tier_delta=tier_delta,
+            ranks_per_tier=ranks_per_tier,
+            mult=mult,
+            attack_out=attack - dilute,
+            defend_out=defend - dilute,
+        ),
+    )
     return mult, attack - dilute, defend - dilute

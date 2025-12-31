@@ -6,11 +6,13 @@ from ninjamagic.component import (
     ChipSet,
     ContainedBy,
     Container,
+    Cookware,
     EntityId,
     ForageEnvironment,
     Glyph,
     Health,
     Noun,
+    ProvidesHeat,
     Skills,
     Slot,
     Stance,
@@ -97,6 +99,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     bonfire = esper.create_entity(Transform(map_id=map_id, y=9, x=4))
     esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
     esper.add_component(bonfire, Noun(value="bonfire", pronoun=Pronouns.IT))
+    esper.add_component(bonfire, ProvidesHeat())
 
     lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
     esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
@@ -116,6 +119,16 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(backpack, Slot.ANY, Slot)
     esper.add_component(backpack, Wearable(slot=Slot.BACK))
     esper.add_component(backpack, Container())
+
+    pot = esper.create_entity(
+        Transform(map_id=0, y=0, x=0),
+        Noun(value="cookpot"),
+        Container(),
+        Cookware(),
+        Slot.ANY,
+    )
+    esper.add_component(pot, ("]", 47 / 360, 0.60, 0.85), Glyph)
+    esper.add_component(pot, backpack, ContainedBy)
 
     # fmt: off
     chips[(0,0)] = bytearray([

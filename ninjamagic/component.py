@@ -28,7 +28,7 @@ MAX_HEALTH = 100.0
 
 @component(slots=True, kw_only=True)
 class AABB:
-    "Axis-aligned bounding box."
+    """Axis-aligned bounding box."""
 
     top: int
     bot: int
@@ -64,14 +64,44 @@ ChipSet = list[Chip]
 Connection = WebSocket
 
 
-class Container: ...
+class ProvidesHeat:
+    """The entity provides heat. Used by cooking."""
 
 
-class DoubleDamage: ...
+class Cookware:
+    """Ingredients contained in this entity can be cooked together into a meal.
+
+    Note the entity must have a Container component as well.
+    """
+
+
+class Ingredient:
+    """Whether this entity can be cooked when exposed to a heat source.
+
+    Example play use:
+        - `put <entity> in <heat>`
+        - `put <entity> in <cookware>`, then `put <cookware> in <heat>`
+    """
+
+
+class Container:
+    """Whether this entity can contain other entities. For example, bags or pots."""
+
+
+class DoubleDamage:
+    """A tag on an entity that causes its next attack to deal double damage.
+
+    Consumed on use.
+    """
 
 
 @component(slots=True, kw_only=True)
 class Defending:
+    """The entity is currently defending.
+
+    - `verb`: what type of defense they're using.
+    """
+
     verb: ProcVerb
 
 
@@ -80,6 +110,12 @@ EntityId = int
 
 @component(slots=True, kw_only=True)
 class FightTimer:
+    """The entity has been in a fight recently.
+    - `last_atk_proc`  used by the procs per minute system to award tokens on attack.
+    - `last_def_proc`  used by the procs per minute system to award tokens on defense.
+    - `last_refresh`   used to prevent logging out to escape combat.
+    """
+
     last_atk_proc: Looptime
     last_def_proc: Looptime
     last_refresh: Looptime
@@ -91,6 +127,14 @@ Glyph = NewType("Glyph", tuple[str, float, float, float])
 
 @component(slots=True)
 class Health:
+    """The well-being of an entity.
+
+    - `cur` is the current health out of 100%.
+    - `stress` is on a scale from 0-200, with >100 having lost composure.
+    - `aggravated_stress` represents the minimum amount stress will reduce to by resting.
+    - `condition` represents their being unconscious, in shock, or dead.
+    """
+
     cur: float = 100.0
     stress: float = 0.0
     aggravated_stress: float = 0.0
@@ -112,15 +156,27 @@ class ForageEnvironment:
         return self.coords.get((y, x), self.default)
 
 
-class Rotting: ...
+class Rotting:
+    """The entity has started to rot. Used by food, unless you want to get all Malenia."""
 
 
 @component(slots=True, frozen=True)
 class Noun:
+    """How an entity is referred to.
+
+    Used for generating stories in different perspectives and for searching and matching.
+    """
+
+    adjective: str = ""
     value: str = "thing"
     pronoun: Pronoun = Pronouns.IT
     num: Num = util.SINGULAR
     hypernyms: list[str] | None = None  # list of nouns?
+
+    def short(self) -> str:
+        if self.adjective:
+            return f"{self.adjective} {self.value}"
+        return self.value
 
     def matches(self, prefix: str) -> bool:
         return self.value.lower().startswith(prefix)
@@ -130,7 +186,7 @@ class Noun:
             return "you"
         if self.value[0].isupper():
             return self.value
-        return f"the {self.value}"
+        return f"the {self.short()}"
 
     def indefinite(self) -> str:
         if self.value == "you":
@@ -138,8 +194,8 @@ class Noun:
         if self.value[0].isupper():
             return self.value
         if self.num == util.PLURAL:
-            return f"some {self.value}"
-        return util.INFLECTOR.a(self.value)
+            return f"some {self.short()}"
+        return util.INFLECTOR.a(self.short())
 
     def __getattr__(self, key: str):
         return getattr(self.value, key)
@@ -150,6 +206,10 @@ class Noun:
     def __format__(self, format_spec: str) -> str:
         if not format_spec:
             return self.indefinite()
+        if format_spec == "short":
+            return self.short()
+        if format_spec == "value":
+            return self.value
         if format_spec == "s":
             return util.possessive(self.definite())
         if format_spec == "noun":
@@ -186,6 +246,17 @@ Size = tuple[int, int]
 
 @component(slots=True, kw_only=True)
 class Prompt:
+    """Whether an entity was prompted to type a phrase.
+
+    These are single-shot commands with different outcomes dependent
+    on whether `text` was typed correctly and whether it was before `end`.
+
+    - `text` The text that needs to be typed.
+    - `end` The time the prompt will expire.
+    - `on_success` A callable invoked when the text is correctly typed before end.
+    - `on_mismatch` A callable invoked when the text is incorrectly typed before end.
+    """
+
     text: str
     end: Looptime = 0
     on_success: Callable | None = None

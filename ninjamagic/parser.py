@@ -47,6 +47,6 @@ def process():
             bus.pulse(bus.Outbound(to=sig.source, text="You're busy!"))
             continue
 
-        ok, err = match.trigger(sig)
+        ok, err = match.trigger(bus.Inbound(source=sig.source, text=inb))
         if not ok:
             bus.pulse(bus.Outbound(to=sig.source, text=err))

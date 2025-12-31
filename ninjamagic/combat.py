@@ -75,14 +75,12 @@ def process(now: Looptime):
                 skill=attack,
                 mult=skill_mult,
                 risk=target_pain_mult / source_pain_mult,
-                generation=source_skills.generation,
             ),
             bus.Learn(
                 source=target,
                 skill=defend,
                 mult=1.0 / skill_mult,
                 risk=source_pain_mult / target_pain_mult,
-                generation=target_skills.generation,
             ),
         )
 

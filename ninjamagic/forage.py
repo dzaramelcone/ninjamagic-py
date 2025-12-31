@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import partial
+from typing import Any
 
 import esper
 
@@ -11,6 +12,7 @@ from ninjamagic.component import (
     EntityId,
     ForageEnvironment,
     Glyph,
+    Ingredient,
     Level,
     Noun,
     Rotting,
@@ -29,19 +31,29 @@ log = logging.getLogger(__name__)
 
 def process() -> None:
     # TODO sometimes use the tile for the forage table lookup as well.
-    for sig in bus.iter(bus.Rot):
-        # TODO: How to handle getting root transform of item?
-        root = sig.source
-        while container := esper.try_component(root, ContainedBy):
-            root = container
 
+    for sig in bus.iter(bus.Rot):
+
+        # TODO: How to handle getting root transform of item?
+        # error condition is that one of the items in the ContainedBy chain
+        # no longer exists. use after free basically.
+        if not esper.entity_exists(sig.source):
+            continue
+
+        # It's already rotting, so rot completely.
         if esper.try_component(sig.source, Rotting):
-            story.echo("{1:def} {1:rots} away.", root, sig.source)
+            story.echo("{0:def} {0:rots} away.", sig.source)
             esper.delete_entity(sig.source)
             continue
 
+        # Assign the first discrete rot stage.
+        # TODO: Maybe some can ferment here instead of rotting.
+        noun = esper.component_for_entity(sig.source, Noun)
+        esper.add_component(
+            sig.source, Noun(adjective="rotten", value=noun.value, num=noun.num)
+        )
         esper.add_component(sig.source, Rotting())
-        story.echo("{1:def} {1:begins} to rot.", root, sig.source)
+        story.echo("{0:def} {0:begins} to rot.", sig.source)
 
     for sig in bus.iter(bus.Forage):
         loc = transform(sig.source)
@@ -50,11 +62,18 @@ def process() -> None:
         env = esper.component_for_entity(loc.map_id, ForageEnvironment)
         biome, difficulty = env.get_environment(y=loc.y, x=loc.x)
 
-        mult, a_roll, d_roll = contest(rank, difficulty)
+        mult, a_roll, d_roll = contest(rank, difficulty, jitter_pct=0.2)
         factories = FORAGE_TABLE.get(biome)
-        if a_roll < d_roll or not factories:
-            if not factories:
-                log.warning(f"missing factories for biome {biome}")
+        if not factories:
+            log.warning(f"missing factories for biome {biome}")
+            story.echo(
+                "{0} {0:roots} around a bit, but the area seems barren.",
+                sig.source,
+                range=reach.visible,
+            )
+            continue
+
+        if a_roll < d_roll:
             story.echo(
                 "{0} {0:roots} around a bit, but {0:finds} nothing.",
                 sig.source,
@@ -73,35 +92,35 @@ def process() -> None:
                 source=sig.source,
                 skill=source_skills.foraging,
                 mult=mult,
-                risk=1,
-                generation=source_skills.generation,
             )
         )
         story.echo("{0} {0:spots} {1}!", sig.source, created, range=reach.visible)
 
 
 def create_foraged_item(
-    *,
+    *args: Any,
     forage_roll: int,
     transform: Transform,
     noun: Noun,
     glyph: Glyph = ("♣", 0.33, 0.65, 0.55),
     wearable: Wearable | None = None,
 ) -> EntityId:
-    out = esper.create_entity(transform, noun, Slot.ANY)
+    out = esper.create_entity(transform, noun, Slot.ANY, Ingredient(), *args)
     esper.add_component(out, glyph, Glyph)
     esper.add_component(out, 0, ContainedBy)
     esper.add_component(out, forage_roll, Level)
+    if wearable:
+        esper.add_component(out, wearable)
+
     # TODO Make them rot a bit each night.
     # noun can have callable adjective,
     # it can modify the item level, cause sickness, disappear, etc.
-    if wearable:
-        esper.add_component(out, wearable)
     nightclock.cue(
         sig=bus.Rot(source=out),
         time=nightclock.NightTime(hour=6),
-        recur=nightclock.recurring(nightclock.NightDelta(nights=1), count=1),
+        recur=nightclock.recurring(n_more_times=1),
     )
+
     bus.pulse(
         bus.PositionChanged(
             source=out,
