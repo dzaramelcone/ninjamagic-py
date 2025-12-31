@@ -8,12 +8,15 @@ from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
     ContainedBy,
     Container,
+    Cookware,
     Defending,
     EntityId,
     Health,
+    Ingredient,
     Lag,
     Noun,
     Prompt,
+    ProvidesHeat,
     Skills,
     Slot,
     Stance,
@@ -338,8 +341,18 @@ class Get(Command):
             return False, "Get what?"
 
         if second:
-            if not (container := match_contents(root.source, second)):
+            container = match_contents(root.source, second) or next(
+                reach.find(
+                    source=root.source,
+                    prefix=second,
+                    in_range=reach.adjacent,
+                    with_components=(Container,),
+                ),
+                None,
+            )
+            if not container:
                 return False, "Get from where?"
+
             c_eid, _, _ = container
             if not (stored := match_contents(c_eid, first)):
                 return False, "That isn't in there."
@@ -354,14 +367,15 @@ class Get(Command):
             bus.pulse(bus.MoveEntity(source=s_eid, container=root.source, slot=dest))
             return OK
 
-        if match := next(
+        match = next(
             (
                 (c_eid, (s_eid, s_noun, s_slot))
                 for c_eid, (s_eid, s_noun, s_slot) in get_stored(root.source)
                 if s_noun.matches(first)
             ),
             None,
-        ):
+        )
+        if match:
             c_eid, (s_eid, _, _) = match
             story.echo(
                 "{0} {0:gets} {1} from {2}.",
@@ -501,10 +515,29 @@ class Put(Command):
             return False, "Put that where?"
 
         container = match_contents(root.source, second)
+        container = container or next(
+            reach.find(
+                source=root.source,
+                prefix=second,
+                in_range=reach.adjacent,
+            ),
+            None,
+        )
+
         if not container:
             return False, "Put that where?"
 
         c_eid, _, _ = container
+        if esper.has_component(c_eid, ProvidesHeat):
+            if esper.has_components(s_eid, Container, Cookware):
+                bus.pulse(bus.Cook(chef=root.source, pot=s_eid, heatsource=c_eid))
+                return OK
+            if esper.has_component(s_eid, Ingredient):
+                bus.pulse(
+                    bus.Roast(chef=root.source, ingredient=s_eid, heatsource=c_eid)
+                )
+                return OK
+
         if not esper.try_component(c_eid, Container):
             return False, "You can't put that there."
 
@@ -569,7 +602,7 @@ class Stow(Command):
             return (False, "You consider flipping it inside out, but decide not to.")
 
         story.echo(
-            "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
+            "{0} {0:stows} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
         )
         bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         esper.add_component(root.source, Stowed(container=c_eid))
