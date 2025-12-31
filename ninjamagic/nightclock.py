@@ -379,10 +379,13 @@ def cue(
     cue_at(sig, eta, recur)
 
 
-def recurring(delta: NightDelta, *, count: int = 1, forever: bool = False) -> Rule:
+def recurring(
+    *, n_more_times: int, interval: NightDelta | None = None, forever: bool = False
+) -> Rule:
+    interval = interval or NightDelta(nights=1)
     i = 0
-    while forever or i < count:
-        yield delta
+    while forever or i < n_more_times:
+        yield interval
         i += 1
 
 
