@@ -80,8 +80,29 @@ class Learn(Signal):
     source: EntityId
     skill: Skill
     mult: float
-    risk: float
-    generation: int
+    risk: float = 1
+    award_lo: float = 0.0
+    award_hi: float = 0.025
+    award_mn: float = 0.33
+    award_mx: float = 1.88
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Roast(Signal):
+    """`chef` roasted `ingredient` directly on `heatsource`."""
+
+    chef: EntityId
+    ingredient: EntityId
+    heatsource: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Cook(Signal):
+    """`chef` cooked the ingredients in `pot`."""
+
+    chef: EntityId
+    pot: EntityId
+    heatsource: EntityId
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -101,6 +122,15 @@ class MoveCompass(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class MoveEntity(Signal):
+    "`source` moved into `container` `slot`."
+
+    source: EntityId
+    container: EntityId
+    slot: Slot
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class MovePosition(Signal):
     "An entity move to a specific location."
 
@@ -109,15 +139,6 @@ class MovePosition(Signal):
     to_y: int
     to_x: int
     quiet: bool = False
-
-
-@signal(frozen=True, slots=True, kw_only=True)
-class MoveEntity(Signal):
-    "An entity move into another entity."
-
-    source: EntityId
-    container: EntityId
-    slot: Slot
 
 
 @signal(frozen=True, slots=True, kw_only=True)
