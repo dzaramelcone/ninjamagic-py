@@ -58,7 +58,7 @@ def process() -> None:
     for sig in bus.iter(bus.Forage):
         loc = transform(sig.source)
         source_skills = skills(sig.source)
-        rank = source_skills.foraging.rank
+        rank = source_skills.survival.rank
         env = esper.component_for_entity(loc.map_id, ForageEnvironment)
         biome, difficulty = env.get_environment(y=loc.y, x=loc.x)
 
@@ -90,7 +90,7 @@ def process() -> None:
         bus.pulse(
             bus.Learn(
                 source=sig.source,
-                skill=source_skills.foraging,
+                skill=source_skills.survival,
                 mult=mult,
             )
         )

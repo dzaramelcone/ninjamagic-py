@@ -276,10 +276,7 @@ class Skill:
 class Skills:
     martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
-    foraging: Skill = field(default_factory=lambda: Skill(name="Foraging"))
-    cooking: Skill = field(default_factory=lambda: Skill(name="Cooking"))
-
-    generation: int = 0
+    survival: Skill = field(default_factory=lambda: Skill(name="Survival"))
 
     def __iter__(self):
         yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
