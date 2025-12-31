@@ -16,7 +16,7 @@ def process(now: Looptime) -> None:
     for sig in bus.iter(bus.Proc):
         match sig.verb:
             case "block":
-                story.echo("{0} is stunned!", sig.target)
+                story.echo("{0} {0:is} stunned!", sig.target)
                 esper.add_component(sig.target, Stunned(end=now + settings.stun_len))
             case "punch":
                 bus.pulse(
