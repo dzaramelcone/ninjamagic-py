@@ -130,8 +130,8 @@ class Health:
     """The well-being of an entity.
 
     - `cur` is the current health out of 100%.
-    - `stress` is on a scale from 0-200, with >100 having lost composure.
-    - `aggravated_stress` represents the minimum amount stress will reduce to by resting.
+    - `stress` is on a scale from 0-200, with >100 having "lost composure".
+    - `aggravated_stress` is the minimum stress can be reduced to by resting.
     - `condition` represents their being unconscious, in shock, or dead.
     """
 
@@ -157,7 +157,7 @@ class ForageEnvironment:
 
 
 class Rotting:
-    """The entity has started to rot. Used by food, unless you want to get all Malenia."""
+    """The entity has started to rot. Used by food, unless you're giving Malenia."""
 
 
 @component(slots=True, frozen=True)
@@ -253,8 +253,14 @@ class Prompt:
 
     - `text` The text that needs to be typed.
     - `end` The time the prompt will expire.
-    - `on_success` A callable invoked when the text is correctly typed before end.
-    - `on_mismatch` A callable invoked when the text is incorrectly typed before end.
+    - `on_success` Called when response is `text` before `end`.
+    - `on_mismatch` Called when response is not `text` before `end`.
+    - `on_expired_success` Called when response is `text`, but after `end`.
+    - `on_expired_mismatch` Called when response is not `text` after `end`.
+
+    If the callable for a branch is `None`, the response will be handled like a normal command.
+
+    Note when all branches are set, the prompt must be responded to.
     """
 
     text: str
