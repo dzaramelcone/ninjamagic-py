@@ -27,14 +27,17 @@ def roast() -> None:
         mult, ar, dr = contest(cooking.rank, lvl, jitter_pct=0.2, max_mult=2)
         meal_level = mult * (ar + dr) // 2
         flavor = ""
+        adj = "roasted"
         if meal_level > cooking.rank * 1.2:
+            adj = "crispy, roasted"
             flavor = "It smells delicious!"
         if meal_level < cooking.rank * 0.8:
+            adj = "burnt"
             flavor = "Acrid smoke assaults your senses!"
 
         # TODO: fancier
         meal = esper.create_entity(
-            Noun(adjective="roasted", value=noun.value),
+            Noun(adjective=adj, value=noun.value),
             Transform(map_id=0, y=0, x=0),
             Slot.ANY,
         )
