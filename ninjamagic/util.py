@@ -174,14 +174,26 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
 
 
 def proc(
-    prev: Looptime, cur: Looptime, odds: float = 0, interval: Looptime = 0
+    *,
+    odds: float = 0,
+    use_ppm: bool = True,
+    interval: Looptime = 0,
+    cur: Looptime = 0,
+    prev: Looptime = 0,
 ) -> bool:
     odds = odds or get_proc_odds()
     if not odds:
+        # 0% chance.
         return False
-    interval = interval or get_melee_delay()
 
-    δ = max(0, cur - prev)
+    interval = interval or get_melee_delay()
+    if not use_ppm or not interval:
+        return RNG.random() < odds
+
+    cur = cur or get_looptime()
+    prev = min(cur, prev or cur - interval)
+
+    δ = cur - prev
     λ = odds / interval
     return RNG.random() < 1 - math.exp(-λ * δ)
 
