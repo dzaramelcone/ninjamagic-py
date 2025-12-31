@@ -530,11 +530,38 @@ class Put(Command):
         c_eid, _, _ = container
         if esper.has_component(c_eid, ProvidesHeat):
             if esper.has_components(s_eid, Container, Cookware):
-                bus.pulse(bus.Cook(chef=root.source, pot=s_eid, heatsource=c_eid))
-                return OK
-            if esper.has_component(s_eid, Ingredient):
+                story.echo(
+                    "{0} {0:puts} {1} over the heat of {2}...",
+                    root.source,
+                    s_eid,
+                    c_eid,
+                )
                 bus.pulse(
-                    bus.Roast(chef=root.source, ingredient=s_eid, heatsource=c_eid)
+                    bus.Act(
+                        source=root.source,
+                        delay=get_melee_delay(),
+                        then=(bus.Cook(chef=root.source, pot=s_eid, heatsource=c_eid),),
+                    )
+                )
+                return OK
+
+            if esper.has_component(s_eid, Ingredient):
+                story.echo(
+                    "{0} {0:puts} {1} over the heat of {2}...",
+                    root.source,
+                    s_eid,
+                    c_eid,
+                )
+                bus.pulse(
+                    bus.Act(
+                        source=root.source,
+                        delay=get_melee_delay(),
+                        then=(
+                            bus.Roast(
+                                chef=root.source, ingredient=s_eid, heatsource=c_eid
+                            ),
+                        ),
+                    )
                 )
                 return OK
 
