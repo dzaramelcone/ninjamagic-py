@@ -2,13 +2,14 @@ import logging
 
 import esper
 
-from ninjamagic import bus, story
+from ninjamagic import bus, nightclock, story
 from ninjamagic.component import (
     ContainedBy,
     Glyph,
     Ingredient,
     Level,
     Noun,
+    Rotting,
     Slot,
     Transform,
     skills,
@@ -44,6 +45,8 @@ def roast() -> None:
         esper.add_component(meal, ("ʘ", 0.33, 0.65, 0.55), Glyph)
         esper.add_component(meal, 0, ContainedBy)
         esper.add_component(meal, int(meal_level), Level)
+        esper.add_component(meal, Rotting())
+        nightclock.cue(sig=bus.Rot(source=meal), time=nightclock.NightTime(hour=6))
         story.echo(
             "{0} {0:roasts} {1} on {2}. {flavor}",
             sig.chef,
@@ -130,6 +133,8 @@ def sautee() -> None:
         meal = esper.create_entity(meal_noun, Transform(map_id=0, y=0, x=0), Slot.ANY)
         esper.add_component(meal, ("ʘ", 0.33, 0.65, 0.55), Glyph)
         esper.add_component(meal, int(meal_level), Level)
+        esper.add_component(meal, Rotting())
+        nightclock.cue(sig=bus.Rot(source=meal), time=nightclock.NightTime(hour=6))
         bus.pulse(
             bus.MoveEntity(source=meal, container=pot, slot=Slot.ANY),
             bus.Learn(
