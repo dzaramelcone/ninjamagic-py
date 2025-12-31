@@ -389,7 +389,7 @@ def recurring(
         i += 1
 
 
-def process():
+def process() -> None:
     clock.to_now()
     while pq and pq[0][0] <= clock:
         due, tiebreak, sig, recur = heapq.heappop(pq)
