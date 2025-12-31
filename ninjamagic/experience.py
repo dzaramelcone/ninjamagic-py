@@ -1,10 +1,11 @@
+import logging
 import math
 from functools import partial
 
-import esper
-
 from ninjamagic import bus, util
 from ninjamagic.component import EntityId, skills
+
+log = logging.getLogger(__name__)
 
 
 def send_skills(entity: EntityId):
@@ -18,18 +19,11 @@ def send_skills(entity: EntityId):
     )
 
 
-def get_award(
-    mult: float,
-    *,
-    lo: float = 0.0,
-    hi: float = 0.025,
-    mn: float = 0.33,
-    mx: float = 1.88,
-) -> float:
+def get_award(mult: float, lo: float, hi: float, mn: float, mx: float) -> float:
     """
     Fraction of TNL to award using an exponential ease-in-out bump.
     - 0 (lo) outside [mn, mx].
-    - Peak (hi) at mult == 1.0.
+    - Peak at mult == 1.0.
     """
     if mult <= 0 or mult < mn or mult > mx:
         return lo
@@ -37,7 +31,9 @@ def get_award(
     denom = max(abs(math.log(mn, 2.0)), abs(math.log(mx, 2.0))) or 1.0
     t = min(1.0, abs(a) / denom)
     w = 1.0 - util.ease_in_out_expo(t)
-    return (lo + (hi - lo) * w) * util.RNG.lognormvariate(mu=0.0, sigma=0.4)
+    out = lo + (hi - lo) * w  # * util.RNG.lognormvariate(mu=0.0, sigma=0.4)
+    log.info("award %s", util.tags(mult=mult, lo=lo, hi=hi, mn=mn, mx=mx, w=w, out=out))
+    return out
 
 
 def get_risk_modifier(risk: float) -> float:
@@ -48,13 +44,18 @@ def get_risk_modifier(risk: float) -> float:
 
 def process():
     for sig in bus.iter(bus.Learn):
-        if not esper.entity_exists(sig.source):
-            continue
-        if skills(sig.source).generation != sig.generation:
-            continue
-
         skill = sig.skill
-        skill.tnl += get_award(sig.mult * get_risk_modifier(sig.risk))
+        # TODO: Change this to drain from a pool on each entity.
+        # TODO: Add another learn type that only occurs each nightstorm or whatever.
+        skill.tnl += get_award(
+            mult=sig.mult,
+            hi=sig.award_hi,
+            lo=sig.award_lo,
+            mn=sig.award_mn,
+            mx=sig.award_mx,
+        )
+
+    for sig in bus.iter(bus.Learn):
         ranks_gained = 0
         while skill.tnl >= 1.0:
             ranks_gained += 1
@@ -73,6 +74,7 @@ def process():
                     ),
                 )
             )
+
         bus.pulse(
             bus.OutboundSkill(
                 to=sig.source, name=skill.name, rank=skill.rank, tnl=skill.tnl
