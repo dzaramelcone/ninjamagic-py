@@ -40,7 +40,7 @@ def roast() -> None:
         )
         esper.add_component(meal, ("ʘ", 0.33, 0.65, 0.55), Glyph)
         esper.add_component(meal, 0, ContainedBy)
-        esper.add_component(meal, meal_level, Level)
+        esper.add_component(meal, int(meal_level), Level)
         story.echo(
             "{0} {0:roasts} {1} on {2}. {flavor}",
             sig.chef,
@@ -126,7 +126,7 @@ def sautee() -> None:
         # TODO: fancier
         meal = esper.create_entity(meal_noun, Transform(map_id=0, y=0, x=0), Slot.ANY)
         esper.add_component(meal, ("ʘ", 0.33, 0.65, 0.55), Glyph)
-        esper.add_component(meal, meal_level, Level)
+        esper.add_component(meal, int(meal_level), Level)
         bus.pulse(
             bus.MoveEntity(source=meal, container=pot, slot=Slot.ANY),
             bus.Learn(
