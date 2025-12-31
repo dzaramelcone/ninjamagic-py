@@ -32,9 +32,18 @@ def pop_random[T](q: MutableSequence[T]) -> T:
     return q.pop()
 
 
+CONJ = {"lies": "lie", "dies": "die"}
+
+
+def tags(**kwargs: object) -> str:
+    return " ".join(f"{kw}: {str(v)}" for kw, v in kwargs.items())
+
+
 def conjugate(word: str, num: Num) -> str:
-    if word == "lies":
-        return "lie" if num == PLURAL else "lies"
+    if word in CONJ:
+        if num == PLURAL:
+            return CONJ[word]
+        return word
     out = INFLECTOR.plural_verb(word, num)
     return out
 
