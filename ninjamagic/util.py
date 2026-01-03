@@ -293,24 +293,22 @@ def get_proc_odds() -> float:
     return settings.base_proc_odds
 
 
-ContestResult = tuple[float, int, int]
-
-
 def contest(
     attack_rank: float,
     defend_rank: float,
     *,
     rng: random.Random = RNG,
     jitter_pct: float = 0.05,
-    dilute: float = 20.0,  # skill dilution to damp low-level blowouts
+    dilute: float = 25.0,  # skill dilution to damp low-level anomalies
     flat_ranks_per_tier: float = 25.0,  # baseline ranks per tier
     pct_ranks_per_tier: float = 0.185,  # more ranks per tier as both sides grow
     pct_ranks_per_tier_amplify: float = 7.0,  # amplify base ranks to slightly prefer pct
     min_mult: float = 0.08,  # clamp: 8%
     max_mult: float = 12.5,  # clamp: 12.5x
-) -> ContestResult:
-    "Contest two ranks and return mult, attack rank roll, defend rank roll."
-    # ranks per tier grows with rank
+    tag: str = "contest",
+) -> tuple[float, int, int]:
+    """Contest two ranks. Return mult, attack rank roll, defend rank roll."""
+    # Ranks per tier grows with rank.
     ranks_per_tier = max(
         flat_ranks_per_tier,
         pct_ranks_per_tier * min(attack_rank, defend_rank) + pct_ranks_per_tier_amplify,
@@ -327,8 +325,8 @@ def contest(
     mult = clamp(1.75**tier_delta, min_mult, max_mult)
 
     log.info(
-        "contest %s",
         tags(
+            tag=tag,
             attack_in=attack_rank,
             defend_in=defend_rank,
             jitter=jitter_pct,
@@ -339,4 +337,28 @@ def contest(
             defend_out=defend - dilute,
         ),
     )
+
     return mult, attack - dilute, defend - dilute
+
+
+class Difficulty:
+    TRIVIAL = 1 / 1.75
+    EASY = 1 / 1.30
+    COMFORTABLE = 1 / 1.10
+    EVEN = 1.00
+    TOUGH = 1.10
+    DIFFICULT = 1.3
+    OVERWHELMING = 1.75
+
+
+def check(*, contest: tuple[float, int, int], difficulty: float) -> bool:
+    """Check whether a contest succeeded for a difficulty.
+
+    Establishes a maintainable semantic for
+    difficulty checks when contest is modeled after ELO where mult = 1.75 is outclassing.
+
+    As an example, if a contest's mult is 1.75 or greater, the attacker has outclassed the defender,
+    and vice versa for the inverse of 1 / 1.75.
+    """
+    mult, _, _ = contest
+    return mult >= difficulty
