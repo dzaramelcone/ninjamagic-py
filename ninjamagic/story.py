@@ -26,7 +26,7 @@ def vrender(
     return auto_cap(
         FMT.vformat(
             story,
-            [YOU if v == first_person else noun(v) for v in args],
+            [YOU if v == first_person else noun(v) for v in args if v],
             kwargs or {},
         )
     )
