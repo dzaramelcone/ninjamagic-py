@@ -18,9 +18,13 @@ if (Math.abs(_cycles - Math.round(_cycles)) > 1e-9) {
 }
 
 export const NIGHTS_PER_DAY = Math.round(_cycles);
-export const SECONDS_PER_NIGHT_HOUR = SECONDS_PER_NIGHT / HOURS_PER_NIGHT;
 export const SECONDS_PER_NIGHT_ACTIVE =
   SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM;
+export const SECONDS_PER_NIGHT_HOUR =
+  SECONDS_PER_NIGHT_ACTIVE / HOURS_PER_NIGHT;
+export const SECONDS_PER_NIGHTSTORM_HOUR =
+  SECONDS_PER_NIGHTSTORM / (24 - HOURS_PER_NIGHT);
+
 const EST_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   year: "numeric",
@@ -147,22 +151,45 @@ export class NightClock {
   }
 
   get hours(): number {
-    const hourIndex = Math.floor(this.elapsedPct * HOURS_PER_NIGHT); // 0..19
-    let hour24 = 6 + hourIndex; // 6 -> 25
-    if (hour24 >= 24) hour24 -= 24;
-    return hour24;
+    const s = this.seconds;
+
+    if (s < SECONDS_PER_NIGHT_ACTIVE) {
+      const hourIndex = Math.floor(s / SECONDS_PER_NIGHT_HOUR);
+      let h = 6 + hourIndex;
+      if (h >= 24) h -= 24;
+      return h;
+    } else {
+      const stormElapsed = s - SECONDS_PER_NIGHT_ACTIVE;
+      const stormHourIndex = Math.floor(
+        stormElapsed / SECONDS_PER_NIGHTSTORM_HOUR
+      );
+      return 2 + stormHourIndex;
+    }
   }
 
   get hoursFloat(): number {
-    const totalNightMinutes = this.elapsedPct * HOURS_PER_NIGHT * 60.0;
-    const hourOffset = totalNightMinutes / 60.0; // 0..20
-    let h = 6.0 + hourOffset; // 6..26
-    if (h >= 24.0) h -= 24.0;
-    return h;
+    const s = this.seconds;
+
+    if (s < SECONDS_PER_NIGHT_ACTIVE) {
+      let h = (s / SECONDS_PER_NIGHT_HOUR + 6.0) % 24.0;
+      return h;
+    } else {
+      const stormElapsed = s - SECONDS_PER_NIGHT_ACTIVE;
+      return 2.0 + stormElapsed / SECONDS_PER_NIGHTSTORM_HOUR;
+    }
   }
 
   get minutes(): number {
-    return Math.floor(this.elapsedPct * HOURS_PER_NIGHT * 60) % 60;
+    const s = this.seconds;
+
+    if (s < SECONDS_PER_NIGHT_ACTIVE) {
+      const rem = s % SECONDS_PER_NIGHT_HOUR;
+      return Math.floor((rem / SECONDS_PER_NIGHT_HOUR) * 60);
+    } else {
+      const stormElapsed = s - SECONDS_PER_NIGHT_ACTIVE;
+      const rem = stormElapsed % SECONDS_PER_NIGHTSTORM_HOUR;
+      return Math.floor((rem / SECONDS_PER_NIGHTSTORM_HOUR) * 60);
+    }
   }
 
   get dawn(): number {
@@ -200,8 +227,7 @@ export class NightClock {
   }
 
   get inNightstorm(): boolean {
-    const remaining = SECONDS_PER_NIGHT - this.seconds;
-    return remaining <= SECONDS_PER_NIGHTSTORM && SECONDS_PER_NIGHTSTORM > 0;
+    return this.seconds >= SECONDS_PER_NIGHT_ACTIVE;
   }
 
   get nightstormEta(): number {
