@@ -97,7 +97,7 @@ def build_hub(map_id: EntityId, chips: Chips):
             from_y=0,
             from_x=0,
             to_map_id=map_id,
-            to_y=9,
+            to_y=8,
             to_x=5,
         )
     )
