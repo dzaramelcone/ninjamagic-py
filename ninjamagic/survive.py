@@ -288,22 +288,30 @@ def process_rest() -> None:
             weariness = nights_since / max_nights if max_nights else 1
             weariness_factor = max(0.0, 1.0 - weariness)
 
-            shelter_level = 0
-            if sheltered := esper.try_component(eid, Sheltered):
-                shelter_level = esper.component_for_entity(sheltered.prop, Level)
-
-            # Check how they do against the wilderness.
-            rest_rank = min(survival_rank, shelter_level * weariness_factor)
             hostility = 0
             if cmp := esper.try_component(loc.map_id, Hostility):
                 hostility = cmp.get_rank(loc.y, loc.x)
-            mult = contest(rest_rank, hostility)
-            rested = Trial.check(mult=mult)
-            bus.pulse(
-                bus.Learn(
-                    source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
+
+            if sheltered := esper.try_component(eid, Sheltered):
+                shelter_level = esper.component_for_entity(sheltered.prop, Level)
+                rest_rank = min(survival_rank, shelter_level) * weariness_factor
+                mult = contest(rest_rank, hostility)
+                rested = Trial.check(mult=mult)
+                bus.pulse(
+                    bus.Learn(
+                        source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
+                    )
                 )
-            )
+
+            if not rested:
+                # last ditch effort
+                mult = contest(survival_rank * weariness_factor, hostility)
+                rested = Trial.check(mult=mult, difficulty=Trial.INFEASIBLE)
+                bus.pulse(
+                    bus.Learn(
+                        source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
+                    )
+                )
 
         if rested:
             bus.pulse(
@@ -315,12 +323,14 @@ def process_rest() -> None:
                 ),
                 bus.AbsorbRestExp(source=eid),
             )
-            if esper.has_component(eid, Ate):
+
+        ate = esper.has_component(eid, Ate)
+        match (rested, ate):
+            case True, True:
                 story.echo("{0} {0:rests}.", eid)
-            else:
+            case True, False:
                 story.echo(
                     "{0} {0:rests} in fits, woken twice by an empty stomach.", eid
                 )
-            continue
-
-        story.echo("{0} {0:rests}, but not well.", eid)
+            case _:
+                story.echo("{0} {0:rests}, but not well.", eid)
