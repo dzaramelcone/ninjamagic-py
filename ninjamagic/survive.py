@@ -87,12 +87,6 @@ def process_eating() -> None:
                 )
             )
 
-        company = [
-            eid
-            for eid, (_, st) in esper.get_components(Connection, Stance)
-            if st.prop == prop and eid != sig.source
-        ]
-
         food_count = esper.component_for_entity(sig.food, Food).count
         any_left = food_count - 1
         if any_left:
@@ -100,7 +94,13 @@ def process_eating() -> None:
         else:
             esper.delete_entity(sig.food)
 
-        is_shared = bool(company)
+        is_shared = False
+        if prop:
+            for eid, (_, st) in esper.get_components(Connection, Stance):
+                if st.prop == prop and eid != sig.source:
+                    is_shared = True
+                    break
+
         checks = (is_tasty, is_very_tasty, is_resting, is_lit, is_warm, is_safe)
         pips = sum(checks + (is_shared, is_shared, is_shared, is_shared))
 
