@@ -11,6 +11,7 @@ from ninjamagic.component import (
     Cookware,
     Defending,
     EntityId,
+    Food,
     Health,
     Ingredient,
     Lag,
@@ -20,6 +21,7 @@ from ninjamagic.component import (
     Skills,
     Slot,
     Stance,
+    Stances,
     Stowed,
     Stunned,
     Wearable,
@@ -31,6 +33,7 @@ from ninjamagic.component import (
     transform,
 )
 from ninjamagic.config import settings
+from ninjamagic.nightclock import NightClock
 from ninjamagic.util import Compass, get_looptime, get_melee_delay
 from ninjamagic.world.state import get_recall
 
@@ -230,49 +233,97 @@ class Say(Command):
         return OK
 
 
+def handle_stance(
+    new_stance: Stances, root: bus.Inbound, cmd: str, inf: str = ""
+) -> Out:
+    _, _, rest = root.text.strip().partition(" ")
+    inf = inf or new_stance
+    stance = esper.component_for_entity(root.source, Stance)
+    if not rest or rest in ("here", "down"):
+        if stance.cur == new_stance:
+            return False, f"You're already {inf}."
+        bus.pulse(bus.StanceChanged(source=root.source, stance=new_stance, echo=True))
+        return OK
+
+    match = next(
+        reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None
+    )
+    if match:
+        prop, _, _ = match
+        if stance.cur == new_stance and prop == stance.prop:
+            noun = esper.component_for_entity(prop, Noun)
+            return False, f"You're already {inf} beside {noun:def}."
+
+        bus.pulse(
+            bus.StanceChanged(
+                source=root.source, stance=new_stance, prop=prop, echo=True
+            )
+        )
+        return OK
+    return False, f"{cmd} where?"
+
+
 class Stand(Command):
     text: str = "stand"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        if stance_is(root.source, "standing"):
-            return False, "You're already standing."
-        bus.pulse(bus.StanceChanged(source=root.source, stance="standing", echo=True))
-        return OK
+        return handle_stance(new_stance="standing", root=root, cmd="Stand")
 
 
 class Lie(Command):
     text: str = "lie"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        if stance_is(root.source, "lying prone"):
-            return False, "You're already prone."
-        bus.pulse(
-            bus.StanceChanged(source=root.source, stance="lying prone", echo=True)
-        )
-        return OK
+        return handle_stance(new_stance="lying prone", root=root, cmd="Lie")
 
 
-class Rest(Lie):
+class Rest(Command):
     text: str = "rest"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        return handle_stance(
+            new_stance="lying prone", root=root, cmd="Rest", inf="resting"
+        )
 
 
 class Kneel(Command):
     text: str = "kneel"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        if stance_is(root.source, "kneeling"):
-            return False, "You're already kneeling."
-        bus.pulse(bus.StanceChanged(source=root.source, stance="kneeling", echo=True))
-        return OK
+        return handle_stance(new_stance="kneeling", cmd="Kneel", root=root)
 
 
 class Sit(Command):
     text: str = "sit"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        if stance_is(root.source, "sitting"):
-            return False, "You're already sitting."
-        bus.pulse(bus.StanceChanged(source=root.source, stance="sitting", echo=True))
+        return handle_stance(new_stance="sitting", root=root, cmd="Sit")
+
+
+class Eat(Command):
+    text: str = "eat"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.strip().partition(" ")
+        if not rest:
+            return False, "Eat what?"
+
+        match = match_hands(root.source, rest)
+        in_hands = bool(match)
+
+        match = match or next(
+            reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None
+        )
+        if not match:
+            return False, "Eat what?"
+
+        food, _, _ = match
+        if not esper.has_component(food, Food):
+            story.echo("{0} {0:stares} at {1} with a hungry look.", root.source, food)
+            return OK
+        if not in_hands:
+            return False, "You're not holding that."
+        bus.pulse(bus.Eat(source=root.source, food=food))
         return OK
 
 
@@ -280,6 +331,30 @@ class Fart(Command):
     text: str = "fart"
 
     def trigger(self, root: bus.Inbound) -> Out:
+        def _ok(eid: EntityId) -> None:
+            story.echo(
+                "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
+                eid,
+            ),
+
+        def _err(eid: EntityId) -> None:
+            story.echo(
+                "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
+                eid,
+            ),
+
+        def _ok_exp(eid: EntityId) -> None:
+            story.echo(
+                "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
+                eid,
+            ),
+
+        def _err_exp(eid: EntityId) -> None:
+            story.echo(
+                "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
+                eid,
+            ),
+
         tform = transform(root.source)
         story.echo("{0} {0:farts}.", root.source)
         bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
@@ -289,25 +364,13 @@ class Fart(Command):
             Prompt(
                 text="inhale deeply",
                 end=get_looptime() + 4.0,
-                on_success=lambda: story.echo(
-                    "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
-                    root.source,
-                ),
-                on_mismatch=lambda: story.echo(
-                    "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
-                    root.source,
-                ),
-                on_expired_success=lambda: story.echo(
-                    "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
-                    root.source,
-                ),
-                on_expired_mismatch=lambda: story.echo(
-                    "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
-                    root.source,
-                ),
+                on_ok=_ok,
+                on_err=_err,
+                on_expired_ok=_ok_exp,
+                on_expired_err=_err_exp,
             ),
         )
-        bus.pulse_in(1, bus.OutboundPrompt(to=root.source, text="inhale deeply"))
+        bus.pulse(bus.OutboundPrompt(to=root.source, text="inhale deeply"))
         return OK
 
 
@@ -321,6 +384,19 @@ class Stress(Command):
             amount = 2
 
         bus.pulse(bus.HealthChanged(source=root.source, stress_change=amount))
+        return OK
+
+
+class Time(Command):
+    text: str = "time"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        bus.pulse(
+            bus.Outbound(
+                to=root.source,
+                text=str(NightClock()),
+            )
+        )
         return OK
 
 
@@ -531,7 +607,7 @@ class Put(Command):
         if esper.has_component(c_eid, ProvidesHeat):
             if esper.has_components(s_eid, Container, Cookware):
                 story.echo(
-                    "{0} {0:puts} {1} over the heat of {2}...",
+                    "{0} {0:puts} {1} in the heat of {2}...",
                     root.source,
                     s_eid,
                     c_eid,
@@ -547,7 +623,7 @@ class Put(Command):
 
             if esper.has_component(s_eid, Ingredient):
                 story.echo(
-                    "{0} {0:puts} {1} over the heat of {2}...",
+                    "{0} {0:puts} {1} in the heat of {2}...",
                     root.source,
                     s_eid,
                     c_eid,
@@ -750,4 +826,6 @@ commands: list[Command] = [
     Remove(),
     Swap(),
     Forage(),
+    Eat(),
+    Time(),
 ]
