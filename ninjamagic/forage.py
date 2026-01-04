@@ -5,7 +5,7 @@ from typing import Any
 
 import esper
 
-from ninjamagic import bus, nightclock, reach, story
+from ninjamagic import bus, nightclock, reach, scheduler, story
 from ninjamagic.component import (
     Biomes,
     ContainedBy,
@@ -115,10 +115,10 @@ def create_foraged_item(
     # TODO Make them rot a bit each night.
     # noun can have callable adjective,
     # it can modify the item level, cause sickness, disappear, etc.
-    nightclock.cue(
+    scheduler.cue(
         sig=bus.Rot(source=out),
         time=nightclock.NightTime(hour=6),
-        recur=nightclock.recurring(n_more_times=1),
+        recur=scheduler.recurring(n_more_times=1),
     )
 
     bus.pulse(
