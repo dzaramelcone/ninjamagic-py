@@ -1,3 +1,5 @@
+import logging
+from dataclasses import asdict
 from functools import partial
 
 import esper
@@ -25,6 +27,19 @@ from ninjamagic.util import (
     proc,
 )
 from ninjamagic.world.state import get_recall
+
+log = logging.getLogger(__name__)
+
+STANCE_STORIES: dict[tuple[bool, str], str] = {
+    (True, "kneeling"): "{0} {0:kneels} before {1}.",
+    (True, "lying prone"): "{0} {0:lies} beside {1}.",
+    (True, "standing"): "{0} {0:stands} beside {1}.",
+    (True, "sitting"): "{0} {0:sits} beside {1}.",
+    (False, "kneeling"): "{0} {0:kneels}.",
+    (False, "lying prone"): "{0} {0:lies} down.",
+    (False, "standing"): "{0} {0:stands}.",
+    (False, "sitting"): "{0} {0:sits}.",
+}
 
 
 def touch_fight_timer(entity: EntityId, now: Looptime) -> FightTimer:
@@ -136,10 +151,11 @@ def process(now: Looptime):
         src_health.aggravated_stress += sig.aggravated_stress_change
 
         src_health.cur = min(100, max(-10, src_health.cur))
+        src_health.stress = min(200, max(0, src_health.stress))
         src_health.aggravated_stress = min(200, max(0, src_health.aggravated_stress))
-        src_health.stress = min(
-            200, max(src_health.aggravated_stress, src_health.stress)
-        )
+        if src_health.stress < src_health.aggravated_stress:
+            src_health.stress = src_health.aggravated_stress
+        log.info("health changed %s", util.tags(**asdict(src_health)))
 
     for sig in bus.iter(bus.HealthChanged):
         src_health = health(sig.source)
@@ -191,11 +207,11 @@ def process(now: Looptime):
                 ),
             )
         )
-        if sig.condition in ("unconscious", "in shock", "dead"):
-            skills(sig.source).generation += 1
 
     for sig in bus.iter(bus.StanceChanged):
-        stance(sig.source).cur = sig.stance
+        st = stance(sig.source)
+        st.cur = sig.stance
+        st.prop = sig.prop
         bus.pulse(
             bus.Echo(
                 source=sig.source,
@@ -206,15 +222,9 @@ def process(now: Looptime):
             )
         )
         if sig.echo:
-            match sig.stance:
-                case "kneeling":
-                    story.echo("{0} {0:kneels}.", sig.source)
-                case "lying prone":
-                    story.echo("{0} {0:lies} down.", sig.source)
-                case "standing":
-                    story.echo("{0} {0:stands} up.", sig.source)
-                case "sitting":
-                    story.echo("{0} {0:sits} down.", sig.source)
+            prop = sig.prop if esper.entity_exists(sig.prop) else 0
+            msg = STANCE_STORIES.get((prop != 0, sig.stance), "")
+            story.echo(msg, sig.source, prop)
 
 
 def schedule_respawn(entity: EntityId):
@@ -222,7 +232,7 @@ def schedule_respawn(entity: EntityId):
     # for example, if they lose connection at the 60.0s mark. lol.
     src_health = health(entity)
     src_loc = transform(entity)
-    to_map_id, to_y, to_x = get_recall(entity)
+    bind_eid, to_map_id, to_y, to_x = get_recall(entity)
     bus.pulse_in(
         2.5,
         bus.Outbound(to=entity, text="You begin to rise above this memory."),
@@ -248,7 +258,7 @@ def schedule_respawn(entity: EntityId):
     bus.pulse_in(
         60.0,
         bus.ConditionChanged(source=entity, condition="normal"),
-        bus.StanceChanged(source=entity, stance="lying prone"),
+        bus.StanceChanged(source=entity, stance="lying prone", prop=bind_eid),
         bus.Outbound(to=entity, text="You are turned back."),
         bus.HealthChanged(
             source=entity,
