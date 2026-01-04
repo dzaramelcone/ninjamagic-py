@@ -178,7 +178,6 @@ class Attack(Command):
 
 class Forage(Command):
     text: str = "forage"
-    requires_standing: bool = True
     requires_not_busy: bool = True
 
     def trigger(self, root: bus.Inbound) -> Out:
@@ -197,7 +196,7 @@ class Forage(Command):
 class Block(Command):
     text: str = "block"
     requires_standing: bool = True
-    requires_not_busy: bool = False
+    requires_not_busy: bool = False  # can cancel attacks
 
     def trigger(self, root: bus.Inbound) -> Out:
         lag_len = settings.block_len + settings.block_miss_len
