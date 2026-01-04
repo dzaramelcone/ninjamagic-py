@@ -7,7 +7,7 @@ from ninjamagic.component import EntityId, Lag, Prompt
 from ninjamagic.util import Looptime
 
 pending: defaultdict[EntityId, deque[bus.Inbound]] = defaultdict(deque)
-clean: list[EntityId] = []
+clean_up: list[EntityId] = []
 SPAM_PENALTY: float = 0.275
 DEQUE_MAXLEN = 20
 
@@ -21,16 +21,16 @@ def process(now: Looptime):
         expired = sig.prompt.end and sig.prompt.end < now
         match (matched, expired):
             case (True, False):
-                handler = prompt.on_success
-            case (True, True):
-                handler = prompt.on_expired_success
+                handler = prompt.on_ok
             case (False, False):
-                handler = prompt.on_mismatch
+                handler = prompt.on_err
+            case (True, True):
+                handler = prompt.on_expired_ok
             case (False, True):
-                handler = prompt.on_expired_mismatch
+                handler = prompt.on_expired_err
 
         if handler:
-            handler()
+            handler(source=sig.source)
         else:
             bus.pulse(bus.Inbound(source=sig.source, text=sig.text))
 
@@ -46,7 +46,7 @@ def process(now: Looptime):
 
     for entity, queue in pending.items():
         if not esper.entity_exists(entity):
-            clean.append(entity)
+            clean_up.append(entity)
             continue
 
         lag = esper.try_component(entity, Lag) or -1
@@ -58,11 +58,11 @@ def process(now: Looptime):
         bus.pulse(bus.Parse(source=sig.source, text=sig.text))
 
         if not queue:
-            clean.append(entity)
+            clean_up.append(entity)
         else:
             esper.add_component(entity, now + SPAM_PENALTY, Lag)
 
-    while clean:
-        entity = clean.pop()
+    while clean_up:
+        entity = clean_up.pop()
         pending.pop(entity, None)
         esper.remove_component(entity, Lag)
