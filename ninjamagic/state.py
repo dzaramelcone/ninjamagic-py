@@ -11,6 +11,7 @@ from fastapi import Depends, Request
 import ninjamagic.bus as bus
 from ninjamagic import (
     act,
+    cleanup,
     combat,
     conn,
     cook,
@@ -98,8 +99,9 @@ class State:
             experience.process()
             echo.process()
             outbox.process()
-            bus.clear()
+            cleanup.process()
             #                       #
+            bus.clear()
             esper.clear_dead_entities()
 
             deadline += STEP
