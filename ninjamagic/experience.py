@@ -38,8 +38,7 @@ def process():
 
     for sig in bus.iter(bus.AbsorbRestExp):
         rest = esper.try_component(sig.source, RestExp)
-        ate = esper.try_component(sig.source, Ate)
-        if not rest or not ate:
+        if not rest:
             continue
         skills = esper.component_for_entity(sig.source, Skills)
 
@@ -48,9 +47,10 @@ def process():
             for eid, award in inner.items():
                 if eid:
                     award = min(award, 0.25)
-                mult = contest(ate.rank, skill.rank)
-                mult *= rest.modifiers.get(name, 1)
-                skill.tnl += award * mult
+                if ate := esper.try_component(sig.source, Ate):
+                    award *= contest(ate.rank, skill.rank)
+                award *= rest.modifiers.get(name, 1)
+                skill.tnl += award
 
         new_rest = RestExp()
         for skill in skills:
