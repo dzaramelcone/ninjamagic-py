@@ -82,20 +82,22 @@ def process(now: Looptime):
         defend = target_skills.evasion
         source_pain_mult = pain_mult(source)
         target_pain_mult = pain_mult(target)
-        skill_mult, _, _ = contest(attack.rank, defend.rank)
+        skill_mult = contest(attack.rank, defend.rank)
 
         bus.pulse(
             bus.Learn(
                 source=source,
+                teacher=target,
                 skill=attack,
                 mult=skill_mult,
-                risk=target_pain_mult / source_pain_mult,
+                danger=target_pain_mult / source_pain_mult,
             ),
             bus.Learn(
                 source=target,
+                teacher=source,
                 skill=defend,
                 mult=1.0 / skill_mult,
-                risk=source_pain_mult / target_pain_mult,
+                danger=source_pain_mult / target_pain_mult,
             ),
         )
 
@@ -155,7 +157,7 @@ def process(now: Looptime):
         src_health.aggravated_stress = min(200, max(0, src_health.aggravated_stress))
         if src_health.stress < src_health.aggravated_stress:
             src_health.stress = src_health.aggravated_stress
-        log.info("health changed %s", util.tags(**asdict(src_health)))
+        log.info("health %s", util.tags(**asdict(src_health)))
 
     for sig in bus.iter(bus.HealthChanged):
         src_health = health(sig.source)
