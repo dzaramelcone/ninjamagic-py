@@ -121,6 +121,12 @@ class MoveCompass(Signal):
     dir: Compass
 
 
+class RestCheck(Signal): ...
+
+
+class CoverCheck(Signal): ...
+
+
 @signal(frozen=True, slots=True, kw_only=True)
 class MoveEntity(Signal):
     "`source` moved into `container` in `slot`."
@@ -179,11 +185,18 @@ class HealthChanged(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class Eat(Signal):
+    source: EntityId
+    food: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class StanceChanged(Signal):
     "An entity's stance changed."
 
     source: EntityId
     stance: Stances
+    prop: EntityId = 0
     echo: bool = False
 
 
