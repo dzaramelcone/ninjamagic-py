@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections import defaultdict
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass as component, field, fields
 from enum import StrEnum, auto
 from typing import Literal, NewType, TypeVar
@@ -157,8 +158,6 @@ class Sheltered:
 @component(slots=True, kw_only=True)
 class TookCover:
     """The entity desperately took cover by nightstorm prompt. Used by camping."""
-
-    mult: float
 
 
 @component(slots=True, kw_only=True)
@@ -359,8 +358,27 @@ class Skills:
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
     survival: Skill = field(default_factory=lambda: Skill(name="Survival"))
 
-    def __iter__(self):
-        yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
+    def __iter__(self) -> Iterator[Skill]:
+        for f in fields(self):
+            v = getattr(self, f.name)
+            if isinstance(v, Skill):
+                yield v
+
+    def __getitem__(self, key: str) -> Skill:
+        for s in self:
+            if s.name == key:
+                return s
+        raise KeyError
+
+
+@component(slots=True, kw_only=True)
+class RestExp:
+    """Exp earned throughout the day that is awarded when camping."""
+
+    gained: dict[str, dict[int, float]] = field(
+        default_factory=lambda: defaultdict(lambda: defaultdict(float))
+    )
+    modifiers: dict[str, float] = field(default_factory=dict)
 
 
 @component(slots=True, kw_only=True)
