@@ -263,7 +263,7 @@ def process_rest() -> None:
     for eid, cmps in esper.get_components(Connection, Transform, Health, Stance):
         _, loc, health, stance = cmps
         bus.pulse(
-            bus.Cleanup(source=eid, removed_components=(Ate, Sheltered)),
+            bus.Cleanup(source=eid, removed_components=(Ate, Sheltered, TookCover)),
         )
         if health.condition != "normal":
             continue
