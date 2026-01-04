@@ -47,7 +47,7 @@ def process():
             skill = skills[name]
             for eid, award in inner.items():
                 if eid:
-                    award = max(award, 0.25)
+                    award = min(award, 0.25)
                 mult = contest(ate.rank, skill.rank)
                 mult *= rest.modifiers.get(name, 1)
                 skill.tnl += award * mult
