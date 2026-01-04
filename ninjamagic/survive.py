@@ -62,6 +62,7 @@ def process_eating() -> None:
 
         survival = skills.survival.rank
         hurdle = max(s.rank for s in skills)
+        hostility = 0
 
         mult = contest(food_lvl, hurdle, jitter_pct=0)
         is_tasty = Trial.check(mult=mult, difficulty=Trial.SOMEWHAT_EASY)
