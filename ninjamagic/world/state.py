@@ -2,6 +2,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import (
+    Anchor,
     Chips,
     ChipSet,
     ContainedBy,
@@ -11,8 +12,12 @@ from ninjamagic.component import (
     ForageEnvironment,
     Glyph,
     Health,
+    Hostility,
+    Level,
     Noun,
     ProvidesHeat,
+    ProvidesLight,
+    ProvidesShelter,
     Skills,
     Slot,
     Stance,
@@ -55,7 +60,8 @@ def build_nowhere() -> EntityId:
 
 def build_demo() -> EntityId:
     out = esper.create_entity(
-        ForageEnvironment(default=("cave", 30), coords={(0, 0): ("forest", 0)})
+        Hostility(default=50, coords={(0, 0): 0}),
+        ForageEnvironment(default=("cave", 30), coords={(0, 0): ("forest", 0)}),
     )
     chips = simple.build_level(lut=[1, 2])
 
@@ -96,10 +102,14 @@ def build_hub(map_id: EntityId, chips: Chips):
         )
     )
 
-    bonfire = esper.create_entity(Transform(map_id=map_id, y=9, x=4))
+    bonfire = esper.create_entity(
+        Transform(map_id=map_id, y=9, x=4),
+        Anchor(),
+        ProvidesHeat(),
+        ProvidesLight(),
+        Noun(value="bonfire", pronoun=Pronouns.IT),
+    )
     esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
-    esper.add_component(bonfire, Noun(value="bonfire", pronoun=Pronouns.IT))
-    esper.add_component(bonfire, ProvidesHeat())
 
     lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
     esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
@@ -122,13 +132,24 @@ def build_hub(map_id: EntityId, chips: Chips):
 
     pot = esper.create_entity(
         Transform(map_id=0, y=0, x=0),
-        Noun(value="cookpot"),
+        Noun(adjective="crude", value="cookpot"),
         Container(),
         Cookware(),
         Slot.ANY,
     )
     esper.add_component(pot, ("]", 47 / 360, 0.60, 0.85), Glyph)
     esper.add_component(pot, backpack, ContainedBy)
+
+    bedroll = esper.create_entity(
+        Transform(map_id=map_id, y=4, x=9),
+        Noun(adjective="leather", value="bedroll"),
+        ProvidesShelter(prompt="settle into bedroll"),
+        Wearable(slot=Slot.SHOULDER),
+        Slot.ANY,
+    )
+    esper.add_component(bedroll, 0, ContainedBy)
+    esper.add_component(bedroll, 10, Level)
+    esper.add_component(bedroll, ("]", 47 / 360, 0.60, 0.85), Glyph)
 
     # fmt: off
     chips[(0,0)] = bytearray([
@@ -178,8 +199,11 @@ TEST = NOWHERE
 DEMO = build_demo()
 
 
-def get_recall(_: EntityId) -> tuple[int, int, int]:
-    return 2, 8, 8
+def get_recall(_: EntityId) -> tuple[int, int, int, int]:
+    for eid, _ in esper.get_component(Anchor):
+        if loc := esper.try_component(eid, Transform):
+            return eid, loc.map_id, loc.y, loc.x
+    raise KeyError
 
 
 def get_random_nearby_location(loc: Transform) -> tuple[int, int]:
