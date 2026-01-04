@@ -5,7 +5,7 @@ import math
 import random
 from collections.abc import MutableSequence
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import Literal, NewType
 
 import inflect
@@ -307,7 +307,12 @@ def contest(
     max_mult: float = 12.5,  # clamp: 12.5x
     tag: str = "contest",
 ) -> tuple[float, int, int]:
-    """Contest two ranks. Return mult, attack rank roll, defend rank roll."""
+    """Contest attack_rank against defend_rank.
+
+    Return mult, attack rank roll, defend rank roll, where mult is clamped by
+    min_mult and max_mult.
+    """
+
     # Ranks per tier grows with rank.
     ranks_per_tier = max(
         flat_ranks_per_tier,
@@ -325,8 +330,9 @@ def contest(
     mult = clamp(1.75**tier_delta, min_mult, max_mult)
 
     log.info(
+        "%s: %s",
+        tag,
         tags(
-            tag=tag,
             attack_in=attack_rank,
             defend_in=defend_rank,
             jitter=jitter_pct,
@@ -341,24 +347,59 @@ def contest(
     return mult, attack - dilute, defend - dilute
 
 
-class Difficulty:
-    TRIVIAL = 1 / 1.75
-    EASY = 1 / 1.30
-    COMFORTABLE = 1 / 1.10
+class Trial(Enum):
+    IMPOSSIBLE = 10
+    INFEASIBLE = 1.75
+    VERY_HARD = 1.5
+    HARD = 1.30
+    SOMEWHAT_HARD = 1.1
     EVEN = 1.00
-    TOUGH = 1.10
-    DIFFICULT = 1.3
-    OVERWHELMING = 1.75
+    SOMEWHAT_EASY = 1 / SOMEWHAT_HARD
+    EASY = 1 / HARD
+    VERY_EASY = 1 / VERY_HARD
+    TRIVIAL = 1 / INFEASIBLE
+    EFFORTLESS = 1 / IMPOSSIBLE
+
+    @classmethod
+    def check(
+        cls,
+        *,
+        mult: float = 1,
+        contest: tuple[float, int, int],
+        difficulty: "Trial",
+    ) -> bool:
+        """Check whether a mult or a contest succeeded for some difficulty.
+
+        Establishes a maintainable semantic for difficulty when `contest` is modeled after ELO,
+        where mult = 1.75 is outclassing.
+        """
+        if contest:
+            mult, _, _ = contest
+        return mult >= difficulty.value
 
 
-def check(*, contest: tuple[float, int, int], difficulty: float) -> bool:
-    """Check whether a contest succeeded for a difficulty.
+class Feat(Enum):
+    LEGENDARY = 10
+    MASTERING = 1.75
+    VERY_STRONG = 1.5
+    STRONG = 1.30
+    GOOD = 1.1
+    OK = 1.00
+    POOR = 1 / GOOD
+    WEAK = 1 / STRONG
+    VERY_WEAK = 1 / VERY_STRONG
+    FAILING = 1 / MASTERING
+    CRITICAL_FAILURE = 1 / LEGENDARY
 
-    Establishes a maintainable semantic for
-    difficulty checks when contest is modeled after ELO where mult = 1.75 is outclassing.
+    @classmethod
+    def assess(
+        cls, *, mult: float = 1, contest: tuple[float, int, int] | None = None
+    ) -> "Feat":
+        """Assess the outcome of a contest as a feat.
 
-    As an example, if a contest's mult is 1.75 or greater, the attacker has outclassed the defender,
-    and vice versa for the inverse of 1 / 1.75.
-    """
-    mult, _, _ = contest
-    return mult >= difficulty
+        Establishes a maintainable semantic for performance when `contest` is modeled after ELO,
+        where mult = 1.75 is outclassing.
+        """
+        if contest:
+            mult, _, _ = contest
+        return next((d for d in cls if d.value <= mult), cls.CRITICAL_FAILURE)
