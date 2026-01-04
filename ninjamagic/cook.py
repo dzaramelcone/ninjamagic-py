@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 # TODO: Make this less coupled by taking better advantage of story
 # See STORIES in story.py for an example.
 OUTCOMES = {
-    Feat.MASTERING: ("rich and sumptuous", "It smells incredible!"),
+    Feat.MASTERY: ("rich and sumptuous", "It smells incredible!"),
     Feat.VERY_STRONG: ("crispy, rich", "It smells delicious!"),
     Feat.STRONG: ("crispy, seared", "It smells great!"),
     Feat.GOOD: ("seared", "It smells good!"),
@@ -57,19 +57,12 @@ def roast() -> None:
         noun = esper.component_for_entity(sig.ingredient, Noun)
         lvl = esper.component_for_entity(sig.ingredient, Level)
         cooking = skill.survival
-        mult, _, _ = contest(cooking.rank, lvl, max_mult=2)
+        mult = contest(cooking.rank, lvl, max_mult=2)
         meal_level = int(lvl * mult)
         adj, flavor = OUTCOMES.get(Feat.assess(mult=mult), DEFAULT_OUTCOME)
 
         log.info("roast %s", tags(mult=mult, meal_level=meal_level))
         meal = create_meal(adjective=adj, name=noun.value, level=meal_level)
-        story.echo(
-            "{0} {0:roasts} {1} on {2}. {flavor}",
-            sig.chef,
-            sig.ingredient,
-            sig.heatsource,
-            flavor=flavor,
-        )
         bus.pulse(
             bus.MovePosition(source=sig.ingredient, to_map_id=0, to_y=0, to_x=0),
             bus.MoveEntity(
@@ -84,6 +77,13 @@ def roast() -> None:
             ),
         )
         esper.delete_entity(sig.ingredient)
+        story.echo(
+            "{0} {0:roasts} {1} on {2}. {flavor}",
+            sig.chef,
+            sig.ingredient,
+            sig.heatsource,
+            flavor=flavor,
+        )
 
 
 def saute() -> None:
@@ -108,20 +108,19 @@ def saute() -> None:
 
         best_mult, best_level, best_noun = 0, 0, ingredients[0][1]
         for ingredient, noun, ilvl in ingredients:
-            mult, _, _ = contest(cooking.rank, ilvl, max_mult=2)
+            mult = contest(cooking.rank, ilvl, max_mult=1.75)
+            bus.pulse(
+                bus.Learn(source=chef, skill=cooking, mult=mult),
+                bus.MovePosition(source=ingredient, to_map_id=0, to_y=0, to_x=0),
+            )
+            esper.delete_entity(ingredient)
+
             level = int(ilvl * mult)
             log.info("saute %s", tags(mult=mult, level=level))
-
             if level > best_level:
                 best_mult = max(best_mult, mult)
                 best_noun = noun
                 best_level = level
-
-            bus.pulse(
-                bus.MovePosition(source=ingredient, to_map_id=0, to_y=0, to_x=0),
-                bus.Learn(source=chef, skill=cooking, mult=mult),
-            )
-            esper.delete_entity(ingredient)
 
         name = best_noun.value
         adjective, flavor = OUTCOMES.get(Feat.assess(mult=best_mult), DEFAULT_OUTCOME)
@@ -141,10 +140,7 @@ def saute() -> None:
             bites=len(ingredients),
         )
 
-        bus.pulse(
-            bus.MoveEntity(source=meal, container=pot, slot=Slot.ANY),
-            bus.Learn(source=chef, skill=cooking, mult=best_mult),
-        )
+        bus.pulse(bus.MoveEntity(source=meal, container=pot, slot=Slot.ANY))
         story.echo(
             "{0} {0:cooks} {1} in {2} over {3}. {flavor}",
             chef,
