@@ -10,6 +10,7 @@ from ninjamagic.util import Trial, contest
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
+MAX_EXP_PER_ENTITY = 0.45
 
 
 def send_skills(entity: EntityId):
@@ -46,7 +47,7 @@ def process():
             skill = skills[name]
             for eid, award in inner.items():
                 if eid:
-                    award = min(award, 0.25)
+                    award = min(award, MAX_EXP_PER_ENTITY)
                 if ate := esper.try_component(sig.source, Ate):
                     award *= contest(ate.rank, skill.rank)
                 award *= rest.modifiers.get(name, 1)
