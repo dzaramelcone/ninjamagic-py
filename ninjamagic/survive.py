@@ -274,7 +274,6 @@ def process_rest() -> None:
         skill = esper.component_for_entity(eid, Skills)
         prop = stance.prop
         survival_rank = skill.survival.rank
-        shelter_level = 0
         at_anchor = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
 
         if at_anchor:
@@ -288,8 +287,9 @@ def process_rest() -> None:
             weariness = nights_since / max_nights if max_nights else 1
             weariness_factor = max(0.0, 1.0 - weariness)
 
+            shelter_level = 0
             if sheltered := esper.try_component(eid, Sheltered):
-                shelter_level = sheltered.rank
+                shelter_level = esper.component_for_entity(sheltered.prop, Level)
 
             # Check how they do against the wilderness.
             rest_rank = min(survival_rank, shelter_level * weariness_factor)
