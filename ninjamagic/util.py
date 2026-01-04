@@ -6,7 +6,7 @@ import random
 from collections.abc import MutableSequence
 from dataclasses import dataclass
 from enum import Enum, StrEnum
-from typing import Literal, NewType
+from typing import Literal, NewType, Self
 
 import inflect
 
@@ -306,7 +306,7 @@ def contest(
     min_mult: float = 0.08,  # clamp: 8%
     max_mult: float = 12.5,  # clamp: 12.5x
     tag: str = "contest",
-) -> tuple[float, int, int]:
+) -> float:
     """Contest attack_rank against defend_rank.
 
     Return mult, attack rank roll, defend rank roll, where mult is clamped by
@@ -344,62 +344,87 @@ def contest(
         ),
     )
 
-    return mult, attack - dilute, defend - dilute
+    return mult
 
 
 class Trial(Enum):
+    """A trial is a subjective estimation of a contest's effort from the perspective of the
+    attacker. Establishes a difficulty semantic when `contest` is modeled after ELO,
+    where mult = 1.75 is outclassing."""
+
     IMPOSSIBLE = 10
     INFEASIBLE = 1.75
     VERY_HARD = 1.5
-    HARD = 1.30
+    HARD = 1.3
     SOMEWHAT_HARD = 1.1
-    EVEN = 1.00
-    SOMEWHAT_EASY = 1 / SOMEWHAT_HARD
-    EASY = 1 / HARD
-    VERY_EASY = 1 / VERY_HARD
-    TRIVIAL = 1 / INFEASIBLE
-    EFFORTLESS = 1 / IMPOSSIBLE
+    EVEN = 1.0
+    SOMEWHAT_EASY = 1 / 1.1
+    EASY = 1 / 1.3
+    VERY_EASY = 1 / 1.5
+    TRIVIAL = 1 / 1.75
+    EFFORTLESS = 1 / 10
+
+    _DANGER_CUTOFF = 0.35
 
     @classmethod
-    def check(
-        cls,
-        *,
-        mult: float = 1,
-        contest: tuple[float, int, int],
-        difficulty: "Trial",
-    ) -> bool:
-        """Check whether a mult or a contest succeeded for some trial.
+    def is_instructive(cls, *, mult: float) -> bool:
+        """Contests in this range award experience."""
+        return cls.TRIVIAL.value <= mult <= cls.INFEASIBLE.value
 
-        Establishes a maintainable semantic for difficulty when `contest` is modeled after ELO,
-        where mult = 1.75 is outclassing.
-        """
-        if contest:
-            mult, _, _ = contest
-        return mult >= difficulty.value
+    @classmethod
+    def is_challenging(cls, *, mult: float) -> bool:
+        """Contests in this range award extra experience."""
+
+        return cls.SOMEWHAT_HARD.value <= mult <= cls.VERY_HARD.value
+
+    @classmethod
+    def get_award(
+        cls, *, mult: float, base_award: float = 0.025, danger: float = 1
+    ) -> float:
+        """Calculate the award for a trial."""
+
+        award = 0
+        if cls.is_instructive(mult=mult):
+            award = base_award
+        if cls.is_challenging(mult=mult):
+            # Sweet spot gives a bonus
+            award /= mult
+        if danger < cls._DANGER_CUTOFF.value:
+            award *= ease_in_expo(remap(0, cls._DANGER_CUTOFF, 0, 1))
+
+        log.info("award %s", tags(mult=mult, base_award=base_award, award=award))
+        return award
+
+    @classmethod
+    def check(cls, *, mult: float, difficulty: Self | None = None) -> bool:
+        """Check whether the mult of a contest succeeded for some trial."""
+        difficulty = difficulty or cls.EVEN
+        out = mult >= difficulty.value
+        log.info("check %s", tags(mult=mult, difficulty=difficulty, success=out))
+        return out
 
 
 class Feat(Enum):
-    LEGENDARY = 10
-    MASTERING = 1.75
+    """A Feat is the objective estimation of the outcome of a contest. In other words,
+    an assessment of an attacker's contest performance.
+
+    Establishes a maintainable semantic for performance when `contest` is modeled after ELO,
+    where mult = 1.75 is outclassing."""
+
+    MIRACLE = 10
+    MASTERY = 1.75
     VERY_STRONG = 1.5
-    STRONG = 1.30
+    STRONG = 1.3
     GOOD = 1.1
-    OK = 1.00
-    POOR = 1 / GOOD
-    WEAK = 1 / STRONG
-    VERY_WEAK = 1 / VERY_STRONG
-    FAILING = 1 / MASTERING
-    CRITICAL_FAILURE = 1 / LEGENDARY
+    OK = 1
+    POOR = 1 / 1.1
+    WEAK = 1 / 1.3
+    VERY_WEAK = 1 / 1.5
+    FAILING = 1 / 1.75
+    CRITICAL_FAILURE = 1 / 10
 
     @classmethod
-    def assess(
-        cls, *, mult: float = 1, contest: tuple[float, int, int] | None = None
-    ) -> "Feat":
-        """Assess the outcome of a contest as a feat.
+    def assess(cls, *, mult: float) -> "Feat":
+        """Assess the outcome of a contest as a feat."""
 
-        Establishes a maintainable semantic for performance when `contest` is modeled after ELO,
-        where mult = 1.75 is outclassing.
-        """
-        if contest:
-            mult, _, _ = contest
         return next((d for d in cls if d.value <= mult), cls.CRITICAL_FAILURE)
