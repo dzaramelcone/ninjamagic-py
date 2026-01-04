@@ -78,13 +78,17 @@ class Learn(Signal):
     "An entity gained experience."
 
     source: EntityId
+    teacher: EntityId = 0
     skill: Skill
     mult: float
-    risk: float = 1
-    award_lo: float = 0.0
-    award_hi: float = 0.025
-    award_mn: float = 0.33
-    award_mx: float = 1.88
+    danger: float = 1
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class AbsorbRestExp(Signal):
+    "An entity absorbed their rest exp."
+
+    source: EntityId
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -182,6 +186,12 @@ class HealthChanged(Signal):
     health_change: float = 0.0
     stress_change: float = 0.0
     aggravated_stress_change: float = 0.0
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class Cleanup(Signal):
+    source: EntityId
+    removed_components: tuple[type, ...]
 
 
 @signal(frozen=True, slots=True, kw_only=True)
