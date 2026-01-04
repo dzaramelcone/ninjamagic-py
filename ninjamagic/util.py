@@ -368,7 +368,7 @@ class Trial(Enum):
         contest: tuple[float, int, int],
         difficulty: "Trial",
     ) -> bool:
-        """Check whether a mult or a contest succeeded for some difficulty.
+        """Check whether a mult or a contest succeeded for some trial.
 
         Establishes a maintainable semantic for difficulty when `contest` is modeled after ELO,
         where mult = 1.75 is outclassing.
