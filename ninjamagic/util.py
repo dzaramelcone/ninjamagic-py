@@ -5,8 +5,8 @@ import math
 import random
 from collections.abc import MutableSequence
 from dataclasses import dataclass
-from enum import StrEnum
-from typing import Literal, NewType
+from enum import Enum, StrEnum
+from typing import Literal, NewType, Self
 
 import inflect
 
@@ -174,14 +174,26 @@ def pert(a: float, b: float, mode: float, shape: float = 4.0) -> float:
 
 
 def proc(
-    prev: Looptime, cur: Looptime, odds: float = 0, interval: Looptime = 0
+    *,
+    odds: float = 0,
+    use_ppm: bool = True,
+    interval: Looptime = 0,
+    cur: Looptime = 0,
+    prev: Looptime = 0,
 ) -> bool:
     odds = odds or get_proc_odds()
     if not odds:
+        # 0% chance.
         return False
-    interval = interval or get_melee_delay()
 
-    δ = max(0, cur - prev)
+    interval = interval or get_melee_delay()
+    if not use_ppm or not interval:
+        return RNG.random() < odds
+
+    cur = cur or get_looptime()
+    prev = min(cur, prev or cur - interval)
+
+    δ = cur - prev
     λ = odds / interval
     return RNG.random() < 1 - math.exp(-λ * δ)
 
@@ -281,24 +293,27 @@ def get_proc_odds() -> float:
     return settings.base_proc_odds
 
 
-ContestResult = tuple[float, int, int]
-
-
 def contest(
     attack_rank: float,
     defend_rank: float,
     *,
     rng: random.Random = RNG,
     jitter_pct: float = 0.05,
-    dilute: float = 20.0,  # skill dilution to damp low-level blowouts
+    dilute: float = 25.0,  # skill dilution to damp low-level anomalies
     flat_ranks_per_tier: float = 25.0,  # baseline ranks per tier
     pct_ranks_per_tier: float = 0.185,  # more ranks per tier as both sides grow
     pct_ranks_per_tier_amplify: float = 7.0,  # amplify base ranks to slightly prefer pct
     min_mult: float = 0.08,  # clamp: 8%
     max_mult: float = 12.5,  # clamp: 12.5x
-) -> ContestResult:
-    "Contest two ranks and return mult, attack rank roll, defend rank roll."
-    # ranks per tier grows with rank
+    tag: str = "contest",
+) -> float:
+    """Contest attack_rank against defend_rank.
+
+    Return mult, attack rank roll, defend rank roll, where mult is clamped by
+    min_mult and max_mult.
+    """
+
+    # Ranks per tier grows with rank.
     ranks_per_tier = max(
         flat_ranks_per_tier,
         pct_ranks_per_tier * min(attack_rank, defend_rank) + pct_ranks_per_tier_amplify,
@@ -315,7 +330,8 @@ def contest(
     mult = clamp(1.75**tier_delta, min_mult, max_mult)
 
     log.info(
-        "contest %s",
+        "%s: %s",
+        tag,
         tags(
             attack_in=attack_rank,
             defend_in=defend_rank,
@@ -327,4 +343,88 @@ def contest(
             defend_out=defend - dilute,
         ),
     )
-    return mult, attack - dilute, defend - dilute
+
+    return mult
+
+
+class Trial(Enum):
+    """A trial is a subjective estimation of a contest's effort from the perspective of the
+    attacker. Establishes a difficulty semantic when `contest` is modeled after ELO,
+    where mult = 1.75 is outclassing."""
+
+    IMPOSSIBLE = 10
+    INFEASIBLE = 1.75
+    VERY_HARD = 1.5
+    HARD = 1.3
+    SOMEWHAT_HARD = 1.1
+    EVEN = 1.0
+    SOMEWHAT_EASY = 1 / 1.1
+    EASY = 1 / 1.3
+    VERY_EASY = 1 / 1.5
+    TRIVIAL = 1 / 1.75
+    EFFORTLESS = 1 / 10
+
+    _DANGER_CUTOFF = 0.35
+
+    @classmethod
+    def is_instructive(cls, *, mult: float) -> bool:
+        """Contests in this range award experience."""
+        return cls.TRIVIAL.value <= mult <= cls.INFEASIBLE.value
+
+    @classmethod
+    def is_challenging(cls, *, mult: float) -> bool:
+        """Contests in this range award extra experience."""
+
+        return cls.SOMEWHAT_HARD.value <= mult <= cls.VERY_HARD.value
+
+    @classmethod
+    def get_award(
+        cls, *, mult: float, base_award: float = 0.025, danger: float = 1
+    ) -> float:
+        """Calculate the award for a trial."""
+
+        award = 0
+        if cls.is_instructive(mult=mult):
+            award = base_award
+        if cls.is_challenging(mult=mult):
+            # Sweet spot gives a bonus
+            award /= mult
+        if danger < cls._DANGER_CUTOFF.value:
+            award *= ease_in_expo(remap(0, cls._DANGER_CUTOFF, 0, 1))
+
+        log.info("award %s", tags(mult=mult, base_award=base_award, award=award))
+        return award
+
+    @classmethod
+    def check(cls, *, mult: float, difficulty: Self | None = None) -> bool:
+        """Check whether the mult of a contest succeeded for some trial."""
+        difficulty = difficulty or cls.EVEN
+        out = mult >= difficulty.value
+        log.info("check %s", tags(mult=mult, difficulty=difficulty, success=out))
+        return out
+
+
+class Feat(Enum):
+    """A Feat is the objective estimation of the outcome of a contest. In other words,
+    an assessment of an attacker's contest performance.
+
+    Establishes a maintainable semantic for performance when `contest` is modeled after ELO,
+    where mult = 1.75 is outclassing."""
+
+    MIRACLE = 10
+    MASTERY = 1.75
+    VERY_STRONG = 1.5
+    STRONG = 1.3
+    GOOD = 1.1
+    OK = 1
+    POOR = 1 / 1.1
+    WEAK = 1 / 1.3
+    VERY_WEAK = 1 / 1.5
+    FAILING = 1 / 1.75
+    CRITICAL_FAILURE = 1 / 10
+
+    @classmethod
+    def assess(cls, *, mult: float) -> "Feat":
+        """Assess the outcome of a contest as a feat."""
+
+        return next((d for d in cls if d.value <= mult), cls.CRITICAL_FAILURE)

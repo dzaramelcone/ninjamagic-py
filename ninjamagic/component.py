@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections import defaultdict
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass as component, field, fields
 from enum import StrEnum, auto
 from typing import Literal, NewType, TypeVar
@@ -7,6 +8,7 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
+from ninjamagic.nightclock import NightClock
 from ninjamagic.util import (
     TILE_STRIDE_H,
     TILE_STRIDE_W,
@@ -23,6 +25,7 @@ ProcVerb = Literal[
     "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
 ]
 T = TypeVar("T")
+EntityId = int
 MAX_HEALTH = 100.0
 
 
@@ -65,7 +68,18 @@ Connection = WebSocket
 
 
 class ProvidesHeat:
-    """The entity provides heat. Used by cooking."""
+    """The entity provides heat. Used by cooking and camping."""
+
+
+class ProvidesLight:
+    """The entity provides light. Used by camping."""
+
+
+@component(slots=True, kw_only=True)
+class ProvidesShelter:
+    """The entity can be used for shelter. Used by camping."""
+
+    prompt: str
 
 
 class Cookware:
@@ -82,6 +96,19 @@ class Ingredient:
         - `put <entity> in <heat>`
         - `put <entity> in <cookware>`, then `put <cookware> in <heat>`
     """
+
+
+@component(slots=True, frozen=True, kw_only=True)
+class Food:
+    count: int
+
+
+@component(slots=True, frozen=True, kw_only=True)
+class Ate:
+    """The entity has eaten tonight. Used by camping."""
+
+    meal_level: int
+    pips: int
 
 
 class Container:
@@ -105,7 +132,33 @@ class Defending:
     verb: ProcVerb
 
 
-EntityId = int
+@component(slots=True, kw_only=True)
+class LastAnchorRest:
+    """When the entity last rested at an anchor."""
+
+    nightclock: NightClock = field(default_factory=NightClock)
+
+    def nights_since(self) -> float:
+        now = NightClock()
+        then = self.nightclock
+        return (now - then).nights()
+
+
+@component(slots=True, kw_only=True)
+class Anchor:
+    """The entity is an anchor."""
+
+
+@component(slots=True, kw_only=True)
+class Sheltered:
+    """The entity is sheltered by a `prop` with `Shelter`. Used by camping."""
+
+    prop: EntityId
+
+
+@component(slots=True, kw_only=True)
+class TookCover:
+    """The entity desperately took cover by nightstorm prompt. Used by camping."""
 
 
 @component(slots=True, kw_only=True)
@@ -130,8 +183,8 @@ class Health:
     """The well-being of an entity.
 
     - `cur` is the current health out of 100%.
-    - `stress` is on a scale from 0-200, with >100 having lost composure.
-    - `aggravated_stress` represents the minimum amount stress will reduce to by resting.
+    - `stress` is on a scale from 0-200, with >100 having "lost composure".
+    - `aggravated_stress` is the minimum stress can be reduced to by resting.
     - `condition` represents their being unconscious, in shock, or dead.
     """
 
@@ -156,8 +209,20 @@ class ForageEnvironment:
         return self.coords.get((y, x), self.default)
 
 
+@component(slots=True, frozen=True)
+class Hostility:
+    """The hostility rank at each tile. Used by eating and camping."""
+
+    default: int
+    coords: dict[tuple[int, int], int] = field(default_factory=dict)
+
+    def get_rank(self, y: int, x: int) -> int:
+        y, x = y // TILE_STRIDE_H * TILE_STRIDE_H, x // TILE_STRIDE_W * TILE_STRIDE_W
+        return self.coords.get((y, x), self.default)
+
+
 class Rotting:
-    """The entity has started to rot. Used by food, unless you want to get all Malenia."""
+    """The entity has started to rot. Used by food, unless you're giving Malenia."""
 
 
 @component(slots=True, frozen=True)
@@ -172,6 +237,12 @@ class Noun:
     pronoun: Pronoun = Pronouns.IT
     num: Num = util.SINGULAR
     hypernyms: list[str] | None = None  # list of nouns?
+    match_tokens: list[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.match_tokens.append(self.value)
+        for i, m in enumerate(self.match_tokens):
+            self.match_tokens[i] = m.strip().lower()
 
     def short(self) -> str:
         if self.adjective:
@@ -179,7 +250,8 @@ class Noun:
         return self.value
 
     def matches(self, prefix: str) -> bool:
-        return self.value.lower().startswith(prefix)
+        prefix = prefix.strip().lower()
+        return any(s.startswith(prefix) for s in self.match_tokens)
 
     def definite(self) -> str:
         if self.value == "you":
@@ -252,17 +324,26 @@ class Prompt:
     on whether `text` was typed correctly and whether it was before `end`.
 
     - `text` The text that needs to be typed.
+
+    The following are all optional:
+
     - `end` The time the prompt will expire.
-    - `on_success` A callable invoked when the text is correctly typed before end.
-    - `on_mismatch` A callable invoked when the text is incorrectly typed before end.
+    - `on_ok` Called when response is `text` before `end`.
+    - `on_err` Called when response is not `text` before `end`.
+    - `on_expired_ok` Called when response is `text`, but after `end`.
+    - `on_expired_err` Called when response is not `text` after `end`.
+
+    If the callable for a branch is `None`, their input will be handled like a normal command.
+
+    Note when all branches are set, the prompt must be responded to.
     """
 
     text: str
     end: Looptime = 0
-    on_success: Callable | None = None
-    on_mismatch: Callable | None = None
-    on_expired_success: Callable | None = None
-    on_expired_mismatch: Callable | None = None
+    on_ok: Callable[[EntityId], None] | None = None
+    on_err: Callable[[EntityId], None] | None = None
+    on_expired_ok: Callable[[EntityId], None] | None = None
+    on_expired_err: Callable[[EntityId], None] | None = None
 
 
 @component(slots=True, kw_only=True)
@@ -276,13 +357,29 @@ class Skill:
 class Skills:
     martial_arts: Skill = field(default_factory=lambda: Skill(name="Martial Arts"))
     evasion: Skill = field(default_factory=lambda: Skill(name="Evasion"))
-    foraging: Skill = field(default_factory=lambda: Skill(name="Foraging"))
-    cooking: Skill = field(default_factory=lambda: Skill(name="Cooking"))
+    survival: Skill = field(default_factory=lambda: Skill(name="Survival"))
 
-    generation: int = 0
+    def __iter__(self) -> Iterator[Skill]:
+        for f in fields(self):
+            v = getattr(self, f.name)
+            if isinstance(v, Skill):
+                yield v
 
-    def __iter__(self):
-        yield from [getattr(self, f.name) for f in fields(self) if f.type is Skill]
+    def __getitem__(self, key: str) -> Skill:
+        for s in self:
+            if s.name == key:
+                return s
+        raise KeyError
+
+
+@component(slots=True, kw_only=True)
+class RestExp:
+    """Exp earned throughout the day that is awarded when camping."""
+
+    gained: dict[str, dict[int, float]] = field(
+        default_factory=lambda: defaultdict(lambda: defaultdict(float))
+    )
+    modifiers: dict[str, float] = field(default_factory=dict)
 
 
 @component(slots=True, kw_only=True)
@@ -304,6 +401,18 @@ class Slot(StrEnum):
 @component(slots=True)
 class Stance:
     cur: Stances = "standing"
+    prop: EntityId = 0
+
+    def camping(self) -> bool:
+        if self.cur not in ("sitting", "lying prone"):
+            return False
+
+        if not self.prop or not esper.entity_exists(self.prop):
+            return False
+
+        return esper.has_component(self.prop, ProvidesHeat) or esper.has_component(
+            self.prop, ProvidesLight
+        )
 
 
 @component(slots=True, kw_only=True)
