@@ -116,12 +116,12 @@ def process_eating() -> None:
         nourishment = final = max(1, food_lvl) * pips
         already_ate = esper.try_component(sig.source, Ate)
         if already_ate:
-            final = max(nourishment, already_ate.rank)
+            final = max(nourishment, already_ate.meal_level)
 
-        esper.add_component(sig.source, Ate(rank=final))
+        esper.add_component(sig.source, Ate(meal_level=final, pips=pips))
         quality = ""
         if already_ate:
-            previous = already_ate.rank
+            previous = already_ate.meal_level
             if nourishment > previous * 1.5:
                 quality = "A proper meal, finally."
             elif nourishment > previous:
@@ -131,13 +131,13 @@ def process_eating() -> None:
             elif nourishment < previous:
                 quality = "It's worse than what {0:they} already ate."
         else:
-            if pips == 11:
+            if pips > 11:
                 quality = "It soothes the soul."
-            elif nourishment >= hurdle:
+            elif pips > 5:
                 quality = "It's nourishing."
-            elif nourishment >= hurdle * 0.5:
+            elif pips > 4:
                 quality = "It'll do."
-            elif nourishment > 0:
+            elif pips > 3:
                 quality = "It leaves {0:them} wanting."
             else:
                 quality = "Awful."
@@ -181,7 +181,7 @@ def process_eating() -> None:
                 is_safe=is_safe,
                 is_shared=is_shared,
                 any_left=any_left,
-                already_ate=already_ate.rank if already_ate else False,
+                already_ate=already_ate.meal_level if already_ate else False,
                 pips=pips,
                 food_rank=final,
             ),
@@ -276,12 +276,14 @@ def process_rest() -> None:
         prop = stance.prop
         survival_rank = skill.survival.rank
         at_anchor = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
+        rested = False
 
         if at_anchor:
             weariness_factor = 1.0
             esper.add_component(eid, LastAnchorRest())
             rested = True
-        else:
+
+        if not at_anchor:
             last_rest = esper.try_component(eid, LastAnchorRest)
             nights_since = last_rest.nights_since() if last_rest else 7
             max_nights = get_max_nights_away(survival_rank=survival_rank)
@@ -303,15 +305,15 @@ def process_rest() -> None:
                     )
                 )
 
-            if not rested:
-                # last ditch effort
-                mult = contest(survival_rank * weariness_factor, hostility)
-                rested = Trial.check(mult=mult, difficulty=Trial.INFEASIBLE)
-                bus.pulse(
-                    bus.Learn(
-                        source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
-                    )
+        # last ditch effort
+        if not rested:
+            mult = contest(survival_rank * weariness_factor, hostility)
+            rested = Trial.check(mult=mult, difficulty=Trial.INFEASIBLE)
+            bus.pulse(
+                bus.Learn(
+                    source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
                 )
+            )
 
         if rested:
             bus.pulse(

@@ -107,7 +107,8 @@ class Food:
 class Ate:
     """The entity has eaten tonight. Used by camping."""
 
-    rank: int
+    meal_level: int
+    pips: int
 
 
 class Container:
