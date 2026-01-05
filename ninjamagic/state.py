@@ -11,6 +11,7 @@ from fastapi import Depends, Request
 import ninjamagic.bus as bus
 from ninjamagic import (
     act,
+    cleanup,
     combat,
     conn,
     cook,
@@ -20,11 +21,12 @@ from ninjamagic import (
     gas,
     inbound,
     move,
-    nightclock,
     outbox,
     parser,
     proc,
     regen,
+    scheduler,
+    survive,
     visibility,
 )
 from ninjamagic.util import get_looptime
@@ -72,13 +74,15 @@ class State:
 
         jitter_ema = 0.0
 
+        scheduler.start()
+
         while True:
             frame_start_ns = time.perf_counter_ns()
             _ = (frame_start_ns - prev_ns) * 1e-9  # dt
             prev_ns = frame_start_ns
 
             # invoke systems        #
-            nightclock.process()
+            scheduler.process()
             conn.process()
             inbound.process(now=now)
             parser.process()
@@ -87,6 +91,7 @@ class State:
             act.process(now=now)
             forage.process()
             cook.process()
+            survive.process()
             combat.process(now=now)
             proc.process(now=now)
             move.process()
@@ -94,8 +99,9 @@ class State:
             experience.process()
             echo.process()
             outbox.process()
-            bus.clear()
+            cleanup.process()
             #                       #
+            bus.clear()
             esper.clear_dead_entities()
 
             deadline += STEP

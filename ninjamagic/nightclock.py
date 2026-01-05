@@ -1,12 +1,7 @@
-import heapq
 import math
-from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from functools import total_ordering
-from typing import overload
-
-from ninjamagic import bus
-from ninjamagic.util import serial
+from typing import Literal, overload
 
 EST = timezone(timedelta(hours=-5), name="EST")
 
@@ -24,6 +19,7 @@ EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
 
 SECONDS_PER_DAY = 86400.0
 NIGHTS_PER_DAY = int(SECONDS_PER_DAY // SECONDS_PER_NIGHT)
+Seasons = Literal["summer", "winter", "spring", "autumn"]
 
 
 def now():
@@ -89,6 +85,9 @@ class NightDelta:
         self.seconds += minutes * SECONDS_PER_NIGHT_HOUR / 60.0
         self.seconds += seconds
 
+    def nights(self) -> float:
+        return self.seconds / SECONDS_PER_NIGHT
+
     def total_seconds(self) -> float:
         return self.seconds
 
@@ -110,6 +109,10 @@ class NightClock:
 
     def __add__(self, delta: NightDelta) -> "NightClock":
         return NightClock(dt=self.dt + timedelta(seconds=delta.total_seconds()))
+
+    def __str__(self) -> str:
+        hr, mn = self.hour, (self.minute // 10 * 10)
+        return f"{self.season.upper()} Y{self.nightyears} • {hr:02d}:{mn:02d}"
 
     @overload
     def __sub__(self, other: "NightClock") -> NightDelta: ...
@@ -164,9 +167,9 @@ class NightClock:
 
     @property
     def nightyears(self) -> int:
-        """One real month is one nightyear.
+        """Return the number of nightyears since the start of the epoch.ArithmeticError
 
-        Dec 2025 (month=12, year=2025) is the BASE_NIGHTYEAR.
+        One real month is one nightyear. Dec 2025 (month=12, year=2025) is the BASE_NIGHTYEAR.
         """
 
         months_since_epoch = (self.dt.year - 2025) * 12 + (self.dt.month - 12)
@@ -319,6 +322,11 @@ class NightClock:
         return max(0, current - cycles_before_year_start)
 
     @property
+    def season(self) -> Seasons:
+        idx = int(self.nightyear_elapsed_pct * 4) % 4
+        return ("winter", "spring", "summer", "autumn")[idx]
+
+    @property
     def brightness_index(self) -> int:
         """0-7 brightness index.
 
@@ -360,41 +368,3 @@ class NightClock:
         # Map normalized [0,1] to bands 1–7
         band = 1 + round(6.0 * brightness_norm)
         return max(1, min(7, band))
-
-
-Rule = Generator[NightDelta]
-Cue = tuple[NightClock, int, bus.Signal, Rule | None]
-pq = list[Cue]()
-clock = NightClock()
-
-
-def cue_at(sig: bus.Signal, at: NightClock, recur: Rule | None = None) -> None:
-    heapq.heappush(pq, (at, serial(), sig, recur))
-
-
-def cue(
-    sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
-) -> None:
-    eta = clock + clock.next(time or NightTime())
-    cue_at(sig, eta, recur)
-
-
-def recurring(
-    *, n_more_times: int, interval: NightDelta | None = None, forever: bool = False
-) -> Rule:
-    interval = interval or NightDelta(nights=1)
-    i = 0
-    while forever or i < n_more_times:
-        yield interval
-        i += 1
-
-
-def process():
-    clock.to_now()
-    while pq and pq[0][0] <= clock:
-        due, tiebreak, sig, recur = heapq.heappop(pq)
-        bus.pulse(sig)
-        if not recur:
-            continue
-        if eta := next(recur, None):
-            heapq.heappush(pq, (due + eta, serial(), sig, recur))

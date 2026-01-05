@@ -5,7 +5,7 @@ from typing import Any
 
 import esper
 
-from ninjamagic import bus, nightclock, reach, story
+from ninjamagic import bus, nightclock, reach, scheduler, story
 from ninjamagic.component import (
     Biomes,
     ContainedBy,
@@ -22,7 +22,7 @@ from ninjamagic.component import (
     skills,
     transform,
 )
-from ninjamagic.util import PLURAL, RNG, contest
+from ninjamagic.util import PLURAL, RNG, Trial, contest
 from ninjamagic.world.state import get_random_nearby_location
 
 ForageFactory = Callable[..., EntityId]
@@ -58,22 +58,30 @@ def process() -> None:
     for sig in bus.iter(bus.Forage):
         loc = transform(sig.source)
         source_skills = skills(sig.source)
-        rank = source_skills.foraging.rank
+        rank = source_skills.survival.rank
         env = esper.component_for_entity(loc.map_id, ForageEnvironment)
         biome, difficulty = env.get_environment(y=loc.y, x=loc.x)
 
-        mult, a_roll, d_roll = contest(rank, difficulty, jitter_pct=0.2)
         factories = FORAGE_TABLE.get(biome)
         if not factories:
             log.warning(f"missing factories for biome {biome}")
             story.echo(
-                "{0} {0:roots} around a bit, but the area seems barren.",
+                "{0} {0:roots} around a bit. The area seems barren.",
                 sig.source,
                 range=reach.visible,
             )
             continue
 
-        if a_roll < d_roll:
+        mult = contest(rank, difficulty, jitter_pct=0.2)
+        bus.pulse(
+            bus.Learn(
+                source=sig.source,
+                skill=source_skills.survival,
+                teacher=loc.map_id,
+                mult=mult,
+            )
+        )
+        if not Trial.check(mult=mult, difficulty=Trial.SOMEWHAT_EASY):
             story.echo(
                 "{0} {0:roots} around a bit, but {0:finds} nothing.",
                 sig.source,
@@ -83,23 +91,16 @@ def process() -> None:
 
         spawn_y, spawn_x = get_random_nearby_location(loc)
         created = RNG.choice(factories)(
-            forage_roll=a_roll,
+            ilvl=int(mult * rank),
             transform=Transform(map_id=loc.map_id, y=spawn_y, x=spawn_x),
         )
 
-        bus.pulse(
-            bus.Learn(
-                source=sig.source,
-                skill=source_skills.foraging,
-                mult=mult,
-            )
-        )
         story.echo("{0} {0:spots} {1}!", sig.source, created, range=reach.visible)
 
 
 def create_foraged_item(
     *args: Any,
-    forage_roll: int,
+    ilvl: int,
     transform: Transform,
     noun: Noun,
     glyph: Glyph = ("♣", 0.33, 0.65, 0.55),
@@ -108,17 +109,17 @@ def create_foraged_item(
     out = esper.create_entity(transform, noun, Slot.ANY, Ingredient(), *args)
     esper.add_component(out, glyph, Glyph)
     esper.add_component(out, 0, ContainedBy)
-    esper.add_component(out, forage_roll, Level)
+    esper.add_component(out, ilvl, Level)
     if wearable:
         esper.add_component(out, wearable)
 
     # TODO Make them rot a bit each night.
     # noun can have callable adjective,
     # it can modify the item level, cause sickness, disappear, etc.
-    nightclock.cue(
+    scheduler.cue(
         sig=bus.Rot(source=out),
         time=nightclock.NightTime(hour=6),
-        recur=nightclock.recurring(n_more_times=1),
+        recur=scheduler.recurring(n_more_times=1),
     )
 
     bus.pulse(
