@@ -49,7 +49,7 @@ def process():
                 if eid:
                     award = min(award, MAX_EXP_PER_ENTITY)
                 if ate := esper.try_component(sig.source, Ate):
-                    award *= contest(ate.rank, skill.rank)
+                    award *= contest(ate.rank, skill.rank, min_mult=2)
                 award *= rest.modifiers.get(name, 1)
                 skill.tnl += award
 
