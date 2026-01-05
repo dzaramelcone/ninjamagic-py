@@ -113,7 +113,7 @@ def process_eating() -> None:
         if not is_lit:
             conditions.append("dark")
 
-        nourishment = final = food_lvl * pips
+        nourishment = final = max(1, food_lvl) * pips
         already_ate = esper.try_component(sig.source, Ate)
         if already_ate:
             final = max(nourishment, already_ate.rank)
