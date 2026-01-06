@@ -1,188 +1,397 @@
 # Q1 Roadmap
 
-**Goal:** Ship a minimum viable product that demonstrates the thesis—survive together or die alone—and begins growing a player base.
+**Goal:** Ship a multiplayer Brogue. The environment is a weapon. Every fight asks "can I use the terrain?"
 
-**Thesis:** Optimal play is cooperation. The systems should make this true through math, not morality.
-
----
-
-## Tier 1: Ship-Blocking
-
-Without these, the game doesn't work.
-
-| # | Feature | Effort | Why |
-|---|---------|--------|-----|
-| 1 | **Night mobs** | L | No threat = no cooperation pressure. Spawn creatures during nightstorm. 25 seconds of hell, ease in. |
-| 2 | **Weapons + armor wired** | M | Combat is flat with fists only. Armor code exists (armor.py), wire it to combat.py. Add knife/club/spear. |
-| 3 | **Death stakes** | S | Drop items on death. Currently death is consequence-free. |
-| 4 | **`give` command** | S | One command. Foundation for sharing, trading, cooperation dynamics. |
-| 5 | **Tutorial prompts** | M | Contextual hints for newbies. "Type `attack goblin`". Toggleable. |
-| 6 | **Newbie XP curve** | S | Fast ranks early, interpolate bonus down after rank 50. Hook before quit. |
-| 7 | **Keystroke capture** | S | Ship data collection with prompts. Timestamps, deltas. Anti-cheat foundation. |
+**Thesis:** Optimal play is cooperation. The systems make this true through physics, not morality.
 
 ---
 
-## Tier 2: Ship With
+## The Brogue Thesis
 
-High value, reasonable effort, or unblocks future work.
+Emergence from transparent systems:
+- Fire spreads to dry grass, ignites gas, burns bridges
+- Water conducts, extinguishes, drowns
+- Gas diffuses, explodes, obscures
+- Terrain is destructible, buildable, weaponizable
 
-| # | Feature | Effort | Why |
-|---|---------|--------|-----|
-| 8 | **Nightstorm rework** | M | Remove `take cover` prompt. Danger relative to area. Spawn mobs, lengthy stun. Custom scenarios later. |
-| 9 | **Persistence** | L | World/player state survives restart. Non-negotiable for real players. |
-| 10 | **Aliases** | M | `alias k attack`. Saved to account. Reduces typing friction. |
-| 11 | **Respawn fix** | S | The HACK at combat.py:233. Stateful respawn is fragile. |
-| 12 | **Map tile deltas** | M | Gas sends too many packets. General solution: only send changes. |
+Players don't need to be told "cooperate." The systems make it obvious.
 
 ---
 
-## Tier 3: DX & Polish
+## Phase 1: Terrain (Weeks 1-2)
 
-Unblocks velocity. Ship with or immediately after.
+The environment as character.
 
-| # | Feature | Effort | Why |
-|---|---------|--------|-----|
-| 13 | **VS Code debugger** | S | launch.json for uvicorn with attached debugger. |
-| 14 | **Local test login** | S | Smooth character switching for testing. |
-| 15 | **Parser alias system** | S | The TODO at parser.py:14. Powers user aliases (#10). |
-| 16 | **Visibility optimization** | M | The TODO at visibility.py:230. Will matter with more entities. |
+### Terrain Types
 
----
+| Terrain | Walk | Interactions |
+|---------|------|--------------|
+| **Ground** | ✓ | Default |
+| **Wall** | ✗ | Destructible, blocks LOS |
+| **Grass** | ✓ | Burns → ground |
+| **Dry grass** | ✓ | Burns fast, spreads far |
+| **Water shallow** | ✓ | Extinguish, slow, conduct |
+| **Water deep** | ✓ | Drown, drop items, hide creatures |
+| **Swamp** | ✓ | Emit gas, slow |
+| **Chasm** | ✗ | Fall damage, drop level |
+| **Bridge** | ✓ | Burns → chasm |
+| **Magma** | ✗ | Ignite adjacent, light source |
+| **Foliage** | ✓ | Hide, burn, regrow |
 
-## Tier 4: Post-Launch Iteration
+### Fire System
 
-Cool but not MVP. Some need player data first.
+Extend `gas.py` pattern:
 
-| Feature | Notes |
-|---------|-------|
-| **Fight profiles** | Track yomi patterns. Need combat data to analyze. |
-| **Typing fingerprints** | Anti-cheat detection layer. Need baseline data (Tier 1 #7). |
-| **AI players/agents** | Design requirements spec'd. Build after core loop proven. |
-| **Character creation TUI** | BG3-style. Simple name+pronouns is fine for MVP. |
-| **Town growth** | Kingdom-style development. Need players first. |
-| **Player guilds** | Let players self-organize, then formalize what emerges. |
-| **Mouse inventory** | Clicks → commands. Nice UX, not blocking. |
-| **Ingredient chains** | Sap → syrup. Cooking works, iterate later. |
-| **Shelter building** | Meaningful after night mobs exist. |
-| **Fire maintenance** | Same. After night mobs. |
-| **Smart entity pointers** | ECS refactor. Do when pattern is clear. |
-| **More combat verbs** | Feint, grab, kick, dodge. After core yomi proven. |
+```python
+# Fire spreads like gas but modifies terrain
+Fire.intensity: dict[tuple[int,int], float]
 
----
+# Each tick:
+# - Spread to adjacent flammable
+# - Decay intensity
+# - intensity > 0.9 → spawn smoke
+# - Fire + gas → explosion
+# - Fire + water → steam
+# - Fire + bridge → collapse after threshold
+```
 
-## Code TODOs (from codebase)
-
-Prioritized for MVP relevance:
-
-| Priority | Location | Issue |
-|----------|----------|-------|
-| **HIGH** | combat.py:233 | Respawn HACK - fragile if disconnect at 60s mark |
-| **HIGH** | parser.py:14 | Alias system needed for user aliases |
-| **HIGH** | visibility.py:230 | "optimize lol" - will matter with mobs |
-| **MED** | combat.py:60 | Move target validation earlier |
-| **MED** | forage.py:37 | Nested containment validation (use-after-free risk) |
-| **MED** | survive.py:254 | Survival vs area for take cover mult (removing anyway) |
-| **LOW** | experience.py:72 | Rank-up calc could be clientside |
-| **LOW** | forage.py:33 | Tile-specific forage tables |
-| **LOW** | forage.py:50 | Fermentation instead of rotting |
-| **LOW** | forage.py:116 | Gradual rot instead of binary |
-| **LOW** | conn.py:18 | Reconceptualize connection binding |
-| **LOW** | armor.py:32 | Armor dataclass cleanup |
-| **LOW** | armor.py:45 | mitigate() signature cleanup |
-| **LOW** | cook.py:22 | Decouple cooking messages from story |
-| **LOW** | echo.py:16 | Some reaches don't need origin |
-| **LOW** | util.py:21 | RNG/LOOP global cleanup |
+### Tasks
+- [ ] TerrainType dataclass with properties
+- [ ] Fire as effect layer (like gas)
+- [ ] Fire spread to flammable terrain
+- [ ] Fire + gas = explosion (AoE damage)
+- [ ] Fire + water = steam (vision block)
+- [ ] Bridge collapse mechanic
+- [ ] Swamp emits flammable gas
+- [ ] Water extinguishes, slows movement
 
 ---
 
-## Timeboxed Schedule
+## Phase 2: Dungeons (Weeks 3-4)
 
-### Week 1-2: Combat Foundation
-- [ ] Wire armor.py to combat.py
-- [ ] Add weapons (knife, club, spear) with different timings
-- [ ] Death drops items
-- [ ] `give <item> to <player>` command
+Procedural content that refreshes.
 
-### Week 3-4: Night Threat
-- [ ] Night mob spawning during nightstorm
-- [ ] Mob AI (hunt players, flee at dawn)
+### Discovery
+
+```python
+# Player enters unexplored wilderness:
+if not tile.explored and RNG.random() < discovery_chance:
+    dungeon = generate_dungeon(depth=area_difficulty)
+    spawn_entrance(tile, dungeon)
+```
+
+### Dungeon Features
+
+| Feature | Description |
+|---------|-------------|
+| **Vault** | Locked room, treasure inside |
+| **Trap** | Pit, dart, gas vent, pressure plate |
+| **Lever** | Opens/closes gates |
+| **Gate** | Blocks passage until lever/key |
+| **Cage** | Contains creature, releases on open/break |
+| **Monster den** | Spawn point, clearing = safe zone |
+| **Explosive barrel** | Fire/damage → boom |
+
+### Generation
+
+Already have `simple.py` with prefab rooms. Extend:
+- [ ] DungeonEntrance entity on overworld
+- [ ] Dungeon as separate map (nested Transform)
+- [ ] 1-3 depth levels
+- [ ] Loot tables per depth
+- [ ] Trap placement
+- [ ] Gate/lever connections
+- [ ] Monster den spawning
+
+### World Regeneration
+
+During nightstorm, far from bonfire:
+- Foliage regrows
+- Creatures respawn
+- Dungeon loot refreshes (if empty)
+- Terrain damage heals
+
+---
+
+## Phase 3: Stats & Chargen (Week 5)
+
+Investment before first death.
+
+### Stats → Mechanics
+
+| Stat | Effects |
+|------|---------|
+| **Grace** | Evasion cap (50 + grace×2), move speed (±20%), swim/climb |
+| **Grit** | Health cap (100 ± 50), carry weight, fire/poison resist |
+| **Wit** | Trap detection, craft quality (±50%), XP mult (±10%) |
+
+### Allocation
+- Base: 10 each
+- Chargen: +15 to distribute
+- Soft cap: diminishing above 20
+- Hard cap: 30
+
+### Character Creation TUI
+
+```
+┌─────────────────────────────────────────┐
+│  Name: [_______________]                │
+│  Pronouns: (•) she  ( ) he  ( ) they    │
+│                                         │
+│  Appearance: [@] ███ Hue ████░░░░       │
+│                                         │
+│  ─── Stats (15 points) ───              │
+│  Grace [████████░░░░░░░░░░░░] 18        │
+│    → Evasion cap: 86, Move: +16%        │
+│  Grit  [██████░░░░░░░░░░░░░░] 14        │
+│    → Health: 120, Carry: 24             │
+│  Wit   [██████░░░░░░░░░░░░░░] 13        │
+│    → Traps: 13, XP: +3%                 │
+│                                         │
+│  [< Back]              [Create →]       │
+└─────────────────────────────────────────┘
+```
+
+### Tasks
+- [ ] Wire Stats to evasion/health caps
+- [ ] Grace affects movement speed
+- [ ] Grit affects carry capacity
+- [ ] Wit affects trap detection radius
+- [ ] Chargen UI with sliders
+- [ ] Appearance: glyph + HSV color picker
+- [ ] Preview stat effects in real-time
+- [ ] Persist to database
+
+---
+
+## Phase 4: Night & Mobs (Week 6)
+
+25 seconds of hell.
+
+### Mob Types
+
+| Creature | Behavior | Threat |
+|----------|----------|--------|
+| **Goblin** | Pack tactics, loot corpses | Low |
+| **Wolf** | Track wounded, pack howl | Medium |
+| **Crawler** | Ambush from water/foliage | Medium |
+| **Shambler** | Slow, tough, swamp spawn | Medium |
+| **Wraith** | Fast, phases walls at night | High |
+
+### Spawning
+
+```python
+# Nightstorm (25 sec), intensity ramps 0→1→0
+for tile in world:
+    if distance_to_bonfire(tile) > SAFE_RADIUS:
+        threat = tile.hostility * nightstorm_intensity
+        spawn_mobs(tile, threat)
+```
+
+### Mob AI
+
+```python
+class MobBehavior:
+    def process(self, mob, players, terrain):
+        if health_low: flee_to_den()
+        elif player_nearby: attack()
+        elif night: hunt_toward_players()
+        else: patrol_territory()
+```
+
+### Tasks
 - [ ] Remove `take cover` prompt
-- [ ] Area danger affects nightstorm severity
+- [ ] Nightstorm intensity curve (ease in/out)
+- [ ] Mob spawning by distance from bonfire
+- [ ] Basic mob AI (hunt/flee/patrol)
+- [ ] Mob death drops loot
+- [ ] Area-specific mob tables
+- [ ] Den entities that spawn mobs
 
-### Week 5: Onboarding
-- [ ] Tutorial prompt system (contextual hints)
-- [ ] Newbie XP bonus curve
-- [ ] Keystroke capture in prompts
+---
 
-### Week 6: Polish & Persistence
-- [ ] Player/world persistence (postgres)
-- [ ] Respawn fix (combat.py HACK)
-- [ ] Map tile delta packets
+## Phase 5: Combat & Items (Week 7)
 
-### Week 7: QoL
-- [ ] Alias system (parser + account storage)
+Weapons as timing.
+
+### Weapons
+
+| Weapon | Windup | Damage | Special |
+|--------|--------|--------|---------|
+| **Fist** | 3.0s | 1.0x | Always available |
+| **Knife** | 1.5s | 0.7x | Bleed proc |
+| **Club** | 4.0s | 1.5x | Stun proc |
+| **Spear** | 2.5s | 1.0x | 2-tile reach |
+| **Torch** | 2.0s | 0.5x | Ignite target |
+
+Different timings = different yomi reads.
+
+### Armor
+
+Wire `armor.py` to `combat.py`:
+```python
+if armor := esper.try_component(target, Armor):
+    damage *= armor.mitigate(weapon.type)
+```
+
+### Death Stakes
+
+- Drop equipped items on death
+- Skill decay? (lose % of highest skill)
+- Respawn at bonfire, naked
+
+### Tasks
+- [ ] Weapon component with timing/damage/proc
+- [ ] Wire armor mitigation
+- [ ] `give <item> to <player>`
+- [ ] Death drops items
+- [ ] Torch weapon (ignites on hit)
+- [ ] Spear reach (2-tile attack)
+
+---
+
+## Phase 6: Polish (Week 8)
+
+Ship it.
+
+### Onboarding
+- [ ] Tutorial prompts (contextual hints)
+- [ ] Newbie XP curve (fast early, slow after rank 50)
+- [ ] Keystroke capture for anti-cheat
+
+### QoL
+- [ ] Aliases saved to account
+- [ ] Map tile delta packets (perf)
+- [ ] Respawn fix (combat.py:233 HACK)
+- [ ] Visibility optimization
+
+### DX
 - [ ] VS Code debugger launch config
 - [ ] Local test login cleanup
 
-### Week 8: Buffer
-- [ ] Playtest
+---
+
+## Week 9: Buffer
+
+- [ ] Playtest with fresh eyes
+- [ ] Balance: mob difficulty, terrain damage, XP rates
 - [ ] Bug fixes
-- [ ] Performance (visibility optimization)
-- [ ] Soft launch prep
+- [ ] Launch
 
 ---
 
-## AI Integration Design (Future)
+## Technical Specs
 
-### Agent Capabilities
+### Terrain Data
+
+```python
+@component(slots=True, frozen=True)
+class TerrainType:
+    walkable: bool = True
+    flammable: bool = False
+    burns_to: int | None = None
+    blocks_los: bool = False
+    movement_cost: float = 1.0
+    water_depth: int = 0  # 0/1/2
+    emits_gas: str | None = None
+
+TERRAIN = {
+    1: TerrainType(),  # ground
+    2: TerrainType(walkable=False, blocks_los=True),  # wall
+    3: TerrainType(water_depth=1, movement_cost=1.5),  # shallow
+    4: TerrainType(flammable=True, burns_to=1),  # grass
+    5: TerrainType(emits_gas="swamp", movement_cost=1.3),  # swamp
+    6: TerrainType(flammable=True, burns_to=7),  # bridge
+    7: TerrainType(walkable=False),  # chasm
+}
 ```
-move(direction) / move_to(location)
-attack(target) / block()
-say(message) / emote(action)
-forage() / eat(item) / cook(items)
-give(item, target) / take(item)
-rest() / camp()
-perceive() → nearby entities, time, health, inventory
+
+### Dungeon Structure
+
+```python
+@component(slots=True)
+class DungeonEntrance:
+    dungeon_map_id: EntityId
+    depth: int
+    discovered_by: set[CharacterId]
+
+# Player enters → Transform.map_id = dungeon_map_id
+# Dungeons are maps with own Chips, Hostility, ForageEnvironment
 ```
+
+### Effect Layers
+
+```python
+# Parallel to gas.py
+class EffectLayer:
+    """Fire, ice, poison, etc."""
+    values: dict[tuple[int,int], float]
+    spread_rate: float
+    decay_rate: float
+
+    def process(self, now, terrain, entities):
+        # Spread, decay, interact with terrain/entities
+```
+
+---
+
+## AI Integration (Post-Launch)
+
+### Agent Tools
+```
+perceive() → entities, terrain, threats
+move(direction)
+attack(target) / block() / flee()
+use(item) / give(item, target)
+say(message)
+```
+
+### Agent Goals
+- Survive (flee when low, seek food)
+- Hunt (track players, attack)
+- Guard (patrol area, attack intruders)
+- Quest (collect X, deliver to Y)
 
 ### Constraints
-- Same action timing as players
-- Same visibility (fog of war)
-- Personality weights decisions
-- Can die, can respawn
-
-### Quest System
-- Agents have goals (collect, protect, hunt)
-- Goals → behavior → emergence
-- No dialogue trees—dynamic response
+- Same timing as players (no superhuman speed)
+- Same vision (fog of war)
+- Personality affects risk tolerance
 
 ---
 
-## Success Metrics
+## Success Criteria
 
-**Week 8 launch criteria:**
-- [ ] Players can survive the night (with cooperation)
-- [ ] Players can die (and it matters)
-- [ ] Players can share (and it's optimal)
-- [ ] New players can learn (without wiki)
-- [ ] Server survives restart (persistence)
-- [ ] Combat has depth (weapons, armor, yomi)
+**Launch when:**
+- [ ] Fire spreads and chains (grass → gas → explosion)
+- [ ] Dungeons generate with traps, loot, mobs
+- [ ] Night spawns mobs, world regenerates
+- [ ] Stats matter (visible in chargen, felt in gameplay)
+- [ ] Death costs (drop items, skill decay)
+- [ ] Cooperation is optimal (shared fire, mob fighting)
 
-**Post-launch signals:**
-- Retention: Do players come back?
-- Session length: Do they stay?
-- Social: Do they cooperate?
-- Word of mouth: Do they invite friends?
+**The test:** Two strangers meet at bonfire. Survive night. Explore dungeon. Want to return.
 
 ---
 
-## Cut List
+## NOT Doing
 
-Explicitly not doing for MVP:
-- ~~Reputation system~~ (let it emerge from player memory)
-- ~~Weather variation~~ (nightstorm is enough)
-- ~~Skills expansion~~ (3 skills is fine)
-- ~~Procedural generation~~ (handcraft first areas)
-- ~~Factions~~ (let players self-organize)
-- ~~Rich character creation~~ (name + pronouns works)
-- ~~Magic~~ (keep it grounded)
+- ~~Complex crafting~~ (torch, bandage, that's it)
+- ~~Magic~~ (grounded survival)
+- ~~Procedural overworld~~ (handcraft hub)
+- ~~Factions~~ (emergent from players)
+- ~~Quest NPCs~~ (AI agents later)
+- ~~Dialogue trees~~ (say what you mean)
+
+---
+
+## Code TODOs (Prioritized)
+
+| Pri | Location | Issue |
+|-----|----------|-------|
+| **P0** | combat.py:233 | Respawn HACK |
+| **P0** | parser.py:14 | Alias system |
+| **P0** | visibility.py:230 | Optimize for mobs |
+| **P1** | forage.py:37 | Containment validation |
+| **P1** | combat.py:60 | Target validation order |
+| **P2** | forage.py:33 | Tile-specific forage |
+| **P2** | forage.py:116 | Gradual rot |
