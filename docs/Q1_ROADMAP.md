@@ -115,51 +115,113 @@ During nightstorm, far from bonfire:
 
 ## Phase 3: Stats & Chargen (Week 5)
 
-Investment before first death.
+Stats are the class system without classes. Three stars, three fantasies.
 
-### Stats → Mechanics
+### Stats as Character Fantasy
 
-| Stat | Effects |
-|------|---------|
-| **Grace** | Evasion cap (50 + grace×2), move speed (±20%), swim/climb |
-| **Grit** | Health cap (100 ± 50), carry weight, fire/poison resist |
-| **Wit** | Trap detection, craft quality (±50%), XP mult (±10%) |
+| Stat | Fantasy | XP Bonus | Gated Experiences |
+|------|---------|----------|-------------------|
+| **Grace** | Shadow, rogue, dancer | Evasion 1.5x/2.0x/2.5x | Stealth, precision, vanish |
+| **Grit** | Survivor, warrior, endurer | Martial Arts 1.5x/2.0x/2.5x | Heavy weapons, armor, intimidate |
+| **Wit** | Watcher, crafter, trickster | Survival 1.5x/2.0x/2.5x | Trap-making, perception, lure |
 
-### Allocation
-- Base: 10 each
-- Chargen: +15 to distribute
-- Soft cap: diminishing above 20
-- Hard cap: 30
+### Allocation (3 stars)
 
-### Character Creation TUI
+```
+⭐⭐⭐ / - / -     Pure archetype (shadow, tank, sage)
+⭐⭐ / ⭐ / -     Hybrid (duelist, ranger, artificer)
+⭐ / ⭐ / ⭐      Wanderer (generalist, jack-of-all)
+```
+
+### Chargen: Stats Change Everything
+
+Moving stars changes available descriptions, glyphs, and gifts:
 
 ```
 ┌─────────────────────────────────────────┐
-│  Name: [_______________]                │
-│  Pronouns: (•) she  ( ) he  ( ) they    │
+│  Distribute your spirit (3 stars)       │
 │                                         │
-│  Appearance: [@] ███ Hue ████░░░░       │
+│  Grace [⭐⭐⭐]  Grit [   ]  Wit [   ]   │
 │                                         │
-│  ─── Stats (15 points) ───              │
-│  Grace [████████░░░░░░░░░░░░] 18        │
-│    → Evasion cap: 86, Move: +16%        │
-│  Grit  [██████░░░░░░░░░░░░░░] 14        │
-│    → Health: 120, Carry: 24             │
-│  Wit   [██████░░░░░░░░░░░░░░] 13        │
-│    → Traps: 13, XP: +3%                 │
+│  ─── You are... ───                     │
+│  ( ) lithe and silent                   │
+│  (•) quick as shadow                    │
+│  ( ) a whisper in the dark              │
+│                                         │
+│  ─── Your gift... ───                   │
+│  [⬡] Vanish (break LOS → invisible)    │
+│  [ ] First Strike (opener deals 2x)     │
+│  [ ] Slip (dodge costs no recovery)     │
+│                                         │
+│  Preview:                               │
+│  "A quick figure, shadow-cloaked,       │
+│   eyes gleaming with quiet menace."     │
 │                                         │
 │  [< Back]              [Create →]       │
 └─────────────────────────────────────────┘
 ```
 
+Shift to ⭐⭐ Grace / ⭐ Grit:
+
+```
+│  Grace [⭐⭐ ]  Grit [⭐  ]  Wit [   ]   │
+│                                         │
+│  ─── You are... ───                     │
+│  ( ) lean and scarred                   │
+│  (•) a blade waiting to fall            │
+│  ( ) graceful, but hardened             │
+│                                         │
+│  ─── Your gift... ───                   │
+│  [⬡] Riposte (block proc → free attack) │
+│  [ ] Press (hit staggers → followup)    │
+│  [ ] Feint (cancel attack → free block) │
+```
+
+### Gifts by Stat Line
+
+| Stars | Grace | Grit | Wit |
+|-------|-------|------|-----|
+| 1 | Dodge skill | Block skill | Trap detection |
+| 2 | Stealth, precision | Heavy weapons, armor | Crafting, perception |
+| 3 | Vanish, assassinate | Intimidate, execute | Trap-making, lure |
+
+### XP Modifiers
+
+```python
+# Each star = +50% XP for associated skill
+grace_mult = 1.0 + (grace_stars * 0.5)  # 1.0 / 1.5 / 2.0 / 2.5
+
+# 3 Grace learning Evasion = 2.5x XP
+# 0 Grit learning Martial Arts = 1.0x XP (slow grind)
+```
+
+### Appearance Data
+
+```python
+ADJECTIVES = {
+    (3, 0, 0): ["shadow-cloaked", "wraith-like", "silent"],
+    (2, 1, 0): ["lean", "scarred", "sharp"],
+    (0, 3, 0): ["weathered", "brutal", "immovable"],
+    (0, 0, 3): ["keen-eyed", "patient", "cunning"],
+    (1, 1, 1): ["worn", "adaptable", "unremarkable"],
+}
+
+GLYPHS = {
+    (3, 0, 0): ["@", "ᚦ", "ψ"],  # ethereal
+    (0, 3, 0): ["@", "Ω", "Ⱶ"],  # solid
+    (0, 0, 3): ["@", "⚙", "◉"],  # perceptive
+}
+```
+
 ### Tasks
-- [ ] Wire Stats to evasion/health caps
-- [ ] Grace affects movement speed
-- [ ] Grit affects carry capacity
-- [ ] Wit affects trap detection radius
-- [ ] Chargen UI with sliders
-- [ ] Appearance: glyph + HSV color picker
-- [ ] Preview stat effects in real-time
+- [ ] Stats component: 3 stars distributed
+- [ ] XP multiplier per stat/skill pairing
+- [ ] Gifts gated by stat thresholds
+- [ ] Chargen UI: star allocation
+- [ ] Chargen: descriptions change with stats
+- [ ] Chargen: gift selection changes with stats
+- [ ] Chargen: glyph options change with stats
+- [ ] Preview text updates live
 - [ ] Persist to database
 
 ---
