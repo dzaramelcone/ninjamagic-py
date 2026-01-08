@@ -8,47 +8,43 @@
 
 ## Summary
 
-Fire burns flammable tiles, mutating terrain. Grass becomes ash, bridges collapse.
+Fire burns terrain. Grass becomes ash. Bridges become chasms.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Fire intensity threshold triggers burn
-- [ ] Use `burns_to()` from T01 to determine result
-- [ ] Emit `MutateTile` signal when tile burns
-- [ ] Track burned tiles to prevent re-burning
+### Burn Threshold
 
----
+Fire doesn't instantly burn things. Intensity must exceed a threshold before terrain mutates. This gives players a moment to react - see the fire spreading, decide to flee or fight it.
 
-## Technical Details
+### Integration
 
-```python
-# fire.py - add to process loop
-BURN_THRESHOLD = 0.5
+Fire system checks each burning tile:
+1. Is intensity above burn threshold?
+2. What does this tile burn to? (`burns_to()` from T01)
+3. Emit `MutateTile` signal
 
-def check_burns(map_id: int, fire: dict):
-    for (y, x), intensity in fire.items():
-        if intensity < BURN_THRESHOLD:
-            continue
+The mutation system (T02) handles the actual tile change and consequences (entities on collapsing bridges, etc).
 
-        tile_id = get_tile_id(map_id, y, x)
-        new_tile = burns_to(tile_id)
+### Terrain Transformations
 
-        if new_tile is not None:
-            bus.pulse(bus.MutateTile(
-                map_id=map_id,
-                y=y,
-                x=x,
-                new_tile=new_tile,
-            ))
-```
+- Grass → burned ground (safe to walk, no longer flammable)
+- Dry grass → burned ground (burns faster than regular grass)
+- Bridge → chasm (permanent, deadly)
+
+### One-Way Changes
+
+Burned terrain doesn't heal on its own. Grass doesn't regrow (until world regen during nightstorm, separate system). Bridges don't rebuild.
+
+Fire has permanent consequences. That's the point.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Fire at sufficient intensity burns tiles
+- [ ] Fire at sufficient intensity triggers burn
 - [ ] Grass → burned ground
-- [ ] Bridge → chasm (permanent hole)
-- [ ] Tile changes sync to clients
+- [ ] Bridge → chasm
+- [ ] Uses `burns_to()` from T01
+- [ ] Emits `MutateTile` for terrain change
