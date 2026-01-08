@@ -169,6 +169,9 @@ Fire + gas = explosion. Two simulations need consistent state. Options:
 - Accept minor divergence, sync explosions as discrete events
 - Simple simulations may not need full determinism - just sync the consequences (damage, mutations)
 
+**Potential refactor: global fire layer**
+Current design: each fire is an entity with seed/origin. If this gets complex (many fires, explosion spawning N fire entities), consider refactoring to a single global fire intensity layer per map (like gas). Explosions add intensity rather than spawning entities. Cleaner model, easier interactions, but loses seed-based determinism.
+
 Needs design spike before implementation.
 
 ---
