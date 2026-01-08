@@ -156,6 +156,23 @@ def encode_fire_tick(sig: FireTick) -> bytes:
 
 ---
 
+## Open Design Questions
+
+**Terrain mutation during spread:**
+Fire burns grass → burned. If client checks current terrain, simulation diverges from server.
+
+Current approach: fire spread pattern is fixed at ignition time (option 2). Fire spreads to where it "would" spread based on terrain snapshot, ignores newly-burned tiles.
+
+**Simulation interactions:**
+Fire + gas = explosion. Two simulations need consistent state. Options:
+- Server runs ahead, batches events into timeline frames, client replays with slight delay
+- Accept minor divergence, sync explosions as discrete events
+- Simple simulations may not need full determinism - just sync the consequences (damage, mutations)
+
+Needs design spike before implementation.
+
+---
+
 ## Acceptance Criteria
 
 - [ ] `CreateFire` signal spawns fire with seed
@@ -164,3 +181,4 @@ def encode_fire_tick(sig: FireTick) -> bytes:
 - [ ] Network sends ~5 bytes per tick, not per-cell data
 - [ ] Fire entity deleted when all intensity gone
 - [ ] Test: create fire, verify server/client states match
+- [ ] Design doc for simulation interactions (fire/gas/water)
