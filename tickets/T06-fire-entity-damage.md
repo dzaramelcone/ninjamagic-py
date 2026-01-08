@@ -8,53 +8,40 @@
 
 ## Summary
 
-Entities in fire take damage over time. Standing in flames hurts.
+Standing in fire hurts. Armor type matters.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Check entity positions against fire cells
-- [ ] Apply damage based on fire intensity
-- [ ] Armor modifies fire damage (plate amplifies, cloth resists)
-- [ ] Visual feedback for burning status
+### Damage Over Time
 
----
+Entities in fire take damage each tick. Damage scales with fire intensity - the hotter the fire, the more it hurts.
 
-## Technical Details
+### Armor Interaction
 
-```python
-# fire.py
-def apply_fire_damage():
-    for fire_eid, (transform, fire_state) in esper.get_components(Transform, FireState):
-        fire_cells = compute_fire_state(
-            transform.map_id,
-            fire_state.origin_y, fire_state.origin_x,
-            fire_state.seed, fire_state.start_tick,
-        )
+Different armor types interact with fire differently:
 
-        for eid, (t, health) in esper.get_components(Transform, Health):
-            if t.map_id != transform.map_id:
-                continue
+- **Plate armor** - conducts heat, amplifies fire damage (you're cooking inside)
+- **Leather armor** - neutral, standard damage
+- **Cloth/magical** - can resist fire (enchanted robes, wet cloth)
 
-            intensity = fire_cells.get((t.y, t.x), 0)
-            if intensity > 0.1:
-                damage = intensity * FIRE_DAMAGE_MULT
-                # Armor modifies fire damage
-                if armor := esper.try_component(eid, Armor):
-                    damage *= armor.fire_mult  # plate=1.5, leather=1.0, cloth=0.5
-                bus.pulse(bus.HealthChanged(
-                    source=eid,
-                    health_change=-damage,
-                    damage_type="fire",
-                ))
-```
+This creates tactical decisions. Full plate makes you a tank against swords but vulnerable to fire. The enemy in heavy armor? Lure them through flames.
+
+### Feedback
+
+Players need to know they're burning:
+- "You are burning!" message
+- Visual effect on character
+- Damage numbers
+
+Clear feedback lets players make informed decisions about staying vs fleeing.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Entities in fire tiles take damage
+- [ ] Entities in fire take damage per tick
 - [ ] Damage scales with fire intensity
-- [ ] Armor type modifies fire damage (plate amplifies, magical cloth resists)
-- [ ] Players see "You are burning!" message
+- [ ] Armor type modifies damage (plate amplifies, cloth can resist)
+- [ ] Player receives burning feedback message

@@ -8,74 +8,44 @@
 
 ## Summary
 
-Client-side fire rendering from seed-based reconstruction.
+Client receives fire state from server and renders it.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Client receives CreateFire packet
-- [ ] Client stores fire seed/origin/tick
-- [ ] Client reconstructs fire state each frame
-- [ ] WebGL fire rendering (shader or sprites)
-- [ ] Fire flicker animation
+### Network Flow
 
----
+Server sends fire state updates. Client receives and stores them. On render, client draws fire at the appropriate cells.
 
-## Technical Details
+With Q1's server-authoritative approach (T03), client just renders what server tells it. No local simulation needed.
 
-### Client Fire Service
+### Fire State on Client
 
-```typescript
-// fe/src/svc/fire.ts
-class FireService {
-  private fires: Map<number, FireState> = new Map();
+Client needs to track:
+- Which cells are on fire
+- Intensity at each cell (for visual brightness)
+- When fire is extinguished (cleanup)
 
-  onCreateFire(eid: number, mapId: number, y: number, x: number, seed: number) {
-    this.fires.set(eid, { mapId, originY: y, originX: x, seed, tick: 0 });
-  }
+### Rendering
 
-  onFireTick(eid: number) {
-    const state = this.fires.get(eid);
-    if (state) state.tick++;
-  }
+Fire rendering options:
+- **Simple**: colored rectangles with alpha based on intensity
+- **Better**: animated sprites, particle effects
+- **Best**: WebGL shader with procedural flicker
 
-  getFireCells(mapId: number): Map<string, number> {
-    const cells = new Map();
-    for (const [eid, state] of this.fires) {
-      if (state.mapId !== mapId) continue;
-      const fireCells = computeFireState(state);
-      for (const [key, intensity] of fireCells) {
-        cells.set(key, (cells.get(key) || 0) + intensity);
-      }
-    }
-    return cells;
-  }
-}
-```
+Start simple. Colored rectangles with random flicker. Ship it. Polish later if players care.
 
-### Fire Rendering
+### Flicker
 
-```typescript
-// fe/src/render/fire.ts
-function renderFire(ctx: CanvasRenderingContext2D, cells: Map<string, number>) {
-  for (const [key, intensity] of cells) {
-    const [y, x] = key.split(",").map(Number);
-    const alpha = Math.min(1, intensity);
-    const flicker = 0.8 + Math.random() * 0.2;
-
-    ctx.fillStyle = `rgba(255, ${100 + Math.random() * 50}, 0, ${alpha * flicker})`;
-    ctx.fillRect(x * TILE_W, y * TILE_H, TILE_W, TILE_H);
-  }
-}
-```
+Fire should flicker. Random intensity variation each frame makes it feel alive. This is purely cosmetic - doesn't affect gameplay state.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Fire appears on client when CreateFire received
-- [ ] Fire animation updates each tick
-- [ ] Fire flickers visually
-- [ ] Fire disappears when FireExtinguished received
-- [ ] Multiple overlapping fires render correctly
+- [ ] Client receives fire state from server
+- [ ] Fire renders at correct cells
+- [ ] Intensity affects visual brightness
+- [ ] Fire flickers (cosmetic animation)
+- [ ] Fire disappears when extinguished
