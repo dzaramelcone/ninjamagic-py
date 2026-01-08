@@ -8,80 +8,49 @@
 
 ## Summary
 
-Vaults are locked rooms with high-value loot. Require lever to open gate.
+Vaults are locked treasure rooms. Gate bars entry until a lever opens it.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `Vault` component for vault rooms
-- [ ] Locked gate terrain (impassable until opened)
-- [ ] Vault loot generation (better than normal)
-- [ ] 1 vault per level (level 1+)
+### The Vault Fantasy
 
----
+You see the loot through the bars. Can't reach it. Somewhere on this level is a lever. Find it, pull it, gates open. But maybe someone else is racing for the same lever. Maybe a monster is between you and it.
 
-## Technical Details
+Vaults create objectives. They pull players through the level.
 
-### Component
+### Structure
 
-```python
-@component(slots=True, kw_only=True)
-class Vault:
-    level_eid: EntityId
-    gate_positions: list[tuple[int, int]]
-    opened: bool = False
-    risk_level: int
-```
+A vault is a room with:
+- Gate tiles blocking the entrance (impassable terrain)
+- High-value loot inside (visible but unreachable)
+- A linked lever somewhere else on the level
 
-### Gate Terrain
+### Gate Mechanics
 
-```python
-TILE_GATE_CLOSED = 12  # impassable
-TILE_GATE_OPEN = 13    # passable
+Gates use terrain mutation (T02):
+- `TILE_GATE_CLOSED` - blocks movement, doesn't block LOS (you can see through)
+- `TILE_GATE_OPEN` - walkable
 
-WALKABLE |= {TILE_GATE_OPEN}
-# TILE_GATE_CLOSED not in WALKABLE
-```
+When lever is pulled (D05), gate tiles mutate from closed to open.
 
-### Generation
+### Placement
 
-```python
-def place_vault(level_eid: EntityId, room_pos: tuple, risk_level: int):
-    # Place vault room with gate
-    top = room_pos[0] * TILE_STRIDE_H
-    left = room_pos[1] * TILE_STRIDE_W
+- No vault on level 0 (entry level should be simple)
+- One vault per level on depths 1 and 2
+- Vault loot scales with risk level
 
-    # Gate across entrance
-    gate_positions = []
-    for dx in range(4, 12):
-        set_tile(level_eid, top + 10, left + dx, TILE_GATE_CLOSED)
-        gate_positions.append((top + 10, left + dx))
+### Loot
 
-    vault_eid = esper.create_entity(
-        Vault(level_eid=level_eid, gate_positions=gate_positions, risk_level=risk_level),
-    )
-
-    # Place loot inside
-    place_vault_loot(level_eid, top + 5, left + 8, risk_level)
-```
-
-### Vault Opening (D05 lever triggers this)
-
-```python
-def open_vault(vault_eid: EntityId):
-    vault = esper.component_for_entity(vault_eid, Vault)
-    vault.opened = True
-
-    for y, x in vault.gate_positions:
-        bus.pulse(bus.MutateTile(map_id=vault.level_eid, y=y, x=x, new_tile=TILE_GATE_OPEN))
-```
+Vault loot is better than floor loot. Higher tier items, guaranteed drops. The reward for finding the lever and surviving the trip.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Vault room with locked gate
-- [ ] Gate blocks movement until opened
-- [ ] Vault loot uses VAULT_LOOT table
-- [ ] 1 vault per level on depth 1+
+- [ ] Vault room generated with gate blocking entrance
+- [ ] Gate blocks movement but not vision
+- [ ] Vault contains high-tier loot
+- [ ] One vault per level (depth 1+)
+- [ ] Gate opens via lever (D05)
