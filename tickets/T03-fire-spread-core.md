@@ -192,4 +192,5 @@ Needs design spike before implementation.
 - [ ] Network sends ~5 bytes per tick, not per-cell data
 - [ ] Fire entity deleted when all intensity gone
 - [ ] Test: create fire, verify server/client states match
+- [ ] Fire extinguished events sync to client (not just creation)
 - [ ] Design doc for simulation interactions (fire/gas/water)
