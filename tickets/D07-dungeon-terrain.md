@@ -8,76 +8,43 @@
 
 ## Summary
 
-Dungeons use terrain system. Water pools, swamp pockets, magma on deep levels.
+Dungeons use the terrain system. Each level has environmental variety - water, swamp, magma.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Dungeon-specific ChipSet
-- [ ] Water pool room variant
-- [ ] Swamp pocket room variant
-- [ ] Magma room (level 2 only)
-- [ ] Terrain hazards active in dungeons
+### Terrain as Content
 
----
-
-## Technical Details
-
-### Dungeon ChipSet
-
-```python
-def create_dungeon_chipset(level_eid: EntityId) -> list:
-    return [
-        (TILE_STONE_FLOOR, level_eid, ord("."), 0.0, 0.1, 0.4, 1.0),
-        (TILE_STONE_WALL, level_eid, ord("#"), 0.0, 0.1, 0.3, 1.0),
-        (TILE_DUNGEON_WATER_SHALLOW, level_eid, ord("~"), 0.55, 0.6, 0.5, 1.0),
-        (TILE_DUNGEON_WATER_DEEP, level_eid, ord("≈"), 0.55, 0.8, 0.4, 1.0),
-        (TILE_DUNGEON_SWAMP, level_eid, ord("%"), 0.25, 0.5, 0.3, 1.0),
-        (TILE_MAGMA, level_eid, ord("*"), 0.05, 0.9, 0.7, 1.0),
-        (TILE_GATE_CLOSED, level_eid, ord("+"), 0.08, 0.3, 0.5, 1.0),
-        (TILE_GATE_OPEN, level_eid, ord("'"), 0.08, 0.3, 0.6, 1.0),
-    ]
-```
+Terrain isn't just walls and floors. It's gameplay. A water pool room plays differently than a magma room. The terrain system (T01-T10) provides the mechanics; this ticket places them.
 
 ### Room Variants
 
-```python
-def generate_room_variant(level_eid: EntityId, room_pos: tuple, depth: int):
-    variant = RNG.random()
+Not every room is the same. During generation, some rooms become:
 
-    if variant < 0.15:
-        generate_water_pool(level_eid, room_pos)
-    elif variant < 0.25:
-        generate_swamp_pocket(level_eid, room_pos)
-    elif variant < 0.30 and depth >= 2:
-        generate_magma_room(level_eid, room_pos)
-    else:
-        generate_standard_room(level_eid, room_pos)
-```
+- **Water pool room** - central pool of shallow/deep water. Slows movement, extinguishes fire, drowns the unwary.
+- **Swamp pocket** - emits gas (T09). Waiting to be ignited.
+- **Magma room** - level 2 only. Deadly to cross, lights up the space.
+- **Standard room** - stone floor, no hazards.
 
-### Water Pool
+Percentages tuned by feel. Maybe 15% water, 10% swamp, 5% magma (deep only).
 
-```python
-def generate_water_pool(level_eid: EntityId, room_pos: tuple):
-    top = room_pos[0] * TILE_STRIDE_H
-    left = room_pos[1] * TILE_STRIDE_W
+### Dungeon ChipSet
 
-    # Central pool
-    for dy in range(4, 12):
-        for dx in range(4, 12):
-            dist = abs(dy - 8) + abs(dx - 8)
-            if dist <= 4:
-                tile = TILE_DUNGEON_WATER_DEEP if dist <= 2 else TILE_DUNGEON_WATER_SHALLOW
-                set_tile(level_eid, top + dy, left + dx, tile)
-```
+Dungeons need their own tileset - stone instead of dirt, dungeon-specific water colors. The ChipSet maps tile IDs to glyphs and colors.
+
+### Theme Variation
+
+Different dungeon themes (cave, ruin, hell) might weight room variants differently. Hell dungeon = more magma. Ruin = more chasms.
+
+For Q1: one theme (cave), basic variant distribution.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Dungeon levels use dungeon ChipSet
-- [ ] Water pools appear in some rooms
-- [ ] Swamp pockets emit gas (T09)
-- [ ] Magma rooms on level 2 deal damage
-- [ ] Terrain mechanics work in dungeons
+- [ ] Dungeon levels use dungeon-specific ChipSet
+- [ ] Water pool rooms generated
+- [ ] Swamp pocket rooms emit gas
+- [ ] Magma rooms on level 2+ deal damage
+- [ ] Terrain mechanics (fire, water, gas) work in dungeons

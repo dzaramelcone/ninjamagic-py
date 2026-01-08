@@ -2,67 +2,50 @@
 
 **Effort:** S (2h)
 **Phase:** Dungeons (Week 4)
-**Dependencies:** T01, T03
+**Dependencies:** T01, T04
 
 ---
 
 ## Summary
 
-Burnable rope bridges over chasms. Tactical positioning + fire creates permanent map changes.
+Rope bridges over chasms. Burnable. Permanent map changes when destroyed.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `TILE_BRIDGE` terrain type (walkable, flammable)
-- [ ] `TILE_CHASM` terrain type (not walkable, not blocking LOS)
-- [ ] Bridges burn and collapse when ignited
-- [ ] Bridge placement during dungeon generation
+### The Fantasy
 
----
+You're being chased. Behind you, a rope bridge over a bottomless chasm. You cross, torch in hand. Touch it to the ropes. The bridge burns, collapses. Your pursuers stranded on the far side.
 
-## Technical Details
+Bridges create one-way decisions and dramatic moments.
 
-### Terrain Constants
+### Terrain
 
-```python
-TILE_BRIDGE = 25
-TILE_CHASM = 26
+- `TILE_BRIDGE` - walkable, flammable, burns to chasm
+- `TILE_CHASM` - impassable, doesn't block LOS (you can see across)
 
-WALKABLE |= {TILE_BRIDGE}
-FLAMMABLE |= {TILE_BRIDGE}
-BURNS_TO[TILE_BRIDGE] = TILE_CHASM
-```
+Fire spreads to bridges (T04). When burned, bridge tiles mutate to chasm tiles. Permanent.
 
-### Bridge Corridor
+### Tactical Implications
 
-```python
-def place_bridge_corridor(level_eid: EntityId, corridor_pos: tuple):
-    top = corridor_pos[0] * TILE_STRIDE_H + 6
-    left = corridor_pos[1] * TILE_STRIDE_W
+- Cut off pursuit by burning the bridge behind you
+- Trap enemies on the far side
+- Strand yourself if you're not careful
+- Permanent map alteration - that route is gone
 
-    for dy in range(4):
-        for dx in range(16):
-            y, x = top + dy, left + dx
-            if 6 <= dx <= 9:
-                set_tile(level_eid, y, x, TILE_BRIDGE)
-            else:
-                set_tile(level_eid, y, x, TILE_CHASM)
-```
+### Placement
 
----
+Bridges span chasms in corridors. Primarily on deeper levels (2+) where the stakes are higher.
 
-## Tactical Implications
-
-- Cut off pursuit by burning bridge behind you
-- Trap enemies on far side
-- Permanent map alteration - no going back
+A bridge corridor: chasm on both sides, narrow bridge in the middle. Natural chokepoint.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Bridge tiles are walkable and flammable
-- [ ] Chasm tiles block movement but not LOS
+- [ ] Bridge tiles walkable and flammable
+- [ ] Chasm tiles block movement, not vision
 - [ ] Fire on bridge causes collapse to chasm
 - [ ] Bridges placed in dungeon corridors (level 2+)
+- [ ] Entities on bridge when it collapses take fall damage (T02)
