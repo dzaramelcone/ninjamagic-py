@@ -8,91 +8,41 @@
 
 ## Summary
 
-Create dungeons as map entities with multi-level structure. Entry point for all dungeon generation.
+Dungeons are multi-level maps that players descend into. This ticket creates the entity structure and entry point for dungeon creation.
 
 ---
 
-## Current State
+## Design
 
-- Maps are entities with Chips, ChipSet components
-- `simple.py` generates single-level maps
-- No dungeon entity structure
-- No level transitions
+### Entity Structure
 
----
+A **Dungeon** is a parent entity that owns multiple **DungeonLevel** entities. Each level is a separate map (has its own Chips/ChipSet).
 
-## Scope
+- Dungeon holds metadata: name, theme (cave/ruin/hell), base difficulty
+- Each level is a map entity linked back to its parent dungeon
+- Levels are generated lazily - map data created when first player enters
 
-- [ ] `Dungeon` component with metadata
-- [ ] `DungeonLevel` component per level
-- [ ] 3 levels per dungeon
-- [ ] Risk level calculation (depth-based)
-- [ ] Entry point: `create_dungeon()`
+### Depth and Risk
 
----
+Deeper levels are harder. Risk level drives mob spawns, loot quality, trap density.
 
-## Technical Details
+Simple linear scaling: `risk = base_risk + (depth * 15)`
 
-### Components
+A base_risk 10 dungeon:
+- Level 0: risk 10 (entry, tutorial difficulty)
+- Level 1: risk 25 (main challenge)
+- Level 2: risk 40 (boss floor, high reward)
 
-```python
-@component(slots=True, kw_only=True)
-class Dungeon:
-    """Top-level dungeon entity."""
-    name: str
-    theme: str = "cave"  # cave, ruin, hell
-    num_levels: int = 3
-    base_risk: int = 10
+### Themes
 
-@component(slots=True, kw_only=True)
-class DungeonLevel:
-    """Single level within a dungeon."""
-    dungeon_eid: EntityId
-    depth: int  # 0, 1, 2
-    risk_level: int
-    generated: bool = False
-```
-
-### Creation
-
-```python
-def create_dungeon(name: str, theme: str = "cave", base_risk: int = 10) -> EntityId:
-    """Create a dungeon with 3 levels."""
-    dungeon_eid = esper.create_entity(
-        Dungeon(name=name, theme=theme, base_risk=base_risk),
-    )
-
-    for depth in range(3):
-        risk = base_risk + depth * 15
-        level_eid = esper.create_entity(
-            DungeonLevel(dungeon_eid=dungeon_eid, depth=depth, risk_level=risk),
-            Chips(dict={}),
-            ChipSet(list=[]),
-        )
-
-    return dungeon_eid
-```
-
-### Risk Calculation
-
-```
-Level 0: base_risk + 0  (e.g., 10)
-Level 1: base_risk + 15 (e.g., 25)
-Level 2: base_risk + 30 (e.g., 40)
-```
-
----
-
-## Files
-
-- `ninjamagic/component.py` (Dungeon, DungeonLevel)
-- `ninjamagic/dungeon.py` (new - creation pipeline)
+Theme affects tileset, mob types, and flavor. Start with one (cave), expand later.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Dungeon entity created with name/theme
-- [ ] 3 DungeonLevel entities linked to dungeon
-- [ ] Risk level increases with depth
-- [ ] Levels start ungenerated (lazy generation)
+- [ ] Dungeon entity created with name and theme
+- [ ] 3 level entities linked to parent dungeon
+- [ ] Risk increases with depth
+- [ ] Levels don't generate map data until entered
+- [ ] Entry point function to create a dungeon
