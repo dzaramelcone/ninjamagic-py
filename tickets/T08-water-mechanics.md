@@ -8,59 +8,43 @@
 
 ## Summary
 
-Water tiles slow movement and extinguish fire.
+Water slows movement, blocks fire, drowns the unwary.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Water depth affects movement speed
-- [ ] Deep water requires swimming (or drowning)
-- [ ] Water extinguishes fire on contact
-- [ ] Wading visual/sound effects
+### Movement Penalty
 
----
+Water slows you down. Shallow water: 50% slower. Deep water: 100% slower (half speed).
 
-## Technical Details
+This matters tactically. Chasing someone through water? They have time to prepare. Fighting in water? Everything takes longer.
 
-### Movement Cost
+### Fire Interaction
 
-```python
-# Already in T01
-MOVEMENT_COST[TILE_WATER_SHALLOW] = 1.5
-MOVEMENT_COST[TILE_DUNGEON_WATER_DEEP] = 2.0
-```
+Water blocks fire spread. Fire cannot spread onto water tiles. Existing fire on water tiles (from explosion overlap?) extinguishes immediately.
 
-### Fire Extinguishing
+Water is the counter to fire. Know where the water is.
 
-```python
-# fire.py
-def _can_spread(map_id: int, y: int, x: int) -> bool:
-    tile_id = get_tile_id(map_id, y, x)
-    if is_water(tile_id):
-        return False  # water blocks fire spread
-    return is_flammable(tile_id)
-```
+### Drowning
 
-### Deep Water Drowning
+Deep water is dangerous for non-swimmers. Entities in deep water without swimming skill take damage over time. The survive system checks this each tick.
 
-```python
-# survive.py - add to process
-def check_drowning():
-    for eid, (transform, health) in esper.get_components(Transform, Health):
-        tile = get_tile_id(transform.map_id, transform.y, transform.x)
-        if water_depth(tile) >= 2:
-            # Check for swimming skill or apply damage
-            if not has_skill(eid, "swimming"):
-                bus.pulse(bus.HealthChanged(source=eid, health_change=-5, damage_type="drowning"))
-```
+Swimming could be a learnable skill, or granted by items (enchanted boots, underwater breathing).
+
+### Depth Matters
+
+Use `water_depth()` from T01:
+- Depth 0: not water
+- Depth 1: shallow (slow, extinguish, safe)
+- Depth 2: deep (very slow, extinguish, drowning)
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Shallow water slows movement 50%
-- [ ] Deep water slows movement 100%
+- [ ] Shallow water slows movement
+- [ ] Deep water slows movement more
 - [ ] Fire cannot spread to water tiles
-- [ ] Fire in water tiles extinguishes
 - [ ] Deep water damages non-swimmers
+- [ ] `water_depth()` function in T01

@@ -8,43 +8,35 @@
 
 ## Summary
 
-Swamp tiles emit gas over time, creating explosive hazards.
+Swamp tiles emit gas. Gas builds up. Fire makes it explode.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Swamp tiles periodically emit gas
-- [ ] Gas accumulates and spreads (existing gas.py)
-- [ ] Tie into fire-gas explosion (T05)
+### Passive Danger
 
----
+Swamp doesn't attack you directly. It emits gas over time. The gas spreads, accumulates, waits.
 
-## Technical Details
+Bring fire into a swamp area? Boom.
 
-```python
-# gas.py or swamp.py
-SWAMP_EMIT_RATE = 5.0  # seconds between emissions
-SWAMP_EMIT_AMOUNT = 0.3
+### Emission Rate
 
-def process_swamp_emission(now: Looptime):
-    for map_eid, chips in esper.get_component(Chips):
-        for (cy, cx), grid in chips.dict.items():
-            for idx, tile_id in enumerate(grid):
-                if not emits_gas(tile_id):
-                    continue
+Swamp tiles emit small amounts of gas periodically. Gas spreads via existing diffusion (gas.py). Over time, swamp areas become saturated with flammable gas.
 
-                y = cy * TILE_STRIDE_H + idx // TILE_STRIDE_W
-                x = cx * TILE_STRIDE_W + idx % TILE_STRIDE_W
+Tuning: emit rate, emit amount, gas decay. Too fast = always dangerous. Too slow = never relevant. Find the tension.
 
-                # Emit gas at this tile
-                if should_emit(now, y, x):
-                    bus.pulse(bus.CreateGas(
-                        map_id=map_eid,
-                        y=y, x=x,
-                        amount=SWAMP_EMIT_AMOUNT,
-                    ))
-```
+### Integration
+
+- Uses `emits_gas()` from T01 to identify swamp tiles
+- Uses existing gas.py for diffusion
+- Ties into T05 for fire-gas explosion
+
+### Gameplay
+
+Swamp areas are trap zones. Safe to walk through... until someone lights a torch. Then they're death traps.
+
+Players learn: don't bring fire into swamp. Or do, if your enemies are there.
 
 ---
 
@@ -52,5 +44,5 @@ def process_swamp_emission(now: Looptime):
 
 - [ ] Swamp tiles emit gas periodically
 - [ ] Gas accumulates in swamp areas
-- [ ] Gas spreads using existing diffusion
-- [ ] Fire ignites swamp gas (via T05)
+- [ ] Gas spreads using existing diffusion system
+- [ ] Fire ignites accumulated gas (T05)
