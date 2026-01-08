@@ -8,82 +8,47 @@
 
 ## Summary
 
-Monster dens spawn creatures. More dens on deeper levels.
+Monster dens are spawn points. Creatures emerge when players get close.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `MonsterDen` component
-- [ ] Den placement during generation
-- [ ] Creature spawning from dens
-- [ ] Den creature types per depth
+### Why Dens?
 
----
+Dens pace the dungeon. You don't get swarmed at the entrance. Monsters appear as you explore, creating tension and ambush moments.
 
-## Technical Details
+A den is a visible feature - a nest, a burrow, bones piled in a corner. Players learn to recognize danger before they trigger it.
 
-### Component
+### Spawn Trigger
 
-```python
-@component(slots=True, kw_only=True)
-class MonsterDen:
-    creature_type: str
-    spawn_count: int = 3
-    spawned: bool = False
-```
+Dens are dormant until a player gets within range (~8 tiles). Then they spawn their creatures and mark themselves as triggered.
 
-### Placement
+One-time spawn. Den doesn't respawn on its own (world regen during nightstorm might reset them - that's a separate system).
 
-```python
-def place_monster_dens(level_eid: EntityId, rooms: dict, risk_level: int):
-    num_dens = 1 + risk_level // 15
+### Creature Scaling
 
-    side_rooms = [pos for pos, room in rooms.items() if isinstance(room, SideRoom)]
-    den_rooms = RNG.sample(side_rooms, min(num_dens, len(side_rooms)))
+Creature type matches risk level:
+- Low risk (level 0): rats, bats, spiders - nuisances
+- Medium risk (level 1): goblins, wolves - real threats
+- High risk (level 2): trolls, wraiths - deadly
 
-    for room_pos in den_rooms:
-        top = room_pos[0] * TILE_STRIDE_H
-        left = room_pos[1] * TILE_STRIDE_W
+### Den Density
 
-        creature_type = get_creature_for_risk(risk_level)
-        create_monster_den(level_eid, top + 8, left + 8, creature_type, risk_level)
-```
+More dens on deeper levels. Level 0 might have 1 den. Level 2 might have 3-4.
 
-### Creature Types by Risk
+Formula: `num_dens = 1 + (risk_level // 15)`
 
-```python
-def get_creature_for_risk(risk_level: int) -> str:
-    if risk_level < 15:
-        return RNG.choice(["rat", "bat", "spider"])
-    elif risk_level < 30:
-        return RNG.choice(["goblin", "wolf", "crawler"])
-    else:
-        return RNG.choice(["troll", "wraith", "ogre"])
-```
+### Multiplayer Dynamics
 
-### Den Spawning
-
-```python
-def process_dens():
-    for eid, (transform, den) in esper.get_components(Transform, MonsterDen):
-        if den.spawned:
-            continue
-
-        # Check for player proximity to trigger
-        for player_eid, (pt,) in esper.get_components(Transform):
-            if pt.map_id != transform.map_id:
-                continue
-            if abs(pt.y - transform.y) <= 8 and abs(pt.x - transform.x) <= 8:
-                spawn_from_den(eid, transform, den)
-                break
-```
+First player to trigger a den wakes the monsters. Other players might hear combat and come help - or stay back and let them soften each other up.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] MonsterDen entities placed in rooms
-- [ ] Dens spawn creatures when player approaches
+- [ ] Den entities placed in side rooms
+- [ ] Dens spawn creatures on player proximity
 - [ ] Creature types scale with risk level
-- [ ] 1-3 dens per level based on risk
+- [ ] Den count scales with risk level
+- [ ] Dens only trigger once
