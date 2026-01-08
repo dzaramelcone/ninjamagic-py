@@ -8,167 +8,53 @@
 
 ## Summary
 
-Create lightweight terrain property functions. Tile IDs are bytes (0-255). Properties are derived via functions, not stored in heavy dataclasses.
+Terrain properties as functions, not data. Tile IDs are bytes. Properties are derived via O(1) lookups.
 
 ---
 
-## Current State
+## Design
 
-- Tiles are bytes (0-255) in 16x16 chunks (`Chips`)
-- `can_enter()` checks if tile in `{1, 3}` - hardcoded set
-- `isOpaque()` on frontend checks hardcoded char list
-- No terrain properties (flammable, water, movement cost, etc.)
+### Why Functions?
 
----
+Tiles are bytes (0-255) stored in chunks. Millions of them. We can't attach a dataclass to each tile - too much memory, too slow.
 
-## Scope
+Instead: property sets. `is_walkable(tile_id)` checks membership in a frozenset. O(1), tiny memory footprint.
 
-- [ ] Create `ninjamagic/terrain.py` with property functions
-- [ ] Define tile ID constants for all terrain types
-- [ ] Property functions: `is_walkable(tile_id)`, `blocks_los(tile_id)`, etc.
-- [ ] Update `can_enter()` to use `is_walkable()`
-- [ ] Use sets/ranges for O(1) lookup
+### Property Categories
 
----
+**Boolean properties** (set membership):
+- `is_walkable` - can entities stand here?
+- `blocks_los` - does this block line of sight?
+- `is_flammable` - can fire spread here?
+- `is_water` - water mechanics apply?
+- `emits_gas` - spawns gas over time?
+- `is_damaging` - hurts entities standing here?
 
-## Technical Details
+**Parameterized properties** (dict lookup):
+- `movement_cost(tile_id)` - how slow? (default 1.0)
+- `burns_to(tile_id)` - what does this become when burned? (None if not flammable)
+- `damage_per_tick(tile_id)` - how much damage? (0.0 if safe)
+- `water_depth(tile_id)` - 0/1/2 for none/shallow/deep
 
-### Tile ID Constants
+### Tile ID Ranges
 
-```python
-# terrain.py
-# Core tiles (0-9)
-TILE_VOID = 0
-TILE_GROUND = 1
-TILE_WALL = 2
-TILE_WATER_SHALLOW = 3
-TILE_GRASS = 4
-TILE_DRY_GRASS = 5
-TILE_BURNED = 6
-TILE_MUD = 7
+Organize IDs by category for sanity:
+- 0-9: Core overworld (ground, wall, grass, water)
+- 10-19: Dungeon structure (stone, gates)
+- 20-29: Hazards (swamp, magma, chasm, bridge)
 
-# Dungeon tiles (10-19)
-TILE_STONE_FLOOR = 10
-TILE_STONE_WALL = 11
-TILE_GATE_CLOSED = 12
-TILE_GATE_OPEN = 13
+### Integration
 
-# Hazard tiles (20-29)
-TILE_DUNGEON_SWAMP = 20
-TILE_DUNGEON_WATER_SHALLOW = 21
-TILE_DUNGEON_WATER_DEEP = 22
-TILE_MAGMA = 23
-TILE_BRIDGE = 24
-TILE_CHASM = 25
-```
-
-### Property Sets (O(1) Lookup)
-
-```python
-# terrain.py
-WALKABLE: frozenset[int] = frozenset({
-    TILE_GROUND, TILE_WATER_SHALLOW, TILE_GRASS, TILE_DRY_GRASS,
-    TILE_BURNED, TILE_MUD, TILE_STONE_FLOOR, TILE_GATE_OPEN,
-    TILE_DUNGEON_SWAMP, TILE_DUNGEON_WATER_SHALLOW, TILE_DUNGEON_WATER_DEEP,
-    TILE_BRIDGE,
-})
-
-BLOCKS_LOS: frozenset[int] = frozenset({
-    TILE_WALL, TILE_STONE_WALL,
-})
-
-FLAMMABLE: frozenset[int] = frozenset({
-    TILE_GRASS, TILE_DRY_GRASS, TILE_BRIDGE,
-})
-
-EMITS_GAS: frozenset[int] = frozenset({
-    TILE_DUNGEON_SWAMP,
-})
-
-WATER: frozenset[int] = frozenset({
-    TILE_WATER_SHALLOW, TILE_DUNGEON_WATER_SHALLOW, TILE_DUNGEON_WATER_DEEP,
-})
-
-DAMAGING: frozenset[int] = frozenset({
-    TILE_MAGMA,
-})
-```
-
-### Property Functions
-
-```python
-def is_walkable(tile_id: int) -> bool:
-    return tile_id in WALKABLE
-
-def blocks_los(tile_id: int) -> bool:
-    return tile_id in BLOCKS_LOS
-
-def is_flammable(tile_id: int) -> bool:
-    return tile_id in FLAMMABLE
-
-def emits_gas(tile_id: int) -> bool:
-    return tile_id in EMITS_GAS
-
-def is_water(tile_id: int) -> bool:
-    return tile_id in WATER
-
-def is_damaging(tile_id: int) -> bool:
-    return tile_id in DAMAGING
-```
-
-### Parameterized Functions
-
-```python
-MOVEMENT_COST: dict[int, float] = {
-    TILE_WATER_SHALLOW: 1.5,
-    TILE_MUD: 1.3,
-    TILE_DUNGEON_SWAMP: 1.4,
-    TILE_DUNGEON_WATER_DEEP: 2.0,
-}
-
-def movement_cost(tile_id: int) -> float:
-    return MOVEMENT_COST.get(tile_id, 1.0)
-
-BURNS_TO: dict[int, int] = {
-    TILE_GRASS: TILE_BURNED,
-    TILE_DRY_GRASS: TILE_BURNED,
-    TILE_BRIDGE: TILE_CHASM,
-}
-
-def burns_to(tile_id: int) -> int | None:
-    return BURNS_TO.get(tile_id)
-
-DAMAGE_PER_TICK: dict[int, float] = {
-    TILE_MAGMA: 20.0,
-}
-
-def damage_per_tick(tile_id: int) -> float:
-    return DAMAGE_PER_TICK.get(tile_id, 0.0)
-
-# Note: Fire damage comes from the fire effect layer, not terrain
-```
-
----
-
-## Files
-
-- `ninjamagic/terrain.py` (new)
-- `ninjamagic/world/state.py` (update `can_enter`)
+Replace hardcoded checks throughout codebase:
+- `can_enter()` → `is_walkable()`
+- Frontend `isOpaque()` → `blocks_los()`
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Tile ID constants defined for all terrain types
-- [ ] Property sets for O(1) boolean lookups
-- [ ] Property functions for parameterized lookups
+- [ ] Tile ID constants defined
+- [ ] Property functions for all terrain behaviors
+- [ ] O(1) lookup performance
 - [ ] `can_enter()` uses `is_walkable()`
 - [ ] Existing gameplay unchanged
-- [ ] Tests pass
-
----
-
-## Design Notes
-
-**Why not a dataclass?**
-Terrain is massive. Using sets and dicts with byte keys is faster (O(1)), smaller (no object overhead), and scalable (works for millions of tiles).
