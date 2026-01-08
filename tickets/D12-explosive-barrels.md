@@ -8,61 +8,38 @@
 
 ## Summary
 
-Barrels of volatile liquid. Fire → explosion → area damage + fire spread. Environmental weapon.
+Barrels full of volatile liquid. Fire + barrel = boom.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `ExplosiveBarrel` component
-- [ ] Barrel entity with visual glyph
-- [ ] Fire contact triggers explosion
-- [ ] Explosion damages nearby entities
-- [ ] Explosion spawns fire in radius
+### The Classic
 
----
+Every dungeon crawler has explosive barrels. They're an environmental weapon - a loaded gun you can trigger from a distance.
 
-## Technical Details
+"Lure enemies near barrels. Light the trail of grass. Run."
 
-### Component
+### Mechanics
 
-```python
-@component(slots=True, kw_only=True)
-class ExplosiveBarrel:
-    explosion_radius: int = 3
-    explosion_damage: float = 25.0
-    triggered: bool = False
-```
+Barrel is an entity. When fire reaches it:
+1. Explosion deals area damage (falls off with distance)
+2. Fire spawns in explosion radius
+3. Barrel is destroyed
 
-### Explosion Trigger
+Chain reactions: explosion spawns fire → fire reaches another barrel → another explosion. Cascading doom.
 
-```python
-def process():
-    for eid, (transform, barrel) in esper.get_components(Transform, ExplosiveBarrel):
-        if barrel.triggered:
-            continue
+### Placement
 
-        if has_fire_at(transform.map_id, transform.y, transform.x):
-            trigger_explosion(eid, transform, barrel)
+Barrels near choke points. Near dens. Near valuable loot. They're risk/reward - the thing that makes a room dangerous is also what can clear it.
 
-def trigger_explosion(barrel_eid, transform, barrel):
-    barrel.triggered = True
+### Player Agency
 
-    # Damage entities in radius
-    for eid, (t, health) in esper.get_components(Transform, Health):
-        dist = abs(t.y - transform.y) + abs(t.x - transform.x)
-        if dist <= barrel.explosion_radius:
-            damage = barrel.explosion_damage * (1.0 - dist / (barrel.explosion_radius + 1))
-            bus.pulse(bus.HealthChanged(source=eid, health_change=-damage))
-
-    # Spawn fire in radius
-    for dy in range(-barrel.explosion_radius, barrel.explosion_radius + 1):
-        for dx in range(-barrel.explosion_radius, barrel.explosion_radius + 1):
-            if abs(dy) + abs(dx) <= barrel.explosion_radius:
-                bus.pulse(bus.CreateFire(map_id=transform.map_id, y=transform.y+dy, x=transform.x+dx, seed=RNG.randint(0, 2**31)))
-
-    esper.delete_entity(barrel_eid)
-```
+Players can:
+- Ignite barrels to clear enemies
+- Avoid barrels to preserve escape routes
+- Push enemies toward barrels (if we have knockback)
+- Use barrels against each other in PvP
 
 ---
 
@@ -70,5 +47,6 @@ def trigger_explosion(barrel_eid, transform, barrel):
 
 - [ ] Barrel entities placed in dungeons
 - [ ] Fire contact triggers explosion
-- [ ] Explosion damages entities in radius
-- [ ] Explosion spawns fires
+- [ ] Explosion deals AoE damage
+- [ ] Explosion spawns fire in radius
+- [ ] Barrel destroyed after explosion

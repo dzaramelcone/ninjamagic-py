@@ -8,77 +8,36 @@
 
 ## Summary
 
-Hidden traps triggered by movement. Damage, status effects, or alerts. Wit stat reveals traps.
+Hidden traps. Step on them, bad things happen. Wit stat lets you spot them first.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `Trap` component with trigger and effect
-- [ ] Hidden vs revealed trap states
-- [ ] Trigger on entity movement
-- [ ] Multiple trap types (spike, alarm, gas)
-- [ ] Wit-based detection
+### Why Traps?
 
----
+Traps punish rushing. They reward careful players who watch where they step. Wit stat finally matters in the dungeon.
 
-## Technical Details
+### Hidden vs Revealed
 
-### Component
+Traps start hidden. When you step on one, it triggers. But if your Wit is high enough, you spot it first - it becomes revealed on the map, avoidable.
 
-```python
-@component(slots=True, kw_only=True)
-class Trap:
-    trap_type: str  # spike, alarm, gas, pit
-    damage: float = 10.0
-    triggered: bool = False
-    revealed: bool = False
-    detection_dc: int = 15
-```
+Detection check happens when you get close. High Wit = you see it before you step on it.
 
 ### Trap Types
 
-```python
-TRAP_EFFECTS = {
-    "spike": {"damage": 15.0, "status": None},
-    "alarm": {"damage": 0.0, "status": "alert_mobs"},
-    "gas": {"damage": 5.0, "status": "spawn_gas"},
-    "pit": {"damage": 20.0, "status": "stuck"},
-}
-```
+- **Spike trap** - damage
+- **Alarm trap** - alerts nearby monsters (now they know you're here)
+- **Gas trap** - spawns gas cloud (combine with fire for explosion)
+- **Pit trap** - damage + stuck for a turn
 
-### Trigger on Movement
+Different traps create different situations. Alarm trap in a cleared area is harmless. Alarm trap near a den is deadly.
 
-```python
-def process():
-    for sig in bus.iter(bus.MovePosition):
-        if not sig.success:
-            continue
+### Stat Integration
 
-        for trap_eid, (transform, trap) in esper.get_components(Transform, Trap):
-            if trap.triggered:
-                continue
-            if transform.y == sig.to_y and transform.x == sig.to_x:
-                trigger_trap(trap_eid, sig.source, trap)
-```
+Wit affects detection chance. High Wit players are trap-finders - they scout ahead, reveal dangers for the party.
 
-### Wit Detection
-
-```python
-def check_trap_detection(entity_eid, trap_eid, trap):
-    stats = esper.try_component(entity_eid, Stats)
-    if not stats:
-        return False
-
-    wit_bonus = stats.wit * 5
-    roll = RNG.randint(1, 20) + wit_bonus
-
-    if roll >= trap.detection_dc:
-        trap.revealed = True
-        story.echo("{0} {0:spot} a hidden trap!", entity_eid)
-        return True
-    return False
-```
+This gives Wit a clear dungeon role beyond crafting/perception flavor.
 
 ---
 
@@ -87,4 +46,5 @@ def check_trap_detection(entity_eid, trap_eid, trap):
 - [ ] Traps hidden until revealed or triggered
 - [ ] Movement onto trap triggers effect
 - [ ] Wit stat affects detection chance
-- [ ] Multiple trap types with different effects
+- [ ] Multiple trap types (spike, alarm, gas, pit)
+- [ ] Revealed traps visible on map

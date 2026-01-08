@@ -8,90 +8,70 @@
 
 ## Summary
 
-Expand room prefabs for dungeon themes. Vault rooms, terrain rooms, special features.
+Room templates for dungeon generation. ASCII art → playable content.
 
 ---
 
-## Scope
+## Design
 
-- [ ] Vault room prefabs
-- [ ] Water pool room prefabs
-- [ ] Swamp room prefabs
-- [ ] Magma room prefabs
-- [ ] Bridge corridor prefabs
-- [ ] Feature placement markers in prefabs
+### Simple Rules, Complex Results
 
----
+Prefabs are ASCII layouts with a legend. Each character maps to a tile type or feature marker.
 
-## Technical Details
-
-### Prefab Format
-
-```python
-@dataclass(frozen=True)
-class Prefab:
-    layout: str
-    legend: dict[str, int]
-    features: dict[str, str]
-    min_risk: int = 0
-
-BASE_LEGEND = {
-    ".": TILE_STONE_FLOOR,
-    "#": TILE_STONE_WALL,
-    "~": TILE_DUNGEON_WATER_SHALLOW,
-    "≈": TILE_DUNGEON_WATER_DEEP,
-    "%": TILE_DUNGEON_SWAMP,
-    "=": TILE_BRIDGE,
-    "_": TILE_CHASM,
-    "*": TILE_MAGMA,
-    "+": TILE_GATE_CLOSED,
-}
-
-FEATURE_MARKERS = {
-    "C": "chest",
-    "V": "vault",
-    "L": "lever",
-    "D": "den",
-    "B": "barrel",
-    "T": "trap",
-}
 ```
-
-### Vault Prefab
-
-```python
-VAULT_ROOM = Prefab(
-    layout="""
 ################
 #..............#
-#.############.#
-#.#..........#.#
-#.#....VV....#.#
-#.#..........#.#
-#.############.#
-#......++......#
+#....~~~.......#
+#...~~≈~~......#
+#....~~~.......#
+#..............#
 ################
-""",
-    legend=BASE_LEGEND,
-    features={"V": "vault"},
-    min_risk=20,
-)
 ```
 
-### Prefab Selection
+This is a water pool room. The generator stamps it, translates characters, places features. Done.
 
-```python
-def select_prefab(room_type: DungeonRoomType, risk_level: int) -> Prefab | None:
-    candidates = ROOM_PREFABS.get(room_type, [])
-    valid = [p for p in candidates if p.min_risk <= risk_level]
-    return RNG.choice(valid) if valid else None
-```
+### Prefab Structure
+
+A prefab is:
+- **Layout** - ASCII grid
+- **Legend** - character → tile ID mapping
+- **Features** - marker → entity type (C = chest, L = lever, D = den)
+- **Min risk** - only appears at or above this risk level
+
+### Room Types
+
+Different prefabs for different purposes:
+- **Standard rooms** - floor and walls
+- **Water pool rooms** - central water feature
+- **Swamp rooms** - gas-emitting terrain
+- **Magma rooms** - dangerous crossing
+- **Vault rooms** - gate + treasure area
+- **Bridge corridors** - chasm with narrow crossing
+
+### Feature Markers
+
+Special characters that spawn entities, not terrain:
+- `C` → chest
+- `L` → lever
+- `D` → monster den
+- `B` → explosive barrel
+- `T` → trap
+
+Generator sees marker, spawns entity, places floor underneath.
+
+### Why Prefabs?
+
+Hand-authored rooms feel designed. Procedural assembly feels infinite. Prefabs give you both - human-designed moments, procedurally arranged.
+
+Conway showed us: simple rules, complex results.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Prefab data structure with layout + legend + features
-- [ ] Vault, water, swamp, magma room prefabs
+- [ ] Prefab data structure (layout, legend, features)
+- [ ] Standard room prefabs
+- [ ] Terrain variant prefabs (water, swamp, magma)
+- [ ] Vault room prefab
 - [ ] Bridge corridor prefab
-- [ ] Feature markers place entities correctly
+- [ ] Feature markers spawn correct entities
