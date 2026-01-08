@@ -72,10 +72,17 @@ def set_tile(*, map_id: int, y: int, x: int, tile_id: int) -> bool:
 
 ### Mutation Processor
 
+Runs before `move` in system loop - tile changes can invalidate movement state.
+
 ```python
 # mutation.py
 def process():
     for sig in bus.iter(bus.MutateTile):
+        # Validate: if tile becomes unwalkable, handle entities on it
+        # (push them off, damage them, or block the mutation)
+        if not _validate_mutation(sig):
+            continue
+
         success = set_tile(
             map_id=sig.map_id,
             y=sig.y,
@@ -90,6 +97,13 @@ def process():
                 tile_id=sig.new_tile,
             ))
 ```
+
+### Validation
+
+When a tile becomes unwalkable with an entity on it:
+- **Bridge → chasm**: Entity falls (damage + move to level below or death)
+- **Ground → wall**: Block mutation (shouldn't happen organically)
+- **Water shallow → water deep**: Entity starts drowning
 
 ### Network Sync
 
