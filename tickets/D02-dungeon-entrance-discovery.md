@@ -8,69 +8,43 @@
 
 ## Summary
 
-Players discover dungeon entrances via prompts when entering rooms.
+How players find and enter dungeons from the overworld.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `DungeonEntrance` component
-- [ ] Detection when player enters room
-- [ ] Prompt: "You notice a passage leading down..."
-- [ ] `enter` command to descend
+### Entrance Entity
 
----
+A DungeonEntrance is an entity placed on the overworld map. It links to a specific dungeon and target level (usually 0).
 
-## Technical Details
+Entrances are visible terrain features - a cave mouth, crumbling stairs, a pit. Players see them on the map.
 
-### Component
+### Discovery Prompt
 
-```python
-@component(slots=True, kw_only=True)
-class DungeonEntrance:
-    dungeon_eid: EntityId
-    target_level: int = 0
-```
+When a player moves near an entrance they haven't entered before, they get a prompt:
 
-### Detection
+> "You notice a dark passage leading down..."
 
-```python
-# entrance.py
-def process():
-    for sig in bus.iter(bus.MovePosition):
-        if not sig.success:
-            continue
-
-        # Check for entrance at new position
-        for ent_eid, (transform, entrance) in esper.get_components(Transform, DungeonEntrance):
-            if transform.map_id != sig.to_map_id:
-                continue
-            # Check if player is in same room (within 5 tiles)
-            if abs(transform.y - sig.to_y) <= 5 and abs(transform.x - sig.to_x) <= 5:
-                story.echo("You notice a dark passage leading down...", target=sig.source)
-```
+This is flavor, not a gate. The entrance is always usable.
 
 ### Enter Command
 
-```python
-class Enter(Command):
-    text: str = "enter"
+`enter` command when near an entrance transitions the player to dungeon level 0. This triggers lazy generation if the level hasn't been built yet.
 
-    def trigger(self, root: bus.Inbound) -> Out:
-        # Find nearby entrance
-        entrance = find_nearby_entrance(root.source)
-        if not entrance:
-            return False, "Enter what?"
+### Open Questions
 
-        bus.pulse(bus.EnterDungeon(source=root.source, entrance=entrance))
-        return OK
-```
+- Should some entrances be hidden until discovered (perception check, exploration)?
+- Can entrances be blocked/locked (key required, boss guards it)?
+- Do entrances close/collapse (time pressure, one-way trips)?
+
+For Q1: keep it simple. Entrances are visible and always open.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Entrance entities placed in overworld
-- [ ] Player sees prompt when near entrance
-- [ ] `enter` command transitions to dungeon level 0
-- [ ] Dungeon level generated on first entry
+- [ ] Entrance entities can be placed on overworld
+- [ ] Player sees discovery prompt when first approaching
+- [ ] `enter` command moves player to dungeon level 0
+- [ ] First entry triggers level generation
