@@ -8,69 +8,44 @@
 
 ## Summary
 
-Chests contain loot. Open with `open <chest>` command. Risk level determines contents.
+Chests are containers. Open them to get loot.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `Chest` component with contents
-- [ ] Chest entity with visual glyph
-- [ ] `open <chest>` command
-- [ ] Chest placement during dungeon generation
+### The Chest
 
----
+A chest is an entity with:
+- Position in the dungeon
+- Risk level (determines loot quality)
+- Open/closed state
+- Visual glyph that changes when opened
 
-## Technical Details
+Chests are one-time. Once opened, they stay open.
 
-### Component
+### Interaction
 
-```python
-@component(slots=True, kw_only=True)
-class Chest:
-    risk_level: int
-    opened: bool = False
-    loot_count: int = 3
-```
+Stand next to chest, `open chest`. Items drop on the ground (or into inventory, depending on system).
 
-### Open Command
+"You open the chest and find a rusty dagger and some gold coins."
 
-```python
-class Open(Command):
-    text: str = "open"
+### Placement
 
-    def trigger(self, root: bus.Inbound) -> Out:
-        _, _, rest = root.text.partition(" ")
-        match = find_adjacent(root.source, rest, with_components=(Chest,))
-        if not match:
-            return False, "Open what?"
+Chests scattered in side rooms. Not every room has one. Finding a chest is a small reward for exploration.
 
-        chest_eid, _, _ = match
-        bus.pulse(bus.OpenChest(source=root.source, chest=chest_eid))
-        return OK
-```
+Vaults have special chest placement (D04) with better loot tables.
 
-### Open Handler
+### Multiplayer
 
-```python
-def process():
-    for sig in bus.iter(bus.OpenChest):
-        chest = esper.component_for_entity(sig.chest, Chest)
-        if chest.opened:
-            story.echo("{0} {0:find} the chest empty.", sig.source)
-            continue
-
-        chest.opened = True
-        items = generate_loot(chest.risk_level, DUNGEON_LOOT, chest.loot_count)
-        # Drop items at chest location
-        story.echo("{0} {0:open} the chest.", sig.source)
-```
+First player to open gets the loot. Creates soft competition - do you split up to find more chests, or stick together for safety?
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Chest entities with risk level
-- [ ] `open chest` command works
-- [ ] Loot generated on open
+- [ ] Chest entity with risk level
+- [ ] `open chest` command when adjacent
+- [ ] Loot generated from table on open
 - [ ] Chest glyph changes when opened
+- [ ] Chests placed during generation

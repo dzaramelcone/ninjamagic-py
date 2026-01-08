@@ -8,68 +8,46 @@
 
 ## Summary
 
-Generate thematic creature populations for dungeon levels. Fauna varies by depth, terrain, and room type.
+Each dungeon level has a creature population. What lives here depends on depth, terrain, and theme.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `FaunaTable` per dungeon theme/depth
-- [ ] Ambient creature spawning (non-hostile initially)
-- [ ] Creature placement in appropriate rooms
-- [ ] Fauna density scaling with risk level
+### Living Dungeons
 
----
+Dungeons aren't just monster closets. They're ecosystems. Rats scurry in shallow tunnels. Cave fish swim in underground pools. Spiders lurk in deeper, darker places.
 
-## Technical Details
+Fauna makes dungeons feel inhabited, not spawned.
 
 ### Fauna Tables
 
-```python
-@dataclass(frozen=True)
-class FaunaEntry:
-    creature_type: str
-    weight: int
-    min_depth: int = 0
-    max_depth: int = 99
-    terrain_types: frozenset[int] | None = None
+A fauna table is a weighted list of creature types, filtered by:
+- **Depth** - some creatures only appear on deeper levels
+- **Terrain** - cave fish need water, fire salamanders need magma
+- **Theme** - ruin dungeons have different fauna than caves
 
-CAVE_FAUNA: list[FaunaEntry] = [
-    FaunaEntry("rat", weight=10),
-    FaunaEntry("bat", weight=8),
-    FaunaEntry("spider", weight=5, min_depth=1),
-    FaunaEntry("crawler", weight=3, min_depth=2),
-    FaunaEntry("cave_fish", weight=6, terrain_types=frozenset({TILE_DUNGEON_WATER_SHALLOW})),
-]
-```
+### Ambient vs Hostile
 
-### Weighted Selection
+Not everything attacks on sight. Some fauna is ambient - rats that flee, bats that scatter. Hostility is a creature property, not a fauna property.
 
-```python
-def select_creature(table: list[FaunaEntry], depth: int, terrain: int | None = None) -> str | None:
-    valid = [
-        e for e in table
-        if e.min_depth <= depth <= e.max_depth
-        and (e.terrain_types is None or terrain in e.terrain_types)
-    ]
-    if not valid:
-        return None
+This creates variety. Not every encounter is combat.
 
-    total = sum(e.weight for e in valid)
-    roll = RNG.random() * total
-    cumulative = 0
-    for entry in valid:
-        cumulative += entry.weight
-        if roll < cumulative:
-            return entry.creature_type
-    return valid[-1].creature_type
-```
+### Terrain-Specific Creatures
+
+The interesting design: creatures that only spawn near matching terrain.
+- Cave fish in water pools
+- Gas beetles near swamp
+- Salamanders near magma
+
+This ties fauna to environment, rewards paying attention to terrain.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Fauna tables define creatures per theme
-- [ ] Creatures spawn in appropriate rooms
+- [ ] Fauna tables per dungeon theme
+- [ ] Creature selection weighted by type
+- [ ] Depth filtering for tougher creatures
 - [ ] Terrain-specific creatures near matching tiles
-- [ ] Fauna density scales with risk level
+- [ ] Ambient and hostile creatures mixed

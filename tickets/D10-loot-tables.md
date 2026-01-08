@@ -8,70 +8,50 @@
 
 ## Summary
 
-Risk level → item level. Loot tables generate items with tiered effectiveness using contest() math from armor.py.
+Risk level determines loot quality. Deeper = better drops.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `LootTable` with weighted entries
-- [ ] Item generation from templates + risk level
-- [ ] Item level scaling using contest() pattern
-- [ ] Rarity scalar affects stat rolls
+### Risk to Reward
 
----
+The core loop: deeper is more dangerous, but drops are better. Risk level converts to item level, which affects stats.
 
-## Technical Details
-
-### Rarity System
-
-```python
-class Rarity(IntEnum):
-    COMMON = 0      # 60% - base stats
-    UNCOMMON = 1    # 25% - +15% stats
-    RARE = 2        # 12% - +30% stats
-    EPIC = 3        # 3%  - +50% stats
-
-RARITY_WEIGHTS = [60, 25, 12, 3]
-RARITY_BONUS = [1.0, 1.15, 1.30, 1.50]
-```
-
-### Item Level from Risk
-
-```python
-def risk_to_item_level(risk_level: int) -> int:
-    if risk_level < 20:
-        return 1 + risk_level // 4
-    elif risk_level < 50:
-        return 5 + (risk_level - 20) // 3
-    else:
-        return 15 + (risk_level - 50) // 4
-```
+Players push deeper because the rewards are worth it.
 
 ### Loot Tables
 
-```python
-DUNGEON_LOOT: list[LootEntry] = [
-    LootEntry("dagger", weight=10),
-    LootEntry("short_sword", weight=8),
-    LootEntry("leather_armor", weight=6),
-    LootEntry("potion_health", weight=15),
-    LootEntry("gold_coins", weight=20),
-]
+Different sources have different tables:
+- **Floor loot** - scattered items, common stuff
+- **Chest loot** - better than floor, concentrated
+- **Vault loot** - best in dungeon, reward for finding lever
+- **Monster drops** - based on creature type
 
-VAULT_LOOT: list[LootEntry] = [
-    LootEntry("long_sword", weight=8, min_level=5),
-    LootEntry("plate_armor", weight=3, min_level=10),
-    LootEntry("ring_protection", weight=5),
-    LootEntry("gold_pile", weight=15),
-]
-```
+Each table is a weighted list. Roll against weights, check minimum level requirements.
+
+### Rarity
+
+Items have rarity tiers that multiply base stats:
+- Common - baseline
+- Uncommon - +15%
+- Rare - +30%
+- Epic - +50%
+
+Higher risk levels shift the rarity distribution toward better outcomes.
+
+### Integration with armor.py
+
+Item effectiveness uses existing contest() math. A level 10 sword vs level 5 armor follows the same probability curves already in the game.
+
+Don't reinvent the wheel - use what exists.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Risk level converts to item level
-- [ ] Rarity roll affects stat multiplier
-- [ ] Items generated with scaled ranks
-- [ ] contest() math determines effectiveness
+- [ ] Risk level → item level conversion
+- [ ] Weighted loot table selection
+- [ ] Rarity affects stat multiplier
+- [ ] Different tables for floor/chest/vault
+- [ ] Item stats use contest() math
