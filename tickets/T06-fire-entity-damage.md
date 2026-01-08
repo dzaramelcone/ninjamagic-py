@@ -16,7 +16,7 @@ Entities in fire take damage over time. Standing in flames hurts.
 
 - [ ] Check entity positions against fire cells
 - [ ] Apply damage based on fire intensity
-- [ ] Fire damage ignores armor (environmental)
+- [ ] Armor modifies fire damage (plate amplifies, cloth resists)
 - [ ] Visual feedback for burning status
 
 ---
@@ -40,6 +40,9 @@ def apply_fire_damage():
             intensity = fire_cells.get((t.y, t.x), 0)
             if intensity > 0.1:
                 damage = intensity * FIRE_DAMAGE_MULT
+                # Armor modifies fire damage
+                if armor := esper.try_component(eid, Armor):
+                    damage *= armor.fire_mult  # plate=1.5, leather=1.0, cloth=0.5
                 bus.pulse(bus.HealthChanged(
                     source=eid,
                     health_change=-damage,
@@ -53,5 +56,5 @@ def apply_fire_damage():
 
 - [ ] Entities in fire tiles take damage
 - [ ] Damage scales with fire intensity
-- [ ] Fire damage bypasses armor
+- [ ] Armor type modifies fire damage (plate amplifies, magical cloth resists)
 - [ ] Players see "You are burning!" message
