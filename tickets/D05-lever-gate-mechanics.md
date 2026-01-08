@@ -8,86 +8,49 @@
 
 ## Summary
 
-Levers open vault gates. Pull lever in one room, gate opens elsewhere.
+Levers open vault gates. Action at a distance - pull here, something opens over there.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `Lever` component with target vault
-- [ ] Lever entity with visual glyph
-- [ ] `pull <lever>` command
-- [ ] Lever placement in non-vault room
-- [ ] Gate opening animation/feedback
+### The Interaction
 
----
+Lever is an entity you can interact with. Stand next to it, `pull lever`. It triggers its linked gate to open.
 
-## Technical Details
+"A grinding noise echoes from somewhere deeper in the dungeon..."
 
-### Component
+The player has to remember where the vault was, or discover it after pulling. Information asymmetry creates exploration.
 
-```python
-@component(slots=True, kw_only=True)
-class Lever:
-    target_vault: EntityId
-    pulled: bool = False
-```
+### Lever Properties
 
-### Lever Entity
+- One-use: once pulled, stays pulled
+- Linked: knows which vault gate it controls
+- Visible: has a glyph on the map, interactable noun ("rusty lever")
 
-```python
-def create_lever(level_eid: EntityId, y: int, x: int, vault_eid: EntityId):
-    lever = esper.create_entity(
-        Transform(map_id=level_eid, y=y, x=x),
-        Lever(target_vault=vault_eid),
-        Noun(value="lever", adjective="rusty"),
-    )
-    esper.add_component(lever, ("╥", 0.08, 0.4, 0.5), Glyph)
-    return lever
-```
+### Placement
 
-### Pull Command
+Lever is placed in a different room from its vault. Finding the lever is part of the challenge. The lever might be:
+- Behind enemies
+- Past a trap
+- In an optional side room
 
-```python
-class Pull(Command):
-    text: str = "pull"
+### Future Extensions
 
-    def trigger(self, root: bus.Inbound) -> Out:
-        _, _, rest = root.text.partition(" ")
-        if not rest:
-            return False, "Pull what?"
+Levers could do more than open vaults:
+- Close gates (trap players/monsters)
+- Trigger traps
+- Release caged creatures
+- Toggle bridges
 
-        match = find_adjacent(root.source, rest, with_components=(Lever,))
-        if not match:
-            return False, "Pull what?"
-
-        lever_eid, _, _ = match
-        bus.pulse(bus.PullLever(source=root.source, lever=lever_eid))
-        return OK
-```
-
-### Lever Handler
-
-```python
-def process():
-    for sig in bus.iter(bus.PullLever):
-        lever = esper.component_for_entity(sig.lever, Lever)
-        if lever.pulled:
-            story.echo("The lever has already been pulled.", target=sig.source)
-            continue
-
-        lever.pulled = True
-        open_vault(lever.target_vault)
-
-        story.echo("{0} {0:pull} the lever. A grinding noise echoes...", sig.source)
-```
+For Q1: lever opens vault gate. Keep it simple.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Lever entities placed in dungeon
-- [ ] `pull lever` command works
-- [ ] Pulling lever opens linked vault gate
+- [ ] Lever entity with visible glyph
+- [ ] `pull lever` command when adjacent
+- [ ] Pulling triggers linked vault gate to open
 - [ ] Lever can only be pulled once
-- [ ] Sound/message feedback
+- [ ] Feedback message on pull
