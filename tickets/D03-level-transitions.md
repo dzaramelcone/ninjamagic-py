@@ -8,68 +8,45 @@
 
 ## Summary
 
-Stairs connect dungeon levels. Descend/ascend between floors.
+Stairs connect dungeon levels. Players descend deeper or retreat upward.
 
 ---
 
-## Scope
+## Design
 
-- [ ] `Stairs` component (up/down, target level)
-- [ ] Stair placement during generation
-- [ ] `descend` and `ascend` commands
-- [ ] Level generation on first visit
+### Stairs Entity
 
----
+A Stairs entity is placed during level generation. It knows:
+- Direction (up or down)
+- Target level and position (where you appear)
 
-## Technical Details
+Down stairs on level N link to up stairs on level N+1. They're paired - descending and ascending should land you near where you left.
 
-### Component
+### Stair Layout
 
-```python
-@component(slots=True, kw_only=True)
-class Stairs:
-    direction: str  # "up" or "down"
-    target_level_eid: EntityId
-    target_y: int
-    target_x: int
-```
+- Level 0: down stairs only (entry level)
+- Level 1: up and down stairs
+- Level 2: up stairs only (bottom floor)
 
-### Placement
-
-```python
-def place_stairs(level_eid: EntityId, depth: int, dungeon_eid: EntityId):
-    # Down stairs (except on level 2)
-    if depth < 2:
-        next_level = get_level(dungeon_eid, depth + 1)
-        create_stairs(level_eid, "down", next_level, room_pos)
-
-    # Up stairs (except on level 0)
-    if depth > 0:
-        prev_level = get_level(dungeon_eid, depth - 1)
-        create_stairs(level_eid, "up", prev_level, room_pos)
-```
+Level 0's up stairs would exit to overworld - that's handled by D02's entrance system.
 
 ### Commands
 
-```python
-class Descend(Command):
-    text: str = "descend"
+- `descend` - use down stairs when standing on them
+- `ascend` - use up stairs when standing on them
 
-    def trigger(self, root: bus.Inbound) -> Out:
-        stairs = find_stairs_at(root.source, "down")
-        if not stairs:
-            return False, "There are no stairs leading down here."
+If target level hasn't been generated yet, generate it on transition.
 
-        bus.pulse(bus.UseStairs(source=root.source, stairs_eid=stairs))
-        return OK
-```
+### Gameplay
+
+Descending is committing deeper. Ascending is retreating. The tension: better loot below, but harder to escape if things go wrong.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Down stairs on levels 0, 1
-- [ ] Up stairs on levels 1, 2
-- [ ] `descend` moves to next level
-- [ ] `ascend` moves to previous level
-- [ ] Levels generated lazily on first visit
+- [ ] Down stairs placed on levels 0, 1
+- [ ] Up stairs placed on levels 1, 2
+- [ ] Stairs are paired (down on N links to up on N+1)
+- [ ] `descend` and `ascend` commands work
+- [ ] Target level generated on first visit
