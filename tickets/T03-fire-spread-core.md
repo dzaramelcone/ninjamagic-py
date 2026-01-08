@@ -156,6 +156,14 @@ def encode_fire_tick(sig: FireTick) -> bytes:
 
 ---
 
+## Q1 Scope
+
+**Keep it simple.** Server-authoritative, sync state directly. Accept visual jank. The gameplay decision ("lure enemy into grass, light it") works even without buttery smooth simulation.
+
+Rich simulation interactions (water flooding, steam, mud) are post-launch. Don't solve sync complexity until we know players want that depth.
+
+---
+
 ## Open Design Questions
 
 **Terrain mutation during spread:**
