@@ -58,9 +58,8 @@ TILE_DUNGEON_SWAMP = 20
 TILE_DUNGEON_WATER_SHALLOW = 21
 TILE_DUNGEON_WATER_DEEP = 22
 TILE_MAGMA = 23
-TILE_FIRE = 24
-TILE_BRIDGE = 25
-TILE_CHASM = 26
+TILE_BRIDGE = 24
+TILE_CHASM = 25
 ```
 
 ### Property Sets (O(1) Lookup)
@@ -91,7 +90,7 @@ WATER: frozenset[int] = frozenset({
 })
 
 DAMAGING: frozenset[int] = frozenset({
-    TILE_MAGMA, TILE_FIRE,
+    TILE_MAGMA,
 })
 ```
 
@@ -141,11 +140,12 @@ def burns_to(tile_id: int) -> int | None:
 
 DAMAGE_PER_TICK: dict[int, float] = {
     TILE_MAGMA: 20.0,
-    TILE_FIRE: 5.0,
 }
 
 def damage_per_tick(tile_id: int) -> float:
     return DAMAGE_PER_TICK.get(tile_id, 0.0)
+
+# Note: Fire damage comes from the fire effect layer, not terrain
 ```
 
 ---
