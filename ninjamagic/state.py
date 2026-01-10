@@ -27,6 +27,7 @@ from ninjamagic import (
     regen,
     scheduler,
     survive,
+    terrain,
     visibility,
 )
 from ninjamagic.util import get_looptime
@@ -96,6 +97,7 @@ class State:
             proc.process(now=now)
             move.process()
             visibility.process()
+            terrain.process(now=now)
             experience.process()
             echo.process()
             outbox.process()
