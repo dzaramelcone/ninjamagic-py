@@ -1,6 +1,9 @@
 # ninjamagic/anchor.py
 """Anchor system: stability radius, fuel, maintenance."""
 
+import esper
+
+from ninjamagic import bus
 from ninjamagic.component import Anchor
 
 # Base stability radius at full strength and fuel (in cells)
@@ -57,3 +60,17 @@ def add_fuel(anchor: Anchor, *, amount: float) -> float:
     old_fuel = anchor.fuel
     anchor.fuel = min(anchor.max_fuel, anchor.fuel + amount)
     return anchor.fuel - old_fuel
+
+
+def process(*, delta_seconds: float) -> None:
+    """Process all anchors: consume fuel, handle tending signals."""
+
+    # Handle tending signals
+    for sig in bus.iter(bus.TendAnchor):
+        if esper.has_component(sig.anchor, Anchor):
+            anchor = esper.component_for_entity(sig.anchor, Anchor)
+            add_fuel(anchor, amount=sig.fuel_amount)
+
+    # Consume fuel from all anchors
+    for _eid, anchor in esper.get_component(Anchor):
+        consume_fuel(anchor, seconds=delta_seconds)

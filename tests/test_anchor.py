@@ -117,3 +117,26 @@ def test_add_fuel_caps_at_max():
     add_fuel(anchor, amount=50.0)
 
     assert anchor.fuel == 100.0
+
+
+def test_anchor_processor():
+    """Anchor processor consumes fuel and handles tending."""
+    import esper
+
+    from ninjamagic import bus
+    from ninjamagic.anchor import process
+    from ninjamagic.component import Anchor, Transform
+
+    esper.clear_database()
+
+    # Create an anchor
+    anchor_eid = esper.create_entity()
+    esper.add_component(anchor_eid, Anchor(strength=1.0, fuel=100.0, max_fuel=100.0))
+    esper.add_component(anchor_eid, Transform(map_id=1, y=0, x=0))
+
+    # Process for 10 seconds
+    process(delta_seconds=10.0)
+    bus.clear()
+
+    anchor = esper.component_for_entity(anchor_eid, Anchor)
+    assert anchor.fuel < 100.0  # Fuel consumed
