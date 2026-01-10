@@ -71,8 +71,8 @@ def build_demo() -> EntityId:
         (1, out, ord("."), 0.52777, 0.5, 0.9, 1.0),
         (2, out, ord("#"), 0.10, 0.10, 0.40, 1.0),
         (3, out, ord("≈"), 0.58, 0.85, 0.85, 1.0),
-        (4, out, ord("Ϙ"), 0.33, 0.65, 0.55, 1.0),
-        (5, out, ord("ϒ"), 0.08, 0.30, 0.35, 1.0),
+        (4, out, ord('"'), 0.35, 0.6, 0.5, 1.0),  # TILE_OVERGROWN
+        (5, out, ord("%"), 0.30, 0.7, 0.4, 1.0),  # TILE_DENSE_OVERGROWN
     ]
 
     build_hub(map_id=out, chips=chips)
@@ -180,7 +180,7 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
         return False
     y -= top
     x -= left
-    return grid[y * TILE_STRIDE_W + x] in {1, 3}
+    return grid[y * TILE_STRIDE_W + x] in {1, 3, 4, 5}  # floor, grass, overgrown, dense
 
 
 def get_tile(
