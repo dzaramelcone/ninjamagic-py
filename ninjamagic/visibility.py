@@ -12,8 +12,9 @@ from ninjamagic.component import (
     Stance,
     Transform,
 )
+from ninjamagic.outbox import sent_tiles
 from ninjamagic.terrain import on_tile_sent
-from ninjamagic.util import VIEW_STRIDE, get_looptime
+from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, VIEW_STRIDE, get_looptime
 from ninjamagic.world.state import ChipSet
 
 log = logging.getLogger(__name__)
@@ -227,3 +228,29 @@ def process():
 
     for sig in bus.iter(bus.GasUpdated):
         notify_gas(sig)
+
+    for sig in bus.iter(bus.TileMutated):
+        # Resend the affected tile to all nearby players
+        for eid, (conn, transform) in esper.get_components(Connection, Transform):
+            if transform.map_id != sig.map_id:
+                continue
+
+            # Check if player is close enough to see this tile
+            dy = abs(transform.y - sig.top)
+            dx = abs(transform.x - sig.left)
+
+            if dy <= VIEW_H + TILE_STRIDE_H and dx <= VIEW_W + TILE_STRIDE_W:
+                # Mark tile as needing resend
+                seen = sent_tiles.get(conn)
+                if seen:
+                    seen.discard((sig.map_id, sig.top, sig.left))
+
+                # Queue tile for sending
+                bus.pulse(
+                    bus.OutboundTile(
+                        to=eid,
+                        map_id=sig.map_id,
+                        top=sig.top,
+                        left=sig.left,
+                    )
+                )
