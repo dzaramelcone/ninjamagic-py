@@ -144,7 +144,19 @@ class LastAnchorRest:
 
 @component(slots=True, kw_only=True)
 class Anchor:
-    """The entity is an anchor."""
+    """The entity is an anchor (bonfire) that creates a stability radius.
+
+    Attributes:
+        strength: Base strength from sacrifice (0.0-1.0). Affects radius size.
+        fuel: Current fuel level (0.0-max_fuel). Depletes over time.
+        max_fuel: Maximum fuel capacity.
+        eternal: If True, never runs out of fuel (the genesis anchor).
+    """
+
+    strength: float = 1.0
+    fuel: float = 100.0
+    max_fuel: float = 100.0
+    eternal: bool = False
 
 
 @component(slots=True, kw_only=True)
