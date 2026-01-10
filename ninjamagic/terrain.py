@@ -42,3 +42,8 @@ def mark_tile_instantiated(map_id: int, *, top: int, left: int, at: Looptime) ->
     # Only mark if not already instantiated
     if (top, left) not in inst.times:
         inst.times[(top, left)] = at
+
+
+def on_tile_sent(map_id: int, *, top: int, left: int, now: Looptime) -> None:
+    """Called when a tile is sent to a client. Marks it as instantiated."""
+    mark_tile_instantiated(map_id, top=top, left=left, at=now)
