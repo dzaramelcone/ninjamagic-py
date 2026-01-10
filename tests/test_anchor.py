@@ -95,3 +95,25 @@ def test_eternal_anchor_no_consumption():
     consume_fuel(anchor, seconds=1000.0)
 
     assert anchor.fuel == 100.0
+
+
+def test_add_fuel():
+    """Players can add fuel to anchors."""
+    from ninjamagic.anchor import add_fuel
+
+    anchor = Anchor(strength=1.0, fuel=50.0, max_fuel=100.0)
+
+    add_fuel(anchor, amount=25.0)
+
+    assert anchor.fuel == 75.0
+
+
+def test_add_fuel_caps_at_max():
+    """Fuel can't exceed max_fuel."""
+    from ninjamagic.anchor import add_fuel
+
+    anchor = Anchor(strength=1.0, fuel=90.0, max_fuel=100.0)
+
+    add_fuel(anchor, amount=50.0)
+
+    assert anchor.fuel == 100.0

@@ -47,3 +47,13 @@ def consume_fuel(anchor: Anchor, *, seconds: float) -> None:
 
     consumption = FUEL_CONSUMPTION_RATE * seconds
     anchor.fuel = max(0.0, anchor.fuel - consumption)
+
+
+def add_fuel(anchor: Anchor, *, amount: float) -> float:
+    """Add fuel to an anchor.
+
+    Returns the amount actually added (may be less if near max).
+    """
+    old_fuel = anchor.fuel
+    anchor.fuel = min(anchor.max_fuel, anchor.fuel + amount)
+    return anchor.fuel - old_fuel
