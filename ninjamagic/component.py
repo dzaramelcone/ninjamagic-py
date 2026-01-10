@@ -21,9 +21,7 @@ from ninjamagic.util import (
 Biomes = Literal["cave", "forest"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
-ProcVerb = Literal[
-    "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
-]
+ProcVerb = Literal["slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"]
 T = TypeVar("T")
 EntityId = int
 MAX_HEALTH = 100.0
@@ -223,6 +221,17 @@ class Hostility:
 
 class Rotting:
     """The entity has started to rot. Used by food, unless you're giving Malenia."""
+
+
+@component(slots=True, kw_only=True)
+class TileInstantiation:
+    """Tracks when each tile was first instantiated (lazy generation).
+
+    Key: (top, left) tile coordinates
+    Value: Looptime when tile was first visited
+    """
+
+    times: dict[tuple[int, int], float] = field(default_factory=dict)
 
 
 @component(slots=True, frozen=True)
