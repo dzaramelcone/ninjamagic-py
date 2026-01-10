@@ -5,7 +5,8 @@ import math
 
 import esper
 
-from ninjamagic.component import TileInstantiation
+from ninjamagic import bus
+from ninjamagic.component import Chips, TileInstantiation
 from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, Looptime
 
 # Tile type constants (must match ChipSet definitions)
@@ -115,3 +116,63 @@ def get_decay_rate(
 def get_decay_target(tile_id: int) -> int | None:
     """Get what a tile decays into, or None if it doesn't decay."""
     return DECAY_MAP.get(tile_id)
+
+
+def process_decay(*, now: Looptime, anchor_positions: list[tuple[int, int]]) -> None:
+    """Process terrain decay for all instantiated tiles."""
+
+    for map_id, (chips, inst) in esper.get_components(Chips, TileInstantiation):
+        tiles_to_check = list(inst.times.keys())
+
+        for top, left in tiles_to_check:
+            tile_data = chips.get((top, left))
+            if tile_data is None:
+                continue
+
+            age = get_tile_age(map_id, top=top, left=left, now=now)
+            if age is None:
+                continue
+
+            # Check each cell in the tile
+            for idx in range(len(tile_data)):
+                cell_y = top + idx // TILE_STRIDE_W
+                cell_x = left + idx % TILE_STRIDE_W
+
+                # Get decay rate for this cell
+                decay_rate = get_decay_rate(
+                    map_id=map_id, y=cell_y, x=cell_x, anchor_positions=anchor_positions
+                )
+
+                if decay_rate == 0.0:
+                    continue
+
+                # Calculate effective decay time
+                effective_age = age * decay_rate
+
+                # Check if enough time has passed for decay
+                current_tile = tile_data[idx]
+                decay_target = get_decay_target(current_tile)
+
+                if decay_target is None:
+                    continue
+
+                if effective_age >= DECAY_INTERVAL:
+                    # Mutate the tile
+                    old_tile = tile_data[idx]
+                    tile_data[idx] = decay_target
+
+                    # Signal the change
+                    bus.pulse(
+                        bus.TileMutated(
+                            map_id=map_id,
+                            top=top,
+                            left=left,
+                            y=idx // TILE_STRIDE_W,
+                            x=idx % TILE_STRIDE_W,
+                            old_tile=old_tile,
+                            new_tile=decay_target,
+                        )
+                    )
+
+            # Reset instantiation time for decayed tiles (so decay continues)
+            inst.times[(top, left)] = now
