@@ -60,3 +60,38 @@ def test_stability_radius_scales_with_fuel():
     assert get_stability_radius(full) > get_stability_radius(half)
     assert get_stability_radius(half) > get_stability_radius(empty)
     assert get_stability_radius(empty) == 0.0
+
+
+def test_fuel_consumption():
+    """Anchors consume fuel over time."""
+    from ninjamagic.anchor import FUEL_CONSUMPTION_RATE, consume_fuel
+
+    anchor = Anchor(strength=1.0, fuel=100.0, max_fuel=100.0)
+
+    # Consume fuel for 1 second
+    consume_fuel(anchor, seconds=1.0)
+
+    assert anchor.fuel == 100.0 - FUEL_CONSUMPTION_RATE
+
+
+def test_fuel_consumption_stops_at_zero():
+    """Fuel doesn't go negative."""
+    from ninjamagic.anchor import consume_fuel
+
+    anchor = Anchor(strength=1.0, fuel=1.0, max_fuel=100.0)
+
+    # Consume more than available
+    consume_fuel(anchor, seconds=1000.0)
+
+    assert anchor.fuel == 0.0
+
+
+def test_eternal_anchor_no_consumption():
+    """Eternal anchors don't consume fuel."""
+    from ninjamagic.anchor import consume_fuel
+
+    anchor = Anchor(strength=1.0, fuel=100.0, eternal=True)
+
+    consume_fuel(anchor, seconds=1000.0)
+
+    assert anchor.fuel == 100.0
