@@ -6,6 +6,9 @@ from ninjamagic.component import Anchor
 # Base stability radius at full strength and fuel (in cells)
 BASE_STABILITY_RADIUS = 24
 
+# Fuel consumed per second (100 fuel = ~16 minutes at base rate)
+FUEL_CONSUMPTION_RATE = 0.1
+
 # Minimum radius (below this, anchor provides no protection)
 MIN_STABILITY_RADIUS = 4
 
@@ -32,3 +35,15 @@ def get_stability_radius(anchor: Anchor) -> float:
         return 0.0
 
     return radius
+
+
+def consume_fuel(anchor: Anchor, *, seconds: float) -> None:
+    """Consume fuel from an anchor over time.
+
+    Does nothing for eternal anchors.
+    """
+    if anchor.eternal:
+        return
+
+    consumption = FUEL_CONSUMPTION_RATE * seconds
+    anchor.fuel = max(0.0, anchor.fuel - consumption)
