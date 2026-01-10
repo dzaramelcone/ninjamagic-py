@@ -410,6 +410,19 @@ class OutboundSkill(Signal):
     tnl: float
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class TileMutated(Signal):
+    """A terrain tile has changed."""
+
+    map_id: int
+    top: int
+    left: int
+    y: int  # Cell within tile
+    x: int  # Cell within tile
+    old_tile: int
+    new_tile: int
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
@@ -446,9 +459,7 @@ def pulse_in(delay: float, *sigs: Signal) -> None:
             *[
                 sig
                 for sig in sigs
-                if esper.entity_exists(
-                    getattr(sig, "source", 0) or getattr(sig, "to", 0)
-                )
+                if esper.entity_exists(getattr(sig, "source", 0) or getattr(sig, "to", 0))
             ]
         )
 
