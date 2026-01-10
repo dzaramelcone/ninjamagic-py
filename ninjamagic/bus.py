@@ -423,6 +423,15 @@ class TileMutated(Signal):
     new_tile: int
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class TendAnchor(Signal):
+    """Player tends an anchor, adding fuel."""
+
+    source: int  # Player entity
+    anchor: int  # Anchor entity
+    fuel_amount: float
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
