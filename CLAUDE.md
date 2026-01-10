@@ -105,6 +105,25 @@ Review how to use `story.echo` carefully, and copy patterns from other uses thro
 
 Dataclasses with `@component(slots=True)`. Key ones: `Transform` (position), `Health`, `Noun` (display name with pronouns), `Stance`, `Skills`.
 
+## Documentation
+
+Reference docs live in `docs/`. Read these before diving into implementation if these systems are involved or have cross cutting concerns.
+
+| Doc | Contents |
+|-----|----------|
+| `SYSTEMS.md` | Nightstorm, camp, stress, experience mechanics. Current implementation reference. |
+| `COMBAT_YOMI.md` | Combat system design. Attack/block timing, procs, yomi layers. |
+| `plans/2026-01-10-q1-mvp-design.md` | **Q1 MVP design.** The Darkness and World State spikes. |
+
+### Key Concepts
+
+- **Pips** - Eating quality score. Shared eating = +4 pips. Multiplies XP consolidation.
+- **RestExp** - XP accumulated during day, consolidated at rest. The bonfire is where you grow.
+- **Anchor** - Bonfire. Creates stability radius. Requires sacrifice to create, investment to maintain.
+- **Aggravated stress** - Stress floor. Only recovers at anchor. The ratchet.
+- **The Darkness** - Entropy. Mobs spawn from unlit tiles, terrain decays without light.
+- **Pilgrimage** - Creating new anchors. Sacrifice at existing anchor, carry through darkness, birth new light.
+
 ## Working Together
 
 - Push back on her ideas. See what she hasn't seen.
@@ -112,6 +131,7 @@ Dataclasses with `@component(slots=True)`. Key ones: `Transform` (position), `He
 - Don't be sycophantic. Don't pad estimates.
 - Don't overexplain. Don't hedge excessively. Say the thing.
 - The goal is equal partnership, not following.
+- **Keep docs current.** When design decisions are made or systems change, update `SYSTEMS.md` and `CLAUDE.md`. Future conversations depend on these being accurate.
 
 ## Commits
 
