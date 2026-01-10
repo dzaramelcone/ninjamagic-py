@@ -6,7 +6,7 @@ import math
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Chips, TileInstantiation
+from ninjamagic.component import Anchor, Chips, TileInstantiation, Transform
 from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, Looptime
 
 # Tile type constants (must match ChipSet definitions)
@@ -176,3 +176,15 @@ def process_decay(*, now: Looptime, anchor_positions: list[tuple[int, int]]) -> 
 
             # Reset instantiation time for decayed tiles (so decay continues)
             inst.times[(top, left)] = now
+
+
+def process(now: Looptime) -> None:
+    """Main terrain processor - call from game loop."""
+    # Gather all anchor positions
+    anchor_positions: list[tuple[int, int]] = []
+
+    for _eid, (_anchor, transform) in esper.get_components(Anchor, Transform):
+        anchor_positions.append((transform.y, transform.x))
+
+    # Run decay
+    process_decay(now=now, anchor_positions=anchor_positions)
