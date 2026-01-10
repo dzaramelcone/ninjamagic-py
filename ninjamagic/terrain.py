@@ -8,6 +8,27 @@ import esper
 from ninjamagic.component import TileInstantiation
 from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, Looptime
 
+# Tile type constants (must match ChipSet definitions)
+TILE_VOID = 0
+TILE_FLOOR = 1
+TILE_WALL = 2
+TILE_GRASS = 3
+TILE_OVERGROWN = 4  # Decayed floor
+TILE_DENSE_OVERGROWN = 5  # Heavily decayed, difficult terrain
+
+# Decay mappings: what each tile becomes when decayed
+DECAY_MAP: dict[int, int | None] = {
+    TILE_FLOOR: TILE_OVERGROWN,
+    TILE_GRASS: TILE_OVERGROWN,
+    TILE_OVERGROWN: TILE_DENSE_OVERGROWN,
+    TILE_DENSE_OVERGROWN: None,  # Terminal state
+    TILE_WALL: None,  # Doesn't decay
+    TILE_VOID: None,  # Doesn't decay
+}
+
+# Time in seconds for one decay step at maximum decay rate
+DECAY_INTERVAL = 300.0  # 5 minutes
+
 # Stability radius around anchors (in cells)
 ANCHOR_STABILITY_RADIUS = 24
 
@@ -89,3 +110,8 @@ def get_decay_rate(
     distance_into_gradient = min_distance - ANCHOR_STABILITY_RADIUS
 
     return distance_into_gradient / gradient_range
+
+
+def get_decay_target(tile_id: int) -> int | None:
+    """Get what a tile decays into, or None if it doesn't decay."""
+    return DECAY_MAP.get(tile_id)
