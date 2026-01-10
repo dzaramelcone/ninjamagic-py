@@ -27,3 +27,19 @@ def test_tile_instantiation_tracking():
 
     # Now age is time since instantiation
     assert get_tile_age(map_id, top=0, left=0, now=now) == 500.0
+
+
+def test_tile_marked_on_visibility():
+    """Tiles are marked as instantiated when sent to a client."""
+    # This is an integration test - we'll verify the hook exists
+    from ninjamagic.terrain import on_tile_sent
+
+    map_id = esper.create_entity()
+    now = Looptime(100.0)
+
+    # Simulate tile being sent
+    on_tile_sent(map_id, top=16, left=32, now=now)
+
+    # Should now be tracked
+    age = get_tile_age(map_id, top=16, left=32, now=Looptime(150.0))
+    assert age == 50.0
