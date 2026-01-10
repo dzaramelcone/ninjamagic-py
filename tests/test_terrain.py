@@ -64,8 +64,7 @@ def test_decay_rate_near_anchor():
 
     # Just inside radius = no decay
     rate = get_decay_rate(
-        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS - 1,
-        anchor_positions=[(50, 50)]
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS - 1, anchor_positions=[(50, 50)]
     )
     assert rate == 0.0
 
@@ -78,14 +77,27 @@ def test_decay_rate_gradient():
 
     # Just outside radius
     rate_near = get_decay_rate(
-        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 5,
-        anchor_positions=[anchor]
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 5, anchor_positions=[anchor]
     )
 
     # Far outside radius
     rate_far = get_decay_rate(
-        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 50,
-        anchor_positions=[anchor]
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 50, anchor_positions=[anchor]
     )
 
     assert 0.0 < rate_near < rate_far <= 1.0
+
+
+def test_tile_decay_mapping():
+    """Tiles have defined decay paths."""
+    from ninjamagic.terrain import TILE_FLOOR, TILE_OVERGROWN, TILE_WALL, get_decay_target
+
+    # Floor decays to overgrown
+    assert get_decay_target(TILE_FLOOR) == TILE_OVERGROWN
+
+    # Walls don't decay
+    assert get_decay_target(TILE_WALL) is None
+
+    # Overgrown decays further (or stops)
+    target = get_decay_target(TILE_OVERGROWN)
+    assert target is None or target != TILE_OVERGROWN  # Either stops or changes
