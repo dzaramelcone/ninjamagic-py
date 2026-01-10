@@ -12,7 +12,8 @@ from ninjamagic.component import (
     Stance,
     Transform,
 )
-from ninjamagic.util import VIEW_STRIDE
+from ninjamagic.terrain import on_tile_sent
+from ninjamagic.util import VIEW_STRIDE, get_looptime
 from ninjamagic.world.state import ChipSet
 
 log = logging.getLogger(__name__)
@@ -34,6 +35,14 @@ def notify_movement(sig: bus.PositionChanged):
     sig_stance = esper.try_component(sig.source, Stance)
     # tell source. send tiles.
     if notify_source:
+        now = get_looptime()
+        tile_signals = []
+        for dx, dy in CORNERS:
+            top, left = sig.to_y + dy, sig.to_x + dx
+            tile_signals.append(
+                bus.OutboundTile(to=sig.source, map_id=sig.to_map_id, top=top, left=left)
+            )
+            on_tile_sent(sig.to_map_id, top=top, left=left, now=now)
         bus.pulse(
             bus.OutboundMove(
                 to=sig.source,
@@ -43,23 +52,11 @@ def notify_movement(sig: bus.PositionChanged):
                 y=sig.to_y,
                 quiet=sig.quiet,
             ),
-            *[
-                bus.OutboundTile(
-                    to=sig.source,
-                    map_id=sig.to_map_id,
-                    top=sig.to_y + dy,
-                    left=sig.to_x + dx,
-                )
-                for dx, dy in CORNERS
-            ],
+            *tile_signals,
         )
         if sig_glyph:
             g, h, s, v = sig_glyph
-            bus.pulse(
-                bus.OutboundGlyph(
-                    to=sig.source, source=sig.source, glyph=g, h=h, s=s, v=v
-                )
-            )
+            bus.pulse(bus.OutboundGlyph(to=sig.source, source=sig.source, glyph=g, h=h, s=s, v=v))
         if sig_health:
             bus.pulse(
                 bus.OutboundHealth(
@@ -70,15 +67,9 @@ def notify_movement(sig: bus.PositionChanged):
                 )
             )
         if sig_noun:
-            bus.pulse(
-                bus.OutboundNoun(to=sig.source, source=sig.source, noun=sig_noun.value)
-            )
+            bus.pulse(bus.OutboundNoun(to=sig.source, source=sig.source, noun=sig_noun.value))
         if sig_stance:
-            bus.pulse(
-                bus.OutboundStance(
-                    to=sig.source, source=sig.source, stance=sig_stance.cur
-                )
-            )
+            bus.pulse(bus.OutboundStance(to=sig.source, source=sig.source, stance=sig_stance.cur))
         if not same_map:
             bus.pulse(
                 bus.OutboundChipSet(
@@ -124,11 +115,7 @@ def notify_movement(sig: bus.PositionChanged):
             )
             if sig_glyph:
                 g, h, s, v = sig_glyph
-                bus.pulse(
-                    bus.OutboundGlyph(
-                        to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v
-                    )
-                )
+                bus.pulse(bus.OutboundGlyph(to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v))
             if sig_health:
                 bus.pulse(
                     bus.OutboundHealth(
@@ -139,15 +126,9 @@ def notify_movement(sig: bus.PositionChanged):
                     )
                 )
             if sig_noun:
-                bus.pulse(
-                    bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value)
-                )
+                bus.pulse(bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value))
             if sig_stance:
-                bus.pulse(
-                    bus.OutboundStance(
-                        to=o_id, source=sig.source, stance=sig_stance.cur
-                    )
-                )
+                bus.pulse(bus.OutboundStance(to=o_id, source=sig.source, stance=sig_stance.cur))
 
         # symmetrical
         if notify_source and in_to:
@@ -163,11 +144,7 @@ def notify_movement(sig: bus.PositionChanged):
             )
             if o_glyph:
                 g, h, s, v = o_glyph
-                bus.pulse(
-                    bus.OutboundGlyph(
-                        to=sig.source, source=o_id, glyph=g, h=h, s=s, v=v
-                    )
-                )
+                bus.pulse(bus.OutboundGlyph(to=sig.source, source=o_id, glyph=g, h=h, s=s, v=v))
             if o_health:
                 bus.pulse(
                     bus.OutboundHealth(
@@ -178,13 +155,9 @@ def notify_movement(sig: bus.PositionChanged):
                     )
                 )
             if o_noun:
-                bus.pulse(
-                    bus.OutboundNoun(to=sig.source, source=o_id, noun=o_noun.value)
-                )
+                bus.pulse(bus.OutboundNoun(to=sig.source, source=o_id, noun=o_noun.value))
             if o_stance:
-                bus.pulse(
-                    bus.OutboundStance(to=sig.source, source=o_id, stance=o_stance.cur)
-                )
+                bus.pulse(bus.OutboundStance(to=sig.source, source=o_id, stance=o_stance.cur))
 
         # publish to former observers
         if notify_other and in_from and not in_to:
@@ -200,11 +173,7 @@ def notify_movement(sig: bus.PositionChanged):
             )
             if sig_glyph:
                 g, h, s, v = sig_glyph
-                bus.pulse(
-                    bus.OutboundGlyph(
-                        to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v
-                    )
-                )
+                bus.pulse(bus.OutboundGlyph(to=o_id, source=sig.source, glyph=g, h=h, s=s, v=v))
             if sig_health:
                 bus.pulse(
                     bus.OutboundHealth(
@@ -215,15 +184,9 @@ def notify_movement(sig: bus.PositionChanged):
                     )
                 )
             if sig_noun:
-                bus.pulse(
-                    bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value)
-                )
+                bus.pulse(bus.OutboundNoun(to=o_id, source=sig.source, noun=sig_noun.value))
             if sig_stance:
-                bus.pulse(
-                    bus.OutboundStance(
-                        to=o_id, source=sig.source, stance=sig_stance.cur
-                    )
-                )
+                bus.pulse(bus.OutboundStance(to=o_id, source=sig.source, stance=sig_stance.cur))
 
 
 def notify_gas(sig: bus.GasUpdated):
