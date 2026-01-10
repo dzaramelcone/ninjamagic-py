@@ -43,3 +43,49 @@ def test_tile_marked_on_visibility():
     # Should now be tracked
     age = get_tile_age(map_id, top=16, left=32, now=Looptime(150.0))
     assert age == 50.0
+
+
+def test_decay_rate_no_anchors():
+    """Without anchors, decay rate is maximum."""
+    from ninjamagic.terrain import get_decay_rate
+
+    # No anchors = maximum decay (1.0)
+    rate = get_decay_rate(map_id=1, y=50, x=50, anchor_positions=[])
+    assert rate == 1.0
+
+
+def test_decay_rate_near_anchor():
+    """Near an anchor, decay rate is zero."""
+    from ninjamagic.terrain import ANCHOR_STABILITY_RADIUS, get_decay_rate
+
+    # At anchor = no decay
+    rate = get_decay_rate(map_id=1, y=50, x=50, anchor_positions=[(50, 50)])
+    assert rate == 0.0
+
+    # Just inside radius = no decay
+    rate = get_decay_rate(
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS - 1,
+        anchor_positions=[(50, 50)]
+    )
+    assert rate == 0.0
+
+
+def test_decay_rate_gradient():
+    """Decay rate increases with distance from anchor."""
+    from ninjamagic.terrain import ANCHOR_STABILITY_RADIUS, get_decay_rate
+
+    anchor = (50, 50)
+
+    # Just outside radius
+    rate_near = get_decay_rate(
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 5,
+        anchor_positions=[anchor]
+    )
+
+    # Far outside radius
+    rate_far = get_decay_rate(
+        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 50,
+        anchor_positions=[anchor]
+    )
+
+    assert 0.0 < rate_near < rate_far <= 1.0
