@@ -101,3 +101,36 @@ def test_tile_decay_mapping():
     # Overgrown decays further (or stops)
     target = get_decay_target(TILE_OVERGROWN)
     assert target is None or target != TILE_OVERGROWN  # Either stops or changes
+
+
+def test_decay_processor_mutates_tiles():
+    """Decay processor mutates old tiles outside anchor radius."""
+    from ninjamagic.component import Chips, TileInstantiation
+    from ninjamagic.terrain import (
+        DECAY_INTERVAL,
+        TILE_FLOOR,
+        TILE_OVERGROWN,
+        mark_tile_instantiated,
+        process_decay,
+    )
+
+    # Setup: create a map with a floor tile
+    map_id = esper.create_entity()
+
+    # Create a 16x16 tile of floor
+    tile_data = bytearray([TILE_FLOOR] * 256)
+    esper.add_component(map_id, {(0, 0): tile_data}, Chips)
+    esper.add_component(map_id, TileInstantiation())
+
+    # Mark tile as instantiated long ago
+    old_time = Looptime(0.0)
+    mark_tile_instantiated(map_id, top=0, left=0, at=old_time)
+
+    # Process decay at a time when decay should occur
+    # (DECAY_INTERVAL seconds later, no anchors = full decay rate)
+    now = Looptime(DECAY_INTERVAL + 1.0)
+    process_decay(now=now, anchor_positions=[])
+
+    # Tile should have decayed
+    chips = esper.component_for_entity(map_id, Chips)
+    assert chips[(0, 0)][0] == TILE_OVERGROWN
