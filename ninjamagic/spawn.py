@@ -39,6 +39,28 @@ class SpawnConfig:
 # Track spawn accumulator per map
 _spawn_accumulators: dict[int, float] = {}
 
+# Spawn weights by phase
+SPAWN_WEIGHTS: dict[Phase, dict[MobType, float]] = {
+    Phase.DAY: {MobType.SWARM: 0.8, MobType.PACK: 0.2},
+    Phase.EVENING: {MobType.SWARM: 0.5, MobType.PACK: 0.4, MobType.DEATH_KNIGHT: 0.1},
+    Phase.WAVES: {
+        MobType.SWARM: 0.4,
+        MobType.PACK: 0.4,
+        MobType.DEATH_KNIGHT: 0.15,
+        MobType.BOSS: 0.05,
+    },
+    Phase.FADE: {MobType.SWARM: 0.6, MobType.PACK: 0.4},
+    Phase.REST: {},  # No spawning
+}
+
+# Names by type
+MOB_NAMES: dict[MobType, list[str]] = {
+    MobType.SWARM: ["goblin", "rat", "crawler"],
+    MobType.PACK: ["wolf", "bandit", "hound"],
+    MobType.DEATH_KNIGHT: ["death knight", "revenant", "shade"],
+    MobType.BOSS: ["lich", "demon", "abomination"],
+}
+
 # Mob type configurations
 MOB_CONFIGS = {
     MobType.SWARM: {
@@ -157,6 +179,23 @@ def create_mob(
     return eid
 
 
+def _choose_mob_type(phase: Phase) -> MobType:
+    """Choose a mob type based on phase weights."""
+    weights = SPAWN_WEIGHTS.get(phase, {MobType.SWARM: 1.0})
+    if not weights:
+        return MobType.SWARM
+
+    types = list(weights.keys())
+    probs = list(weights.values())
+    return random.choices(types, weights=probs)[0]
+
+
+def _choose_mob_name(mob_type: MobType) -> str:
+    """Choose a random name for a mob type."""
+    names = MOB_NAMES.get(mob_type, ["creature"])
+    return random.choice(names)
+
+
 def process_spawning(
     *,
     map_id: int,
@@ -212,13 +251,17 @@ def process_spawning(
 
         y, x = point
 
+        # Choose mob type and name based on phase
+        mob_type = _choose_mob_type(phase)
+        name = _choose_mob_name(mob_type)
+
         # Create mob
         eid = create_mob(
-            mob_type=MobType.SWARM,
+            mob_type=mob_type,
             map_id=map_id,
             y=y,
             x=x,
-            name="goblin",
+            name=name,
         )
 
         spawned.append(eid)
