@@ -116,6 +116,7 @@ class State:
                 config=spawn_config,
                 walkable_check=lambda y, x: can_enter(map_id=1, y=y, x=x),
             )
+            spawn.process_despawning()
 
             terrain.process(now=now)
             experience.process()
