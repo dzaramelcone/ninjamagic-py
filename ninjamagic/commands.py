@@ -4,7 +4,7 @@ from typing import Protocol
 
 import esper
 
-from ninjamagic import bus, reach, story, util
+from ninjamagic import bus, pilgrimage, reach, story, util
 from ninjamagic.component import (
     Anchor,
     ContainedBy,
@@ -17,8 +17,10 @@ from ninjamagic.component import (
     Ingredient,
     Lag,
     Noun,
+    PilgrimageState,
     Prompt,
     ProvidesHeat,
+    SacrificeType,
     Skills,
     Slot,
     Stance,
@@ -807,6 +809,64 @@ class Tend(Command):
         return False, "There's nothing to tend here."
 
 
+class Sacrifice(Command):
+    text: str = "sacrifice"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        if esper.has_component(root.source, PilgrimageState):
+            return False, "You already carry a sacrifice."
+
+        _, _, rest = root.text.strip().partition(" ")
+
+        sacrifice_type = SacrificeType.XP
+        amount = 100.0
+
+        if "health" in rest.lower():
+            sacrifice_type = SacrificeType.HEALTH
+            amount = 25.0
+
+        result = pilgrimage.make_sacrifice(
+            player_eid=root.source,
+            sacrifice_type=sacrifice_type,
+            amount=amount,
+            now=get_looptime(),
+        )
+
+        if result is None:
+            return False, "You cannot make a sacrifice here. You must be near a bonfire."
+
+        story.echo(
+            "{0} {0:offers} a sacrifice to the fire. The darkness stirs within.",
+            root.source,
+        )
+        return OK
+
+
+class PlantBonfire(Command):
+    text: str = "plant"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        if not esper.has_component(root.source, PilgrimageState):
+            return False, "You carry no sacrifice."
+
+        tform = esper.component_for_entity(root.source, Transform)
+
+        result = pilgrimage.create_anchor_from_sacrifice(
+            player_eid=root.source,
+            location_y=tform.y,
+            location_x=tform.x,
+        )
+
+        if result is None:
+            return False, "You cannot plant a bonfire here."
+
+        story.echo(
+            "{0} {0:plants} {0:their} sacrifice. Fire blooms from darkness.",
+            root.source,
+        )
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -834,4 +894,6 @@ commands: list[Command] = [
     Eat(),
     Time(),
     Tend(),
+    Sacrifice(),
+    PlantBonfire(),
 ]
