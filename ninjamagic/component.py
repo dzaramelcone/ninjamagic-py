@@ -537,6 +537,47 @@ def get_worn(
     ]
 
 
+class SacrificeType(Enum):
+    """Types of sacrifice for anchor creation."""
+
+    XP = "xp"
+    HEALTH = "health"
+    ITEM = "item"
+
+
+@component(slots=True, kw_only=True)
+class Sacrifice:
+    """A sacrifice item that can be used to create an anchor.
+
+    Attributes:
+        sacrifice_type: What was sacrificed.
+        amount: How much was sacrificed.
+        source_anchor: The anchor where sacrifice was made.
+        source_player: The player who made the sacrifice.
+    """
+
+    sacrifice_type: SacrificeType
+    amount: float
+    source_anchor: int
+    source_player: int
+
+
+def get_sacrifice_strength(sacrifice: Sacrifice) -> float:
+    """Calculate anchor strength from sacrifice amount.
+
+    Returns 0.0 to 1.0 based on sacrifice.
+    """
+    if sacrifice.sacrifice_type == SacrificeType.XP:
+        # 100 XP = ~0.33 strength, 300 XP = 1.0
+        return min(1.0, sacrifice.amount / 300.0)
+    elif sacrifice.sacrifice_type == SacrificeType.HEALTH:
+        # 25 health = 0.5 strength, 50 health = 1.0
+        return min(1.0, sacrifice.amount / 50.0)
+    else:
+        # Items have fixed strength
+        return 0.75
+
+
 class MobType(Enum):
     """Types of mobs with different behaviors."""
 
