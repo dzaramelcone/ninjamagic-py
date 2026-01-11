@@ -100,3 +100,50 @@ def test_sacrifice_creates_item():
     sacrifice = esper.component_for_entity(sacrifice_eid, Sacrifice)
     assert sacrifice.amount == 100.0
     assert sacrifice.source_player == player
+
+
+def test_pilgrimage_damage_multiplier():
+    """Players on pilgrimage take more damage."""
+    import esper
+
+    from ninjamagic.component import PilgrimageState
+    from ninjamagic.pilgrimage import get_damage_multiplier
+
+    esper.clear_database()
+
+    player = esper.create_entity()
+    esper.add_component(player, PilgrimageState(sacrifice_entity=1, damage_taken_multiplier=1.5))
+
+    mult = get_damage_multiplier(player)
+    assert mult == 1.5
+
+
+def test_normal_damage_multiplier():
+    """Normal players have 1.0 damage multiplier."""
+    import esper
+
+    from ninjamagic.pilgrimage import get_damage_multiplier
+
+    esper.clear_database()
+
+    player = esper.create_entity()
+    # No PilgrimageState
+
+    mult = get_damage_multiplier(player)
+    assert mult == 1.0
+
+
+def test_pilgrimage_stress_multiplier():
+    """Players on pilgrimage accumulate stress faster."""
+    import esper
+
+    from ninjamagic.component import PilgrimageState
+    from ninjamagic.pilgrimage import get_stress_multiplier
+
+    esper.clear_database()
+
+    player = esper.create_entity()
+    esper.add_component(player, PilgrimageState(sacrifice_entity=1, stress_rate_multiplier=3.0))
+
+    mult = get_stress_multiplier(player)
+    assert mult == 3.0
