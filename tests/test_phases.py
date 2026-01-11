@@ -56,3 +56,18 @@ def test_spawn_multiplier_rest():
 
     mult = get_spawn_multiplier(Phase.REST)
     assert mult == 0.0
+
+
+def test_get_current_phase_from_clock():
+    """Get current phase from a NightClock instance."""
+    from datetime import datetime, timezone, timedelta
+    from ninjamagic.phases import get_current_phase, Phase
+    from ninjamagic.nightclock import NightClock
+
+    # Create a clock at noon (12:00 EST)
+    EST = timezone(timedelta(hours=-5), name="EST")
+    dt = datetime(2026, 1, 10, 12, 0, 0, tzinfo=EST)
+    clock = NightClock(dt=dt)
+
+    phase = get_current_phase(clock)
+    assert phase == Phase.DAY
