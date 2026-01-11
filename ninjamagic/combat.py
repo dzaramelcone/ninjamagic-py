@@ -18,6 +18,7 @@ from ninjamagic.component import (
     stance,
     transform,
 )
+from ninjamagic.pilgrimage import cancel_pilgrimage
 from ninjamagic.util import (
     RNG,
     Looptime,
@@ -112,9 +113,7 @@ def process(now: Looptime):
                 source,
                 target,
             )
-            bus.pulse(
-                bus.HealthChanged(source=source, stress_change=RNG.choice([1.0, 2.0]))
-            )
+            bus.pulse(bus.HealthChanged(source=source, stress_change=RNG.choice([1.0, 2.0])))
             if proc(prev=target_fight_timer.last_def_proc, cur=now):
                 target_fight_timer.last_def_proc = now
                 bus.pulse(bus.Proc(source=target, target=source, verb=defense.verb))
@@ -193,6 +192,7 @@ def process(now: Looptime):
 
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
+        cancel_pilgrimage(sig.source)
         bus.pulse(bus.ConditionChanged(source=sig.source, condition="dead"))
         if not esper.has_component(sig.source, Connection):
             continue
@@ -204,9 +204,7 @@ def process(now: Looptime):
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_sig=partial(
-                    bus.OutboundCondition, source=sig.source, condition=sig.condition
-                ),
+                make_sig=partial(bus.OutboundCondition, source=sig.source, condition=sig.condition),
             )
         )
 
@@ -218,9 +216,7 @@ def process(now: Looptime):
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_sig=partial(
-                    bus.OutboundStance, source=sig.source, stance=sig.stance
-                ),
+                make_sig=partial(bus.OutboundStance, source=sig.source, stance=sig.stance),
             )
         )
         if sig.echo:
@@ -241,9 +237,7 @@ def schedule_respawn(entity: EntityId):
     )
     bus.pulse_in(
         10.0,
-        bus.Outbound(
-            to=entity, text="The horizon of a vast, dark world yawns below you."
-        ),
+        bus.Outbound(to=entity, text="The horizon of a vast, dark world yawns below you."),
     )
     bus.pulse_in(
         30.0,

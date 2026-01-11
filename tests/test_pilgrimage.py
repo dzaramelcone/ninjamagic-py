@@ -241,3 +241,32 @@ def test_create_anchor_from_sacrifice():
 
     # Sacrifice should be consumed
     assert not esper.entity_exists(sacrifice)
+
+
+def test_death_cancels_pilgrimage():
+    """Dying while on pilgrimage destroys the sacrifice."""
+    import esper
+    from ninjamagic.pilgrimage import cancel_pilgrimage
+    from ninjamagic.component import PilgrimageState, Sacrifice, SacrificeType
+
+    esper.clear_database()
+
+    sacrifice = esper.create_entity()
+    esper.add_component(sacrifice, Sacrifice(
+        sacrifice_type=SacrificeType.XP,
+        amount=100.0,
+        source_anchor=1,
+        source_player=2,
+    ))
+
+    player = esper.create_entity()
+    esper.add_component(player, PilgrimageState(sacrifice_entity=sacrifice))
+
+    # Cancel pilgrimage (as if player died)
+    cancel_pilgrimage(player)
+
+    # Player should no longer be on pilgrimage
+    assert not esper.has_component(player, PilgrimageState)
+
+    # Sacrifice should be destroyed
+    assert not esper.entity_exists(sacrifice)
