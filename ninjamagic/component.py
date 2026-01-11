@@ -628,3 +628,22 @@ class Mob:
     mob_type: MobType = MobType.SWARM
     aggro_range: int = 6
     target: int | None = None
+
+
+@component(slots=True, kw_only=True)
+class PilgrimageState:
+    """Marks a player as on pilgrimage (carrying a sacrifice).
+
+    Glass cannon state: more powerful but more fragile.
+
+    Attributes:
+        sacrifice_entity: The sacrifice item being carried.
+        start_time: When pilgrimage began.
+        stress_rate_multiplier: How fast stress accumulates (default 3x).
+        damage_taken_multiplier: How much more damage taken (default 1.5x).
+    """
+
+    sacrifice_entity: int
+    start_time: float = 0.0
+    stress_rate_multiplier: float = 3.0
+    damage_taken_multiplier: float = 1.5

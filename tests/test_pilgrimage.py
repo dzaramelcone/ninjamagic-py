@@ -32,3 +32,20 @@ def test_sacrifice_strength():
     assert get_sacrifice_strength(small) < get_sacrifice_strength(large)
     assert 0.0 < get_sacrifice_strength(small) <= 1.0
     assert 0.0 < get_sacrifice_strength(large) <= 1.0
+
+
+def test_pilgrimage_state():
+    """Players in pilgrimage have special state."""
+    from ninjamagic.component import PilgrimageState
+
+    state = PilgrimageState(
+        sacrifice_entity=123,
+        start_time=1000.0,
+        stress_rate_multiplier=3.0,
+        damage_taken_multiplier=1.5,
+    )
+
+    assert state.sacrifice_entity == 123
+    assert state.start_time == 1000.0
+    assert state.stress_rate_multiplier == 3.0
+    assert state.damage_taken_multiplier == 1.5
