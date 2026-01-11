@@ -1,6 +1,6 @@
 # tests/test_spawn.py
-import pytest
 from ninjamagic.spawn import find_spawn_point
+
 
 def test_find_spawn_point_avoids_anchors():
     """Spawn points are outside anchor radii."""
@@ -21,6 +21,7 @@ def test_find_spawn_point_avoids_anchors():
 
     # Verify it's outside anchor radius
     import math
+
     dist = math.sqrt((y - 50) ** 2 + (x - 50) ** 2)
     assert dist >= 24
 
@@ -39,3 +40,37 @@ def test_find_spawn_point_respects_walkable():
     )
 
     assert point is None
+
+
+def test_create_mob():
+    """Create a mob entity with all required components."""
+    import esper
+
+    from ninjamagic.component import Health, Mob, MobType, Noun, Skills, Stance, Transform
+    from ninjamagic.spawn import create_mob
+
+    esper.clear_database()
+
+    eid = create_mob(
+        mob_type=MobType.SWARM,
+        map_id=1,
+        y=10,
+        x=20,
+        name="goblin",
+    )
+
+    # Verify all components
+    assert esper.has_component(eid, Mob)
+    assert esper.has_component(eid, Transform)
+    assert esper.has_component(eid, Health)
+    assert esper.has_component(eid, Noun)
+    assert esper.has_component(eid, Stance)
+    assert esper.has_component(eid, Skills)
+
+    mob = esper.component_for_entity(eid, Mob)
+    assert mob.mob_type == MobType.SWARM
+
+    transform = esper.component_for_entity(eid, Transform)
+    assert transform.map_id == 1
+    assert transform.y == 10
+    assert transform.x == 20
