@@ -1,7 +1,9 @@
 from string import Formatter
 
+import esper
+
 from ninjamagic import bus, reach
-from ninjamagic.component import YOU, EntityId, noun
+from ninjamagic.component import YOU, Connection, EntityId, noun
 from ninjamagic.util import RNG, auto_cap
 
 FMT = Formatter()
@@ -57,6 +59,12 @@ def echo(
             make_target_sig=render_for_target,
         ),
     )
+
+
+def broadcast(text: str) -> None:
+    """Broadcast a message to all connected players."""
+    for eid, _ in esper.get_component(Connection):
+        bus.pulse(bus.Outbound(to=eid, text=text))
 
 
 STORIES: dict[str, tuple[str]] = {
