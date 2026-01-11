@@ -82,7 +82,7 @@ class Look(Command):
 
         _, _, rest = parsed.partition(" ")
         if not rest:
-            return False, f"Look {"in" if look_in else "at"} what?"
+            return False, f"Look {'in' if look_in else 'at'} what?"
 
         if look_in:
             match = match_contents(root.source, rest)
@@ -115,9 +115,7 @@ class Look(Command):
             )
             return OK
 
-        match = next(
-            reach.find(source=root.source, prefix=rest, in_range=reach.visible), None
-        )
+        match = next(reach.find(source=root.source, prefix=rest, in_range=reach.visible), None)
         if not match:
             return False, "Look at what?"
         eid, _, _ = match
@@ -234,9 +232,7 @@ class Say(Command):
         return OK
 
 
-def handle_stance(
-    new_stance: Stances, root: bus.Inbound, cmd: str, inf: str = ""
-) -> Out:
+def handle_stance(new_stance: Stances, root: bus.Inbound, cmd: str, inf: str = "") -> Out:
     _, _, rest = root.text.strip().partition(" ")
     inf = inf or new_stance
     stance = esper.component_for_entity(root.source, Stance)
@@ -246,20 +242,14 @@ def handle_stance(
         bus.pulse(bus.StanceChanged(source=root.source, stance=new_stance, echo=True))
         return OK
 
-    match = next(
-        reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None
-    )
+    match = next(reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None)
     if match:
         prop, _, _ = match
         if stance.cur == new_stance and prop == stance.prop:
             noun = esper.component_for_entity(prop, Noun)
             return False, f"You're already {inf} beside {noun:def}."
 
-        bus.pulse(
-            bus.StanceChanged(
-                source=root.source, stance=new_stance, prop=prop, echo=True
-            )
-        )
+        bus.pulse(bus.StanceChanged(source=root.source, stance=new_stance, prop=prop, echo=True))
         return OK
     return False, f"{cmd} where?"
 
@@ -282,9 +272,7 @@ class Rest(Command):
     text: str = "rest"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        return handle_stance(
-            new_stance="lying prone", root=root, cmd="Rest", inf="resting"
-        )
+        return handle_stance(new_stance="lying prone", root=root, cmd="Rest", inf="resting")
 
 
 class Kneel(Command):
@@ -333,28 +321,36 @@ class Fart(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         def _ok(eid: EntityId) -> None:
-            story.echo(
-                "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
-                eid,
-            ),
+            (
+                story.echo(
+                    "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
+                    eid,
+                ),
+            )
 
         def _err(eid: EntityId) -> None:
-            story.echo(
-                "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
-                eid,
-            ),
+            (
+                story.echo(
+                    "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
+                    eid,
+                ),
+            )
 
         def _ok_exp(eid: EntityId) -> None:
-            story.echo(
-                "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
-                eid,
-            ),
+            (
+                story.echo(
+                    "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
+                    eid,
+                ),
+            )
 
         def _err_exp(eid: EntityId) -> None:
-            story.echo(
-                "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
-                eid,
-            ),
+            (
+                story.echo(
+                    "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
+                    eid,
+                ),
+            )
 
         tform = transform(root.source)
         story.echo("{0} {0:farts}.", root.source)
@@ -525,9 +521,7 @@ class Drop(Command):
         loc = transform(root.source)
         story.echo("{0} {0:drops} {1}.", root.source, eid, range=reach.visible)
         bus.pulse(
-            bus.MovePosition(
-                source=eid, to_map_id=loc.map_id, to_y=loc.y, to_x=loc.x, quiet=True
-            )
+            bus.MovePosition(source=eid, to_map_id=loc.map_id, to_y=loc.y, to_x=loc.x, quiet=True)
         )
         return OK
 
@@ -633,11 +627,7 @@ class Put(Command):
                     bus.Act(
                         source=root.source,
                         delay=get_melee_delay(),
-                        then=(
-                            bus.Roast(
-                                chef=root.source, ingredient=s_eid, heatsource=c_eid
-                            ),
-                        ),
+                        then=(bus.Roast(chef=root.source, ingredient=s_eid, heatsource=c_eid),),
                     )
                 )
                 return OK
@@ -651,9 +641,7 @@ class Put(Command):
                 "You consider flipping that inside out for a moment.",
             )
 
-        story.echo(
-            "{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
-        )
+        story.echo("{0} {0:puts} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible)
         bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         return OK
 
@@ -705,9 +693,7 @@ class Stow(Command):
         if s_eid == c_eid:
             return (False, "You consider flipping it inside out, but decide not to.")
 
-        story.echo(
-            "{0} {0:stows} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible
-        )
+        story.echo("{0} {0:stows} {1} in {2}.", root.source, s_eid, c_eid, range=reach.visible)
         bus.pulse(bus.MoveEntity(source=s_eid, container=c_eid, slot=Slot.ANY))
         esper.add_component(root.source, Stowed(container=c_eid))
         return OK
@@ -728,28 +714,20 @@ class Swap(Command):
                 l_eid,
             )
             bus.pulse(
-                bus.MoveEntity(
-                    source=r_eid, container=root.source, slot=Slot.LEFT_HAND
-                ),
-                bus.MoveEntity(
-                    source=l_eid, container=root.source, slot=Slot.RIGHT_HAND
-                ),
+                bus.MoveEntity(source=r_eid, container=root.source, slot=Slot.LEFT_HAND),
+                bus.MoveEntity(source=l_eid, container=root.source, slot=Slot.RIGHT_HAND),
             )
         elif r_hand:
             r_eid, _, _ = r_hand
             story.echo("{0} {0:moves} {1} to {0:their} left hand.", root.source, r_eid)
             bus.pulse(
-                bus.MoveEntity(
-                    source=r_eid, container=root.source, slot=Slot.LEFT_HAND
-                ),
+                bus.MoveEntity(source=r_eid, container=root.source, slot=Slot.LEFT_HAND),
             )
         elif l_hand:
             l_eid, _, _ = l_hand
             story.echo("{0} {0:moves} {1} to {0:their} left hand.", root.source, l_eid)
             bus.pulse(
-                bus.MoveEntity(
-                    source=l_eid, container=root.source, slot=Slot.RIGHT_HAND
-                ),
+                bus.MoveEntity(source=l_eid, container=root.source, slot=Slot.RIGHT_HAND),
             )
         else:
             story.echo("{0} {0:flaps} {0:their} hands about.", root.source)
@@ -795,11 +773,7 @@ class Recall(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         to_map_id, to_y, to_x = get_recall(root.source)
-        bus.pulse(
-            bus.MovePosition(
-                source=root.source, to_map_id=to_map_id, to_y=to_y, to_x=to_x
-            )
-        )
+        bus.pulse(bus.MovePosition(source=root.source, to_map_id=to_map_id, to_y=to_y, to_x=to_x))
         return OK
 
 
@@ -809,9 +783,7 @@ class Tend(Command):
     def trigger(self, root: bus.Inbound) -> Out:
         tform = esper.component_for_entity(root.source, Transform)
 
-        for anchor_eid, (_anchor, anchor_transform) in esper.get_components(
-            Anchor, Transform
-        ):
+        for anchor_eid, (_anchor, anchor_transform) in esper.get_components(Anchor, Transform):
             if anchor_transform.map_id != tform.map_id:
                 continue
 
@@ -829,8 +801,7 @@ class Tend(Command):
                     )
                 )
 
-                noun = esper.component_for_entity(anchor_eid, Noun)
-                story.echo("{0} {0:tends} the {1}.", root.source, noun.value)
+                story.echo("{0} {0:tends} the {1}.", root.source, anchor_eid)
                 return OK
 
         return False, "There's nothing to tend here."
