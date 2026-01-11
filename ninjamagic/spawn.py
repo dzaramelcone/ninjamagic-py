@@ -4,9 +4,11 @@
 import math
 import random
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import esper
 
+from ninjamagic.anchor import get_anchor_positions_with_radii
 from ninjamagic.component import (
     Glyph,
     Health,
@@ -19,6 +21,19 @@ from ninjamagic.component import (
     Transform,
 )
 from ninjamagic.util import Pronouns
+
+
+@dataclass
+class SpawnConfig:
+    """Configuration for mob spawning."""
+    spawn_rate: float = 0.1  # Mobs per second (base rate)
+    max_mobs: int = 20  # Maximum mobs on map
+    min_distance: int = 30  # Minimum distance from anchors
+    max_distance: int = 60  # Maximum distance from anchors
+
+
+# Track spawn accumulator per map
+_spawn_accumulators: dict[int, float] = {}
 
 # Mob type configurations
 MOB_CONFIGS = {
@@ -135,3 +150,67 @@ def create_mob(
     esper.add_component(eid, (config["glyph"], config["hue"], 0.6, 0.7), Glyph)
 
     return eid
+
+
+def process_spawning(
+    *,
+    map_id: int,
+    delta_seconds: float,
+    config: SpawnConfig,
+    walkable_check: Callable[[int, int], bool],
+) -> list[int]:
+    """Process mob spawning for a map.
+
+    Returns list of newly spawned mob entity IDs.
+    """
+    spawned = []
+
+    # Get anchor positions
+    anchors = get_anchor_positions_with_radii()
+    map_anchors = [(y, x, r) for y, x, r in anchors]
+
+    if not map_anchors:
+        return spawned  # No anchors = no spawning
+
+    # Count current mobs
+    current_mobs = sum(1 for _ in esper.get_component(Mob))
+    if current_mobs >= config.max_mobs:
+        return spawned
+
+    # Accumulate spawn progress
+    if map_id not in _spawn_accumulators:
+        _spawn_accumulators[map_id] = 0.0
+
+    _spawn_accumulators[map_id] += delta_seconds * config.spawn_rate
+
+    # Spawn mobs
+    while _spawn_accumulators[map_id] >= 1.0 and current_mobs < config.max_mobs:
+        _spawn_accumulators[map_id] -= 1.0
+
+        # Find spawn point
+        point = find_spawn_point(
+            map_id=map_id,
+            anchors=map_anchors,
+            min_distance=config.min_distance,
+            max_distance=config.max_distance,
+            walkable_check=walkable_check,
+        )
+
+        if point is None:
+            continue
+
+        y, x = point
+
+        # Create mob
+        eid = create_mob(
+            mob_type=MobType.SWARM,
+            map_id=map_id,
+            y=y,
+            x=x,
+            name="goblin",
+        )
+
+        spawned.append(eid)
+        current_mobs += 1
+
+    return spawned

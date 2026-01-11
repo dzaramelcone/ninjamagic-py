@@ -74,3 +74,44 @@ def test_create_mob():
     assert transform.map_id == 1
     assert transform.y == 10
     assert transform.x == 20
+
+
+def test_spawn_processor():
+    """Spawn processor creates mobs over time."""
+    import esper
+
+    from ninjamagic.component import Anchor, Mob, Transform
+    from ninjamagic.spawn import SpawnConfig, process_spawning
+
+    esper.clear_database()
+
+    # Create a map
+    map_id = esper.create_entity()
+
+    # Create an anchor
+    anchor_eid = esper.create_entity()
+    esper.add_component(anchor_eid, Transform(map_id=map_id, y=50, x=50))
+    esper.add_component(anchor_eid, Anchor(strength=1.0, fuel=100.0))
+
+    # Configure spawning
+    config = SpawnConfig(
+        spawn_rate=1.0,  # 1 mob per second
+        max_mobs=10,
+        min_distance=30,
+        max_distance=50,
+    )
+
+    # Process spawning for 2 seconds
+    def walkable(y: int, x: int) -> bool:
+        return True
+
+    process_spawning(
+        map_id=map_id,
+        delta_seconds=2.0,
+        config=config,
+        walkable_check=walkable,
+    )
+
+    # Should have spawned some mobs
+    mob_count = len(list(esper.get_component(Mob)))
+    assert mob_count >= 1
