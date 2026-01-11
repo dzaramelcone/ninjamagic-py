@@ -6,6 +6,7 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
+    Anchor,
     ContainedBy,
     Container,
     Cookware,
@@ -24,6 +25,7 @@ from ninjamagic.component import (
     Stances,
     Stowed,
     Stunned,
+    Transform,
     Wearable,
     get_contents,
     get_hands,
@@ -801,6 +803,39 @@ class Recall(Command):
         return OK
 
 
+class Tend(Command):
+    text: str = "tend"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        tform = esper.component_for_entity(root.source, Transform)
+
+        for anchor_eid, (_anchor, anchor_transform) in esper.get_components(
+            Anchor, Transform
+        ):
+            if anchor_transform.map_id != tform.map_id:
+                continue
+
+            dy = abs(tform.y - anchor_transform.y)
+            dx = abs(tform.x - anchor_transform.x)
+
+            if dy <= 2 and dx <= 2:
+                fuel_per_tend = 25.0
+
+                bus.pulse(
+                    bus.TendAnchor(
+                        source=root.source,
+                        anchor=anchor_eid,
+                        fuel_amount=fuel_per_tend,
+                    )
+                )
+
+                noun = esper.component_for_entity(anchor_eid, Noun)
+                story.echo("{0} {0:tends} the {1}.", root.source, noun.value)
+                return OK
+
+        return False, "There's nothing to tend here."
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -827,4 +862,5 @@ commands: list[Command] = [
     Forage(),
     Eat(),
     Time(),
+    Tend(),
 ]
