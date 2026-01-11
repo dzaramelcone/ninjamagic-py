@@ -180,3 +180,64 @@ def test_normal_player_no_demon_power():
 
     power = get_active_demon_power(player)
     assert power is None
+
+
+def test_create_anchor_from_sacrifice():
+    """Placing sacrifice in bonfire creates new anchor."""
+    import esper
+
+    from ninjamagic.component import (
+        Anchor,
+        PilgrimageState,
+        ProvidesHeat,
+        ProvidesLight,
+        Sacrifice,
+        SacrificeType,
+        Transform,
+    )
+    from ninjamagic.pilgrimage import create_anchor_from_sacrifice
+
+    esper.clear_database()
+
+    map_id = esper.create_entity()
+
+    # Create player with sacrifice
+    player = esper.create_entity()
+    esper.add_component(player, Transform(map_id=map_id, y=20, x=20))
+
+    sacrifice = esper.create_entity()
+    esper.add_component(
+        sacrifice,
+        Sacrifice(
+            sacrifice_type=SacrificeType.XP,
+            amount=150.0,
+            source_anchor=1,
+            source_player=player,
+        ),
+    )
+
+    esper.add_component(player, PilgrimageState(sacrifice_entity=sacrifice))
+
+    # Create anchor
+    anchor_eid = create_anchor_from_sacrifice(
+        player_eid=player,
+        location_y=20,
+        location_x=20,
+    )
+
+    assert anchor_eid is not None
+
+    # Verify anchor was created with correct strength
+    assert esper.has_component(anchor_eid, Anchor)
+    anchor = esper.component_for_entity(anchor_eid, Anchor)
+    assert anchor.strength == 0.5  # 150/300
+
+    # Verify has heat and light
+    assert esper.has_component(anchor_eid, ProvidesHeat)
+    assert esper.has_component(anchor_eid, ProvidesLight)
+
+    # Player should no longer be on pilgrimage
+    assert not esper.has_component(player, PilgrimageState)
+
+    # Sacrifice should be consumed
+    assert not esper.entity_exists(sacrifice)
