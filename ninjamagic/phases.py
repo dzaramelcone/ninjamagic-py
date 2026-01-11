@@ -3,7 +3,10 @@
 
 from enum import Enum
 
+from ninjamagic import bus
 from ninjamagic.nightclock import NightClock
+
+_last_phase: "Phase | None" = None
 
 
 class Phase(Enum):
@@ -55,3 +58,22 @@ def get_phase(*, hour: int) -> Phase:
 def get_current_phase(clock: NightClock) -> Phase:
     """Get the current phase from a NightClock instance."""
     return get_phase(hour=clock.hour)
+
+
+def process_phase_changes(clock: NightClock) -> Phase:
+    """Check for phase changes and emit signals.
+
+    Returns the current phase.
+    """
+    global _last_phase
+
+    current = get_current_phase(clock)
+
+    if _last_phase is not None and current != _last_phase:
+        bus.pulse(bus.PhaseChanged(
+            old_phase=_last_phase.value,
+            new_phase=current.value,
+        ))
+
+    _last_phase = current
+    return current

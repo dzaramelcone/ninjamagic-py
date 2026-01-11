@@ -424,6 +424,14 @@ class TileMutated(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class PhaseChanged(Signal):
+    """The day/night phase has changed."""
+
+    old_phase: str  # Phase enum value
+    new_phase: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class TendAnchor(Signal):
     """Player tends an anchor, adding fuel."""
 
