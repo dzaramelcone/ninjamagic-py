@@ -21,17 +21,20 @@ from ninjamagic import (
     forage,
     gas,
     inbound,
+    mob_ai,
     move,
     outbox,
     parser,
     proc,
     regen,
     scheduler,
+    spawn,
     survive,
     terrain,
     visibility,
 )
 from ninjamagic.util import get_looptime
+from ninjamagic.world.state import can_enter
 
 TPS = 240.0
 STEP = 1.0 / TPS
@@ -75,6 +78,7 @@ class State:
         prev_ns = time.perf_counter_ns()
 
         jitter_ema = 0.0
+        tick = 0
 
         scheduler.start()
 
@@ -99,6 +103,20 @@ class State:
             move.process()
             visibility.process()
             anchor.process(delta_seconds=STEP)
+
+            # Mob AI (runs every 60 ticks = 0.25 seconds at 240 TPS)
+            if tick % 60 == 0:
+                mob_ai.process_mob_ai(walkable_check=lambda y, x: can_enter(map_id=1, y=y, x=x))
+
+            # Mob spawning
+            spawn_config = spawn.SpawnConfig(spawn_rate=0.1, max_mobs=20)
+            spawn.process_spawning(
+                map_id=1,  # Hardcoded for now (single map game)
+                delta_seconds=STEP,
+                config=spawn_config,
+                walkable_check=lambda y, x: can_enter(map_id=1, y=y, x=x),
+            )
+
             terrain.process(now=now)
             experience.process()
             echo.process()
@@ -107,6 +125,7 @@ class State:
             #                       #
             bus.clear()
             esper.clear_dead_entities()
+            tick += 1
 
             deadline += STEP
             delay = deadline - get_looptime()
