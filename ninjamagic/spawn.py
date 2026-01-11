@@ -14,6 +14,7 @@ from ninjamagic.component import (
     Glyph,
     Health,
     Mob,
+    MobBehavior,
     MobType,
     Noun,
     Skills,
@@ -145,6 +146,7 @@ def create_mob(
 
     esper.add_component(eid, Transform(map_id=map_id, y=y, x=x))
     esper.add_component(eid, Mob(mob_type=mob_type, aggro_range=config["aggro_range"]))
+    esper.add_component(eid, MobBehavior())
     esper.add_component(eid, Health(cur=config["health"], stress=0.0))
     esper.add_component(eid, Noun(value=name, pronoun=Pronouns.IT))
     esper.add_component(eid, Stance())

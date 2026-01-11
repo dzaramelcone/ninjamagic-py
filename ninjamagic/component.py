@@ -539,10 +539,39 @@ def get_worn(
 
 class MobType(Enum):
     """Types of mobs with different behaviors."""
-    SWARM = "swarm"      # Weak, numerous
-    PACK = "pack"        # Coordinated group
+
+    SWARM = "swarm"  # Weak, numerous
+    PACK = "pack"  # Coordinated group
     DEATH_KNIGHT = "death_knight"  # Strong 1v1
-    BOSS = "boss"        # Special encounter
+    BOSS = "boss"  # Special encounter
+
+
+class BehaviorState(Enum):
+    """Mob behavior states."""
+
+    IDLE = "idle"  # Not doing anything
+    PATHING = "pathing"  # Moving toward target
+    ENGAGING = "engaging"  # In combat
+    FLANKING = "flanking"  # Circling around (pack behavior)
+    SUMMONING = "summoning"  # Spawning adds (boss behavior)
+    RETREATING = "retreating"  # Backing off
+
+
+@component(slots=True, kw_only=True)
+class MobBehavior:
+    """Mob AI behavior state.
+
+    Attributes:
+        state: Current behavior state.
+        target_entity: Entity being targeted (player or anchor).
+        cooldown: Time until next action.
+        pack_leader: For pack mobs, the leader entity.
+    """
+
+    state: BehaviorState = BehaviorState.IDLE
+    target_entity: int | None = None
+    cooldown: float = 0.0
+    pack_leader: int | None = None
 
 
 @component(slots=True, kw_only=True)
@@ -554,6 +583,7 @@ class Mob:
         aggro_range: Distance at which mob notices players.
         target: Current target entity (anchor or player).
     """
+
     mob_type: MobType = MobType.SWARM
     aggro_range: int = 6
     target: int | None = None
