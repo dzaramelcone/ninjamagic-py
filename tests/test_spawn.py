@@ -101,13 +101,13 @@ def test_spawn_processor():
         max_distance=50,
     )
 
-    # Process spawning for 2 seconds
+    # Process spawning for 10 seconds (default phase DAY has 0.2 multiplier, so 10 * 1.0 * 0.2 = 2)
     def walkable(y: int, x: int) -> bool:
         return True
 
     process_spawning(
         map_id=map_id,
-        delta_seconds=2.0,
+        delta_seconds=10.0,
         config=config,
         walkable_check=walkable,
     )
@@ -115,3 +115,56 @@ def test_spawn_processor():
     # Should have spawned some mobs
     mob_count = len(list(esper.get_component(Mob)))
     assert mob_count >= 1
+
+
+def test_spawn_respects_phase_multiplier():
+    """Spawn rate is multiplied by phase multiplier."""
+    import esper
+
+    from ninjamagic.component import Anchor, Mob, Transform
+    from ninjamagic.phases import Phase
+    from ninjamagic.spawn import SpawnConfig, process_spawning
+
+    esper.clear_database()
+
+    map_id = esper.create_entity()
+
+    anchor_eid = esper.create_entity()
+    esper.add_component(anchor_eid, Transform(map_id=map_id, y=50, x=50))
+    esper.add_component(anchor_eid, Anchor(strength=1.0, fuel=100.0))
+
+    config = SpawnConfig(spawn_rate=10.0, max_mobs=100)
+
+    def walkable(y: int, x: int) -> bool:
+        return True
+
+    # During REST phase, no mobs should spawn
+    process_spawning(
+        map_id=map_id,
+        delta_seconds=10.0,
+        config=config,
+        walkable_check=walkable,
+        phase=Phase.REST,
+    )
+
+    rest_mobs = len(list(esper.get_component(Mob)))
+
+    # During WAVES phase, many mobs should spawn
+    esper.clear_database()
+    map_id = esper.create_entity()
+    anchor_eid = esper.create_entity()
+    esper.add_component(anchor_eid, Transform(map_id=map_id, y=50, x=50))
+    esper.add_component(anchor_eid, Anchor(strength=1.0, fuel=100.0))
+
+    process_spawning(
+        map_id=map_id,
+        delta_seconds=10.0,
+        config=config,
+        walkable_check=walkable,
+        phase=Phase.WAVES,
+    )
+
+    waves_mobs = len(list(esper.get_component(Mob)))
+
+    assert rest_mobs == 0
+    assert waves_mobs > 0
