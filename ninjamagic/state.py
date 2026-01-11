@@ -81,6 +81,7 @@ class State:
         tick = 0
 
         scheduler.start()
+        spawn_config = spawn.SpawnConfig(spawn_rate=0.1, max_mobs=20)
 
         while True:
             frame_start_ns = time.perf_counter_ns()
@@ -109,7 +110,6 @@ class State:
                 mob_ai.process_mob_ai(walkable_check=lambda y, x: can_enter(map_id=1, y=y, x=x))
 
             # Mob spawning
-            spawn_config = spawn.SpawnConfig(spawn_rate=0.1, max_mobs=20)
             spawn.process_spawning(
                 map_id=1,  # Hardcoded for now (single map game)
                 delta_seconds=STEP,
