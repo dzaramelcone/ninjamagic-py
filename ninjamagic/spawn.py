@@ -10,6 +10,7 @@ import esper
 
 from ninjamagic.anchor import get_anchor_positions_with_radii
 from ninjamagic.component import (
+    Anchor,
     Glyph,
     Health,
     Mob,
@@ -214,3 +215,26 @@ def process_spawning(
         current_mobs += 1
 
     return spawned
+
+
+def process_despawning() -> list[int]:
+    """Remove mobs that should despawn.
+
+    Returns list of despawned entity IDs.
+    """
+    despawned = []
+
+    for eid, (_mob, transform) in esper.get_components(Mob, Transform):
+        # Check if at an anchor
+        for _anchor_eid, (_anchor, anchor_transform) in esper.get_components(Anchor, Transform):
+            if anchor_transform.map_id != transform.map_id:
+                continue
+
+            dist = abs(transform.y - anchor_transform.y) + abs(transform.x - anchor_transform.x)
+            if dist <= 1:
+                # At anchor - despawn (later: attack instead)
+                esper.delete_entity(eid)
+                despawned.append(eid)
+                break
+
+    return despawned
