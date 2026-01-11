@@ -11,6 +11,7 @@ from fastapi import Depends, Request
 import ninjamagic.bus as bus
 from ninjamagic import (
     act,
+    anchor,
     cleanup,
     combat,
     conn,
@@ -97,6 +98,7 @@ class State:
             proc.process(now=now)
             move.process()
             visibility.process()
+            anchor.process(delta_seconds=STEP)
             terrain.process(now=now)
             experience.process()
             echo.process()
