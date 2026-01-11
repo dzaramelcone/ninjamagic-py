@@ -6,7 +6,7 @@ import math
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Anchor, Chips, TileInstantiation, Transform
+from ninjamagic.component import Chips, TileInstantiation
 from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, Looptime
 
 # Tile type constants (must match ChipSet definitions)
@@ -80,37 +80,25 @@ def on_tile_sent(map_id: int, *, top: int, left: int, now: Looptime) -> None:
 
 
 def get_decay_rate(
-    *, map_id: int, y: int, x: int, anchor_positions: list[tuple[int, int]]
+    *, map_id: int, y: int, x: int, anchor_positions: list[tuple[int, int, float]]
 ) -> float:
     """Calculate decay rate at a position based on distance from anchors.
 
+    anchor_positions is list of (y, x, radius) tuples.
     Returns 0.0 (no decay) to 1.0 (maximum decay).
-    Inside stability radius = 0.0
-    Beyond max effect distance = 1.0
-    Between = linear gradient
     """
     if not anchor_positions:
         return 1.0
 
-    # Find distance to nearest anchor
-    min_distance = float("inf")
-    for ay, ax in anchor_positions:
+    # Find nearest anchor and check if inside its radius
+    for ay, ax, radius in anchor_positions:
         dist = math.sqrt((y - ay) ** 2 + (x - ax) ** 2)
-        min_distance = min(min_distance, dist)
+        if dist <= radius:
+            return 0.0
 
-    # Inside stability radius = no decay
-    if min_distance <= ANCHOR_STABILITY_RADIUS:
-        return 0.0
-
-    # Beyond max effect = full decay
-    if min_distance >= ANCHOR_MAX_EFFECT_DISTANCE:
-        return 1.0
-
-    # Linear gradient between radius and max effect
-    gradient_range = ANCHOR_MAX_EFFECT_DISTANCE - ANCHOR_STABILITY_RADIUS
-    distance_into_gradient = min_distance - ANCHOR_STABILITY_RADIUS
-
-    return distance_into_gradient / gradient_range
+    # Outside all radii = full decay
+    # (Could add gradient based on nearest anchor, but keeping simple for now)
+    return 1.0
 
 
 def get_decay_target(tile_id: int) -> int | None:
@@ -118,7 +106,7 @@ def get_decay_target(tile_id: int) -> int | None:
     return DECAY_MAP.get(tile_id)
 
 
-def process_decay(*, now: Looptime, anchor_positions: list[tuple[int, int]]) -> None:
+def process_decay(*, now: Looptime, anchor_positions: list[tuple[int, int, float]]) -> None:
     """Process terrain decay for all instantiated tiles."""
 
     for map_id, (chips, inst) in esper.get_components(Chips, TileInstantiation):
@@ -180,11 +168,10 @@ def process_decay(*, now: Looptime, anchor_positions: list[tuple[int, int]]) -> 
 
 def process(now: Looptime) -> None:
     """Main terrain processor - call from game loop."""
-    # Gather all anchor positions
-    anchor_positions: list[tuple[int, int]] = []
+    from ninjamagic.anchor import get_anchor_positions_with_radii
 
-    for _eid, (_anchor, transform) in esper.get_components(Anchor, Transform):
-        anchor_positions.append((transform.y, transform.x))
+    # Gather all anchor positions with their radii
+    anchor_positions = get_anchor_positions_with_radii()
 
     # Run decay
     process_decay(now=now, anchor_positions=anchor_positions)

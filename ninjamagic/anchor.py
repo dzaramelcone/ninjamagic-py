@@ -62,6 +62,23 @@ def add_fuel(anchor: Anchor, *, amount: float) -> float:
     return anchor.fuel - old_fuel
 
 
+def get_anchor_positions_with_radii() -> list[tuple[int, int, float]]:
+    """Get all anchor positions with their stability radii.
+
+    Returns list of (y, x, radius) tuples.
+    """
+    from ninjamagic.component import Transform
+
+    result = []
+
+    for _eid, (anchor, transform) in esper.get_components(Anchor, Transform):
+        radius = get_stability_radius(anchor)
+        if radius > 0:
+            result.append((transform.y, transform.x, radius))
+
+    return result
+
+
 def process(*, delta_seconds: float) -> None:
     """Process all anchors: consume fuel, handle tending signals."""
 

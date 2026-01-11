@@ -58,34 +58,37 @@ def test_decay_rate_near_anchor():
     """Near an anchor, decay rate is zero."""
     from ninjamagic.terrain import ANCHOR_STABILITY_RADIUS, get_decay_rate
 
+    radius = ANCHOR_STABILITY_RADIUS
+    anchor = (50, 50, radius)
+
     # At anchor = no decay
-    rate = get_decay_rate(map_id=1, y=50, x=50, anchor_positions=[(50, 50)])
+    rate = get_decay_rate(map_id=1, y=50, x=50, anchor_positions=[anchor])
     assert rate == 0.0
 
     # Just inside radius = no decay
     rate = get_decay_rate(
-        map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS - 1, anchor_positions=[(50, 50)]
+        map_id=1, y=50, x=50 + radius - 1, anchor_positions=[anchor]
     )
     assert rate == 0.0
 
 
-def test_decay_rate_gradient():
-    """Decay rate increases with distance from anchor."""
+def test_decay_rate_outside_radius():
+    """Outside anchor radius, decay rate is full."""
     from ninjamagic.terrain import ANCHOR_STABILITY_RADIUS, get_decay_rate
 
-    anchor = (50, 50)
+    anchor = (50, 50, ANCHOR_STABILITY_RADIUS)
 
-    # Just outside radius
-    rate_near = get_decay_rate(
+    # Just outside radius = full decay
+    rate = get_decay_rate(
         map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 5, anchor_positions=[anchor]
     )
+    assert rate == 1.0
 
-    # Far outside radius
+    # Far outside radius = full decay
     rate_far = get_decay_rate(
         map_id=1, y=50, x=50 + ANCHOR_STABILITY_RADIUS + 50, anchor_positions=[anchor]
     )
-
-    assert 0.0 < rate_near < rate_far <= 1.0
+    assert rate_far == 1.0
 
 
 def test_tile_decay_mapping():
