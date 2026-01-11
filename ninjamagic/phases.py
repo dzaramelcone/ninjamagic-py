@@ -13,6 +13,21 @@ class Phase(Enum):
     REST = "rest"        # 2am-6am: Camp triggers, XP consolidates
 
 
+# Spawn rate multipliers by phase
+SPAWN_MULTIPLIERS = {
+    Phase.DAY: 0.2,      # Mobs exist but manageable
+    Phase.EVENING: 0.8,  # Tension rises
+    Phase.WAVES: 3.0,    # Peak intensity
+    Phase.FADE: 0.5,     # Waves dying off
+    Phase.REST: 0.0,     # No spawning during rest
+}
+
+
+def get_spawn_multiplier(phase: Phase) -> float:
+    """Get the spawn rate multiplier for a phase."""
+    return SPAWN_MULTIPLIERS.get(phase, 1.0)
+
+
 def get_phase(*, hour: int) -> Phase:
     """Get the current phase based on hour (0-23).
 
