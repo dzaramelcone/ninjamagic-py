@@ -225,3 +225,44 @@ def test_death_knight_targets_single_player():
     assert behavior.target_entity == first_target
 
     bus.clear()
+
+
+def test_boss_spawns_adds():
+    """Boss periodically spawns add mobs."""
+    from ninjamagic.behavior.boss import process_boss
+    from ninjamagic.component import (
+        BehaviorState,
+        Connection,
+        Health,
+        Mob,
+        MobBehavior,
+        MobType,
+        Transform,
+    )
+
+    esper.clear_database()
+    bus.clear()
+
+    map_id = esper.create_entity()
+
+    player = esper.create_entity()
+    esper.add_component(player, Transform(map_id=map_id, y=10, x=10))
+    esper.add_component(player, Health())
+    esper.add_component(player, MagicMock(), Connection)
+
+    boss = esper.create_entity()
+    esper.add_component(boss, Transform(map_id=map_id, y=20, x=20))
+    esper.add_component(boss, Mob(mob_type=MobType.BOSS, aggro_range=30))
+    esper.add_component(boss, MobBehavior(target_entity=player, state=BehaviorState.SUMMONING))
+    esper.add_component(boss, Health(cur=200.0))
+
+    # Initial mob count (just the boss)
+    initial_mobs = len(list(esper.get_component(Mob)))
+
+    process_boss(walkable_check=_always_walkable)
+
+    # Should have spawned adds
+    final_mobs = len(list(esper.get_component(Mob)))
+    assert final_mobs > initial_mobs
+
+    bus.clear()
