@@ -21,12 +21,14 @@ from ninjamagic.component import (
     Stats,
     Transform,
 )
+from ninjamagic.phases import Phase, get_spawn_multiplier
 from ninjamagic.util import Pronouns
 
 
 @dataclass
 class SpawnConfig:
     """Configuration for mob spawning."""
+
     spawn_rate: float = 0.1  # Mobs per second (base rate)
     max_mobs: int = 20  # Maximum mobs on map
     min_distance: int = 30  # Minimum distance from anchors
@@ -159,12 +161,18 @@ def process_spawning(
     delta_seconds: float,
     config: SpawnConfig,
     walkable_check: Callable[[int, int], bool],
+    phase: Phase = Phase.DAY,
 ) -> list[int]:
     """Process mob spawning for a map.
 
     Returns list of newly spawned mob entity IDs.
     """
     spawned = []
+
+    # Apply phase multiplier
+    multiplier = get_spawn_multiplier(phase)
+    if multiplier == 0.0:
+        return spawned  # No spawning during this phase
 
     # Get anchor positions
     anchors = get_anchor_positions_with_radii()
@@ -182,7 +190,7 @@ def process_spawning(
     if map_id not in _spawn_accumulators:
         _spawn_accumulators[map_id] = 0.0
 
-    _spawn_accumulators[map_id] += delta_seconds * config.spawn_rate
+    _spawn_accumulators[map_id] += delta_seconds * config.spawn_rate * multiplier
 
     # Spawn mobs
     while _spawn_accumulators[map_id] >= 1.0 and current_mobs < config.max_mobs:
