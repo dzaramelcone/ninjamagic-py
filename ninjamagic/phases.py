@@ -3,7 +3,7 @@
 
 from enum import Enum
 
-from ninjamagic import bus
+from ninjamagic import bus, story
 from ninjamagic.nightclock import NightClock
 
 _last_phase: "Phase | None" = None
@@ -77,3 +77,22 @@ def process_phase_changes(clock: NightClock) -> Phase:
 
     _last_phase = current
     return current
+
+
+def process_announcements() -> None:
+    """Announce phase transitions to players."""
+    for sig in bus.iter(bus.PhaseChanged):
+        if sig.new_phase == Phase.EVENING.value:
+            story.broadcast("The sun dips low. Darkness stirs.")
+
+        elif sig.new_phase == Phase.WAVES.value:
+            story.broadcast("The darkness surges. They come for the light.")
+
+        elif sig.new_phase == Phase.FADE.value:
+            story.broadcast("The wave recedes. Catch your breath.")
+
+        elif sig.new_phase == Phase.REST.value:
+            story.broadcast("The night quiets. Rest now, if you can.")
+
+        elif sig.new_phase == Phase.DAY.value:
+            story.broadcast("Dawn breaks. The darkness retreats.")
