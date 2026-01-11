@@ -1,6 +1,7 @@
 # ninjamagic/phases.py
 """Time phases for the day/night cycle."""
 
+import math
 from enum import Enum
 
 from ninjamagic import bus, story
@@ -11,26 +12,49 @@ _last_phase: "Phase | None" = None
 
 class Phase(Enum):
     """Phases of the day/night cycle."""
-    DAY = "day"          # 6am-6pm: Safe to venture
+
+    DAY = "day"  # 6am-6pm: Safe to venture
     EVENING = "evening"  # 6pm-11pm: Tension rises, head back
-    WAVES = "waves"      # 11pm-1am: Peak mob spawning, defend
-    FADE = "fade"        # 1am-2am: Waves die off, eat
-    REST = "rest"        # 2am-6am: Camp triggers, XP consolidates
+    WAVES = "waves"  # 11pm-1am: Peak mob spawning, defend
+    FADE = "fade"  # 1am-2am: Waves die off, eat
+    REST = "rest"  # 2am-6am: Camp triggers, XP consolidates
 
 
 # Spawn rate multipliers by phase
 SPAWN_MULTIPLIERS = {
-    Phase.DAY: 0.2,      # Mobs exist but manageable
+    Phase.DAY: 0.2,  # Mobs exist but manageable
     Phase.EVENING: 0.8,  # Tension rises
-    Phase.WAVES: 3.0,    # Peak intensity
-    Phase.FADE: 0.5,     # Waves dying off
-    Phase.REST: 0.0,     # No spawning during rest
+    Phase.WAVES: 3.0,  # Peak intensity
+    Phase.FADE: 0.5,  # Waves dying off
+    Phase.REST: 0.0,  # No spawning during rest
 }
 
 
 def get_spawn_multiplier(phase: Phase) -> float:
     """Get the spawn rate multiplier for a phase."""
     return SPAWN_MULTIPLIERS.get(phase, 1.0)
+
+
+def get_wave_intensity(*, hour: int, minute: int) -> float:
+    """Return wave intensity (0.0-1.0) based on time.
+
+    Peaks at midnight (1.0), ramps from 11pm to 1am.
+    Zero outside wave hours.
+    """
+    phase = get_phase(hour=hour)
+    if phase != Phase.WAVES:
+        return 0.0
+
+    # Calculate minutes since 11pm (start of WAVES)
+    minutes_since_start = minute if hour == 23 else 60 + minute
+
+    # Map to 0-1 progress through the 2-hour wave period
+    progress = minutes_since_start / 120.0
+
+    # Sine curve: 0 at start, 1 at middle (midnight), 0 at end
+    intensity = math.sin(progress * math.pi)
+
+    return intensity
 
 
 def get_phase(*, hour: int) -> Phase:
@@ -70,10 +94,12 @@ def process_phase_changes(clock: NightClock) -> Phase:
     current = get_current_phase(clock)
 
     if _last_phase is not None and current != _last_phase:
-        bus.pulse(bus.PhaseChanged(
-            old_phase=_last_phase.value,
-            new_phase=current.value,
-        ))
+        bus.pulse(
+            bus.PhaseChanged(
+                old_phase=_last_phase.value,
+                new_phase=current.value,
+            )
+        )
 
     _last_phase = current
     return current
