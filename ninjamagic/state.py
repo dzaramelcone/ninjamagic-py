@@ -33,7 +33,7 @@ from ninjamagic import (
     terrain,
     visibility,
 )
-from ninjamagic.phases import get_current_phase
+from ninjamagic.phases import process_phase_changes
 from ninjamagic.util import get_looptime
 from ninjamagic.world.state import can_enter
 
@@ -111,7 +111,7 @@ class State:
                 mob_ai.process_mob_ai(walkable_check=lambda y, x: can_enter(map_id=1, y=y, x=x))
 
             # Mob spawning
-            current_phase = get_current_phase(scheduler.clock)
+            current_phase = process_phase_changes(scheduler.clock)
             spawn.process_spawning(
                 map_id=1,  # Hardcoded for now (single map game)
                 delta_seconds=STEP,
