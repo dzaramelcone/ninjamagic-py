@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass as component, field, fields
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 from typing import Literal, NewType, TypeVar
 
 import esper
@@ -535,3 +535,25 @@ def get_worn(
         for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
     ]
+
+
+class MobType(Enum):
+    """Types of mobs with different behaviors."""
+    SWARM = "swarm"      # Weak, numerous
+    PACK = "pack"        # Coordinated group
+    DEATH_KNIGHT = "death_knight"  # Strong 1v1
+    BOSS = "boss"        # Special encounter
+
+
+@component(slots=True, kw_only=True)
+class Mob:
+    """Marks an entity as a hostile mob with AI behavior.
+
+    Attributes:
+        mob_type: The mob phenotype (affects behavior).
+        aggro_range: Distance at which mob notices players.
+        target: Current target entity (anchor or player).
+    """
+    mob_type: MobType = MobType.SWARM
+    aggro_range: int = 6
+    target: int | None = None
