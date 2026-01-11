@@ -3,6 +3,8 @@
 
 from enum import Enum
 
+from ninjamagic.nightclock import NightClock
+
 
 class Phase(Enum):
     """Phases of the day/night cycle."""
@@ -48,3 +50,8 @@ def get_phase(*, hour: int) -> Phase:
         return Phase.FADE
     # 2, 3, 4, 5
     return Phase.REST
+
+
+def get_current_phase(clock: NightClock) -> Phase:
+    """Get the current phase from a NightClock instance."""
+    return get_phase(hour=clock.hour)
