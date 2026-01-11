@@ -147,3 +147,36 @@ def test_pilgrimage_stress_multiplier():
 
     mult = get_stress_multiplier(player)
     assert mult == 3.0
+
+
+def test_pilgrimage_demon_power():
+    """Players on pilgrimage get a preview demon power."""
+    import esper
+
+    from ninjamagic.component import PilgrimageState
+    from ninjamagic.demon import DemonPower, get_active_demon_power
+
+    esper.clear_database()
+
+    player = esper.create_entity()
+    esper.add_component(player, PilgrimageState(sacrifice_entity=1))
+
+    power = get_active_demon_power(player)
+    assert power is not None
+    assert isinstance(power, DemonPower)
+    assert power.name == "Dark Vigor"
+
+
+def test_normal_player_no_demon_power():
+    """Normal players have no demon power."""
+    import esper
+
+    from ninjamagic.demon import get_active_demon_power
+
+    esper.clear_database()
+
+    player = esper.create_entity()
+    # No PilgrimageState
+
+    power = get_active_demon_power(player)
+    assert power is None
