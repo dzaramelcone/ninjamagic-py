@@ -440,6 +440,15 @@ class TendAnchor(Signal):
     fuel_amount: float
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class MakeSacrifice(Signal):
+    """Player makes a sacrifice at an anchor."""
+
+    source: int
+    sacrifice_type: str
+    amount: float
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
