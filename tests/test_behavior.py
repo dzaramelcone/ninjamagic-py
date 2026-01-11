@@ -175,3 +175,53 @@ def test_pack_flanks_target():
     assert follower_behavior.state == BehaviorState.FLANKING
 
     bus.clear()
+
+
+def test_death_knight_targets_single_player():
+    """Death knight targets one player and fights to the death."""
+    from ninjamagic.behavior.death_knight import process_death_knight
+    from ninjamagic.component import (
+        Connection,
+        Health,
+        Mob,
+        MobBehavior,
+        MobType,
+        Transform,
+    )
+
+    esper.clear_database()
+    bus.clear()
+
+    map_id = esper.create_entity()
+
+    # Two players
+    player1 = esper.create_entity()
+    esper.add_component(player1, Transform(map_id=map_id, y=10, x=10))
+    esper.add_component(player1, Health())
+    esper.add_component(player1, MagicMock(), Connection)
+
+    player2 = esper.create_entity()
+    esper.add_component(player2, Transform(map_id=map_id, y=10, x=20))
+    esper.add_component(player2, Health())
+    esper.add_component(player2, MagicMock(), Connection)
+
+    # Death knight
+    dk = esper.create_entity()
+    esper.add_component(dk, Transform(map_id=map_id, y=15, x=15))
+    esper.add_component(dk, Mob(mob_type=MobType.DEATH_KNIGHT, aggro_range=20))
+    esper.add_component(dk, MobBehavior())
+    esper.add_component(dk, Health())
+
+    process_death_knight(walkable_check=_always_walkable)
+
+    behavior = esper.component_for_entity(dk, MobBehavior)
+
+    # Should target one player and stick with them
+    assert behavior.target_entity in [player1, player2]
+    first_target = behavior.target_entity
+
+    # Process again - should keep same target
+    process_death_knight(walkable_check=_always_walkable)
+    assert behavior.target_entity == first_target
+
+    bus.clear()
