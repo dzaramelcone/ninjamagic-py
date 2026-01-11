@@ -410,6 +410,45 @@ class OutboundSkill(Signal):
     tnl: float
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class TileMutated(Signal):
+    """A terrain tile has changed."""
+
+    map_id: int
+    top: int
+    left: int
+    y: int  # Cell within tile
+    x: int  # Cell within tile
+    old_tile: int
+    new_tile: int
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class PhaseChanged(Signal):
+    """The day/night phase has changed."""
+
+    old_phase: str  # Phase enum value
+    new_phase: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class TendAnchor(Signal):
+    """Player tends an anchor, adding fuel."""
+
+    source: int  # Player entity
+    anchor: int  # Anchor entity
+    fuel_amount: float
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class MakeSacrifice(Signal):
+    """Player makes a sacrifice at an anchor."""
+
+    source: int
+    sacrifice_type: str
+    amount: float
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
@@ -446,9 +485,7 @@ def pulse_in(delay: float, *sigs: Signal) -> None:
             *[
                 sig
                 for sig in sigs
-                if esper.entity_exists(
-                    getattr(sig, "source", 0) or getattr(sig, "to", 0)
-                )
+                if esper.entity_exists(getattr(sig, "source", 0) or getattr(sig, "to", 0))
             ]
         )
 
