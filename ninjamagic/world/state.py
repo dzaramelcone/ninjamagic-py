@@ -104,7 +104,7 @@ def build_hub(map_id: EntityId, chips: Chips):
 
     bonfire = esper.create_entity(
         Transform(map_id=map_id, y=9, x=4),
-        Anchor(),
+        Anchor(strength=1.0, fuel=100.0, max_fuel=100.0, eternal=True),
         ProvidesHeat(),
         ProvidesLight(),
         Noun(value="bonfire", pronoun=Pronouns.IT),
