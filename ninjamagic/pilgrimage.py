@@ -9,9 +9,12 @@ from ninjamagic.component import (
     Noun,
     PilgrimageState,
     Pronouns,
+    ProvidesHeat,
+    ProvidesLight,
     Sacrifice,
     SacrificeType,
     Transform,
+    get_sacrifice_strength,
 )
 
 
@@ -109,3 +112,64 @@ def get_stress_multiplier(player_eid: int) -> float:
         return 1.0
     state = esper.component_for_entity(player_eid, PilgrimageState)
     return state.stress_rate_multiplier
+
+
+def create_anchor_from_sacrifice(
+    *,
+    player_eid: int,
+    location_y: int,
+    location_x: int,
+) -> int | None:
+    """Create a new anchor using the player's carried sacrifice.
+
+    Returns the new anchor entity ID, or None if failed.
+    """
+    # Must be on pilgrimage
+    if not esper.has_component(player_eid, PilgrimageState):
+        return None
+
+    state = esper.component_for_entity(player_eid, PilgrimageState)
+
+    # Must have valid sacrifice
+    if not esper.entity_exists(state.sacrifice_entity):
+        return None
+
+    sacrifice = esper.component_for_entity(state.sacrifice_entity, Sacrifice)
+
+    # Calculate anchor strength
+    strength = get_sacrifice_strength(sacrifice)
+
+    # Get player's map
+    transform = esper.component_for_entity(player_eid, Transform)
+
+    # Create the anchor
+    anchor_eid = esper.create_entity()
+    esper.add_component(
+        anchor_eid,
+        Transform(
+            map_id=transform.map_id,
+            y=location_y,
+            x=location_x,
+        ),
+    )
+    esper.add_component(
+        anchor_eid,
+        Anchor(
+            strength=strength,
+            fuel=100.0,
+            max_fuel=100.0,
+            eternal=False,
+        ),
+    )
+    esper.add_component(anchor_eid, ProvidesHeat())
+    esper.add_component(anchor_eid, ProvidesLight())
+    esper.add_component(anchor_eid, Noun(value="bonfire", pronoun=Pronouns.IT))
+    esper.add_component(anchor_eid, ("⚶", 0.95, 0.6, 0.65), Glyph)
+
+    # Consume sacrifice
+    esper.delete_entity(state.sacrifice_entity)
+
+    # End pilgrimage
+    esper.remove_component(player_eid, PilgrimageState)
+
+    return anchor_eid
