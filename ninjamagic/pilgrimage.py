@@ -93,3 +93,19 @@ def cancel_pilgrimage(player_eid: int) -> None:
 
     # Remove pilgrimage state
     esper.remove_component(player_eid, PilgrimageState)
+
+
+def get_damage_multiplier(player_eid: int) -> float:
+    """Get the damage multiplier for a player (higher = takes more damage)."""
+    if not esper.has_component(player_eid, PilgrimageState):
+        return 1.0
+    state = esper.component_for_entity(player_eid, PilgrimageState)
+    return state.damage_taken_multiplier
+
+
+def get_stress_multiplier(player_eid: int) -> float:
+    """Get the stress rate multiplier for a player."""
+    if not esper.has_component(player_eid, PilgrimageState):
+        return 1.0
+    state = esper.component_for_entity(player_eid, PilgrimageState)
+    return state.stress_rate_multiplier
