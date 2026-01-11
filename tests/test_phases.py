@@ -32,3 +32,27 @@ def test_rest_phase():
     assert get_phase(hour=2) == Phase.REST
     assert get_phase(hour=4) == Phase.REST
     assert get_phase(hour=5) == Phase.REST
+
+
+def test_spawn_multiplier_day():
+    """Day has low spawn rate."""
+    from ninjamagic.phases import get_spawn_multiplier, Phase
+
+    mult = get_spawn_multiplier(Phase.DAY)
+    assert mult == 0.2  # Low but not zero
+
+
+def test_spawn_multiplier_waves():
+    """Waves phase has maximum spawn rate."""
+    from ninjamagic.phases import get_spawn_multiplier, Phase
+
+    mult = get_spawn_multiplier(Phase.WAVES)
+    assert mult == 3.0  # Intense
+
+
+def test_spawn_multiplier_rest():
+    """Rest phase has no spawning."""
+    from ninjamagic.phases import get_spawn_multiplier, Phase
+
+    mult = get_spawn_multiplier(Phase.REST)
+    assert mult == 0.0
