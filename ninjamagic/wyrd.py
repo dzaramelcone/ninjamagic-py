@@ -284,16 +284,12 @@ def process() -> None:
             exit_wyrd_state(sig.source)
             story.echo("The anima fades into nothing.", sig.source)
 
-    # Handle anima dropped/lost
+    # Handle dropped anima - exit wyrd
     for sig in bus.iter(bus.ItemDropped):
-        if not esper.entity_exists(sig.item):
-            continue
         if not esper.has_component(sig.item, Anima):
             continue
-
         anima = esper.component_for_entity(sig.item, Anima)
-        source_player = anima.source_player
-
-        if esper.entity_exists(source_player) and esper.has_component(source_player, Wyrd):
-            exit_wyrd_state(source_player)
-            story.echo("The anima slips away. The sacrifice is lost.", source_player)
+        player_eid = anima.source_player
+        if esper.has_component(player_eid, Wyrd):
+            exit_wyrd_state(player_eid)
+            story.echo("The anima slips from your grasp. The fire fades.", player_eid)
