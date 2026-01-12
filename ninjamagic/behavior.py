@@ -162,7 +162,7 @@ def _find_nearest_anchor(eid: EntityId) -> EntityId | None:
 
 
 def _get_blocked_cells(
-    map_id: EntityId, center_y: int, center_x: int, radius: int = 32
+    map_id: EntityId, center_y: int, center_x: int, radius: int = 16
 ) -> set[tuple[int, int]]:
     """Get blocked cells around a center point."""
     blocked = set()
@@ -421,6 +421,7 @@ def process_behavior_queue(eid: EntityId, behaviors: list[Behavior]) -> bool:
 
 def process(now: Looptime) -> None:
     """Process all entities with BehaviorQueue components."""
+    # TODO: Wire into game loop in state.py (after act, before combat)
     from ninjamagic.component import BehaviorQueue
 
     _ = now  # May be used for cooldowns later
