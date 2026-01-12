@@ -16,6 +16,7 @@ from ninjamagic.anchor import find_anchor_at, grow_anchor
 from ninjamagic.component import (
     Anchor,
     Anima,
+    Claws,
     ContainedBy,
     DamageTakenMultiplier,
     EntityId,
@@ -137,6 +138,10 @@ def enter_wyrd_state(
     # Add proc bonus
     esper.add_component(player_eid, ProcBonus(value=WYRD_PROC_BONUS))
     added.append(ProcBonus)
+
+    # Add claws - wyrm transformation
+    esper.add_component(player_eid, Claws())
+    added.append(Claws)
 
     # Add stat sickness if stat sacrifice
     if stat:

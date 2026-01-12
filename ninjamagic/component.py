@@ -120,6 +120,10 @@ class DoubleDamage:
     """
 
 
+class Claws:
+    """Wyrm claws grown from carrying the anima. Attacks rend flesh."""
+
+
 @component(slots=True, kw_only=True)
 class Defending:
     """The entity is currently defending.
