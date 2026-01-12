@@ -4,7 +4,6 @@ import esper
 
 from ninjamagic import bus, nightclock, story
 from ninjamagic.component import (
-    Anchor,
     Ate,
     Connection,
     EntityId,
@@ -71,7 +70,8 @@ def process_eating() -> None:
         is_warm = prop and esper.has_component(prop, ProvidesHeat)
         is_lit = prop and esper.has_component(prop, ProvidesLight)
         is_lit = is_lit or nightclock.NightClock().brightness_index >= 6
-        is_safe = prop and esper.has_component(prop, Anchor)
+        # Safe if at a bonfire (has both heat and light)
+        is_safe = is_warm and is_lit
         if not is_safe:
             # survival contest against hostility.
             tf = esper.component_for_entity(sig.source, Transform)
@@ -275,7 +275,12 @@ def process_rest() -> None:
         skill = esper.component_for_entity(eid, Skills)
         prop = stance.prop
         survival_rank = skill.survival.rank
-        at_anchor = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
+        # At bonfire if prop has both heat and light
+        at_anchor = (
+            esper.entity_exists(prop)
+            and esper.has_component(prop, ProvidesHeat)
+            and esper.has_component(prop, ProvidesLight)
+        )
         rested = False
 
         if at_anchor:
@@ -300,20 +305,14 @@ def process_rest() -> None:
                 mult = contest(rest_rank, hostility)
                 rested = Trial.check(mult=mult)
                 bus.pulse(
-                    bus.Learn(
-                        source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
-                    )
+                    bus.Learn(source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult)
                 )
 
         # last ditch effort
         if not rested:
             mult = contest(survival_rank * weariness_factor, hostility)
             rested = Trial.check(mult=mult, difficulty=Trial.INFEASIBLE)
-            bus.pulse(
-                bus.Learn(
-                    source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
-                )
-            )
+            bus.pulse(bus.Learn(source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult))
 
         if rested:
             bus.pulse(
@@ -331,8 +330,6 @@ def process_rest() -> None:
             case True, True:
                 story.echo("{0} {0:rests}.", eid)
             case True, False:
-                story.echo(
-                    "{0} {0:rests} in fits, woken twice by an empty stomach.", eid
-                )
+                story.echo("{0} {0:rests} in fits, woken twice by an empty stomach.", eid)
             case _:
                 story.echo("{0} {0:rests}, but not well.", eid)

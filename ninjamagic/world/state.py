@@ -2,7 +2,6 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import (
-    Anchor,
     Chips,
     ChipSet,
     ContainedBy,
@@ -104,7 +103,6 @@ def build_hub(map_id: EntityId, chips: Chips):
 
     bonfire = esper.create_entity(
         Transform(map_id=map_id, y=9, x=4),
-        Anchor(strength=1.0, fuel=100.0, max_fuel=100.0, eternal=True),
         ProvidesHeat(),
         ProvidesLight(),
         Noun(value="bonfire", pronoun=Pronouns.IT),
@@ -183,9 +181,7 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
     return grid[y * TILE_STRIDE_W + x] in {1, 3, 4, 5}  # floor, grass, overgrown, dense
 
 
-def get_tile(
-    *, map_id: EntityId, top: int, left: int
-) -> tuple[int, int, bytearray | None]:
+def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytearray | None]:
     """Get a 16x16 tile from a map. Floors (top, left) to factors of TILE_STRIDE."""
 
     chips = esper.component_for_entity(map_id, Chips)
@@ -200,7 +196,11 @@ DEMO = build_demo()
 
 
 def get_recall(_: EntityId) -> tuple[int, int, int, int]:
-    for eid, _ in esper.get_component(Anchor):
+    """Get the recall point for respawning.
+
+    Returns the first entity with both ProvidesHeat and ProvidesLight (a bonfire).
+    """
+    for eid, (_, _) in esper.get_components(ProvidesHeat, ProvidesLight):
         if loc := esper.try_component(eid, Transform):
             return eid, loc.map_id, loc.y, loc.x
     raise KeyError

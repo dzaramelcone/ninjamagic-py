@@ -431,24 +431,6 @@ class PhaseChanged(Signal):
     new_phase: str
 
 
-@signal(frozen=True, slots=True, kw_only=True)
-class TendAnchor(Signal):
-    """Player tends an anchor, adding fuel."""
-
-    source: int  # Player entity
-    anchor: int  # Anchor entity
-    fuel_amount: float
-
-
-@signal(frozen=True, slots=True, kw_only=True)
-class MakeSacrifice(Signal):
-    """Player makes a sacrifice at an anchor."""
-
-    source: int
-    sacrifice_type: str
-    amount: float
-
-
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 

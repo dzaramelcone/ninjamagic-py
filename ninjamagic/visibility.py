@@ -13,8 +13,7 @@ from ninjamagic.component import (
     Transform,
 )
 from ninjamagic.outbox import sent_tiles
-from ninjamagic.terrain import on_tile_sent
-from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, VIEW_STRIDE, get_looptime
+from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, VIEW_STRIDE
 from ninjamagic.world.state import ChipSet
 
 log = logging.getLogger(__name__)
@@ -36,14 +35,12 @@ def notify_movement(sig: bus.PositionChanged):
     sig_stance = esper.try_component(sig.source, Stance)
     # tell source. send tiles.
     if notify_source:
-        now = get_looptime()
         tile_signals = []
         for dx, dy in CORNERS:
             top, left = sig.to_y + dy, sig.to_x + dx
             tile_signals.append(
                 bus.OutboundTile(to=sig.source, map_id=sig.to_map_id, top=top, left=left)
             )
-            on_tile_sent(sig.to_map_id, top=top, left=left, now=now)
         bus.pulse(
             bus.OutboundMove(
                 to=sig.source,
