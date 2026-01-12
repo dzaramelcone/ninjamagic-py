@@ -18,7 +18,8 @@ def process(now: Looptime):
 
         prompt = sig.prompt
         matched = sig.prompt.text == sig.text
-        expired = sig.prompt.end and sig.prompt.end < now
+        expired = bool(sig.prompt.end and sig.prompt.end < now)
+        handler = None
         match (matched, expired):
             case (True, False):
                 handler = prompt.on_ok
