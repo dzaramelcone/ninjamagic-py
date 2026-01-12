@@ -443,6 +443,21 @@ class TileDecay(Signal):
     x: int
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class AnchorDestroyed(Signal):
+    """An anchor was destroyed (rank reached 0 or lost to hostility)."""
+
+    anchor: EntityId
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class WaveMobAttacksAnchor(Signal):
+    """A wave mob attacks an anchor."""
+
+    anchor: EntityId
+    mob_strength: int
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 
