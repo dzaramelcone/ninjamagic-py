@@ -69,9 +69,7 @@ def make_tests_deterministic():
 
 
 @pytest.fixture
-def golden_json(
-    request: pytest.FixtureRequest, golden_update: bool
-) -> Callable[[Any], None]:
+def golden_json(request: pytest.FixtureRequest, golden_update: bool) -> Callable[[Any], None]:
     base_dir = pathlib.Path(__file__).parent / "goldens" / request.node.name
     ctr = 0
 
@@ -118,9 +116,7 @@ def golden(
         rendered = {
             "client": client,
             "len": f"{len(data)} B",
-            "parsed": (
-                json.loads(data) if isinstance(data, str) else proto_loadb(data)
-            ),
+            "parsed": (json.loads(data) if isinstance(data, str) else proto_loadb(data)),
         }
 
         g_path = base_dir / f"{request.node.name}-{ctr}.out"
@@ -132,9 +128,7 @@ def golden(
             return
 
         expected = json.loads(g_path.read_text())
-        assert not DeepDiff(
-            rendered, expected, exclude_regex_paths=[r"root.*?\['(id|seconds)'\]"]
-        )
+        assert not DeepDiff(rendered, expected, exclude_regex_paths=[r"root.*?\['(id|seconds)'\]"])
 
     return _golden
 
@@ -148,17 +142,13 @@ async def client_factory() -> ClientFactory:
     """
     active_connections: list[ClientConnection] = []
 
-    async def _create_session(
-        setup: FakeUserSetup, discard_init: bool = True
-    ) -> ClientConnection:
+    async def _create_session(setup: FakeUserSetup, discard_init: bool = True) -> ClientConnection:
         async with (
             asyncio.timeout(0.25),
             httpx.AsyncClient(base_url=BASE_HTTP_URL) as http_client,
         ):
             try:
-                auth_response = await http_client.post(
-                    "/auth/local", json=asdict(setup)
-                )
+                auth_response = await http_client.post("/auth/local", json=asdict(setup))
                 assert auth_response.status_code < 400, "Bad response"
                 session_cookie = auth_response.cookies.get("session")
                 if not session_cookie:

@@ -157,7 +157,7 @@ def test_brightness_index_golden(golden_json):
             f"icon={nc.brightness_index} "
             f"d={nc.dawn:.2f} "
             f"k={nc.dusk:.2f} "
-            f"iso={nc.dt.strftime("%m/%d %H%M")}"
+            f"iso={nc.dt.strftime('%m/%d %H%M')}"
         )
 
     results: list[dict[str, object]] = []
@@ -225,8 +225,7 @@ def test_nightstorm_always_zero(year, month, frac):
 
     assert nc.in_nightstorm, f"{dt=}: expected in_nightstorm=True, got False"
     assert nc.brightness_index == 0, (
-        f"{dt=}: expected brightness_index=0 during nightstorm, "
-        f"got {nc.brightness_index}"
+        f"{dt=}: expected brightness_index=0 during nightstorm, got {nc.brightness_index}"
     )
 
 
