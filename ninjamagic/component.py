@@ -210,6 +210,7 @@ class Hostility:
     tiles: dict[tuple[int, int], int] = field(default_factory=dict)
 
     def at(self, y: int, x: int) -> int:
+        y, x = y // TILE_STRIDE_H * TILE_STRIDE_H, x // TILE_STRIDE_W * TILE_STRIDE_W
         return self.tiles.get((y, x), self.base)
 
 
