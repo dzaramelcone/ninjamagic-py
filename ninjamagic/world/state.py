@@ -59,7 +59,7 @@ def build_nowhere() -> EntityId:
 
 def build_demo() -> EntityId:
     out = esper.create_entity(
-        Hostility(default=50, coords={(0, 0): 0}),
+        Hostility(base=50, tiles={(0, 0): 0}),
         ForageEnvironment(default=("cave", 30), coords={(0, 0): ("forest", 0)}),
     )
     chips = simple.build_level(lut=[1, 2])

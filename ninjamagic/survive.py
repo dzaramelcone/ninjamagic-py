@@ -76,7 +76,7 @@ def process_eating() -> None:
             # survival contest against hostility.
             tf = esper.component_for_entity(sig.source, Transform)
             cmp = esper.try_component(tf.map_id, Hostility)
-            hostility = cmp.get_rank(y=tf.y, x=tf.x) if cmp else 0
+            hostility = cmp.at(y=tf.y, x=tf.x) if cmp else 0
             mult = contest(survival, hostility)
             is_safe = Trial.check(mult=mult)
             bus.pulse(
@@ -297,7 +297,7 @@ def process_rest() -> None:
 
             hostility = 0
             if cmp := esper.try_component(loc.map_id, Hostility):
-                hostility = cmp.get_rank(loc.y, loc.x)
+                hostility = cmp.at(loc.y, loc.x)
 
             if sheltered := esper.try_component(eid, Sheltered):
                 shelter_level = esper.component_for_entity(sheltered.prop, Level)

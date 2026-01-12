@@ -202,16 +202,15 @@ class ForageEnvironment:
         return self.coords.get((y, x), self.default)
 
 
-@component(slots=True, frozen=True)
+@component(slots=True, kw_only=True)
 class Hostility:
-    """The hostility rank at each tile. Used by eating and camping."""
+    """Wilderness hostility level for a map."""
 
-    default: int
-    coords: dict[tuple[int, int], int] = field(default_factory=dict)
+    base: int  # level-wide fallback
+    tiles: dict[tuple[int, int], int] = field(default_factory=dict)
 
-    def get_rank(self, y: int, x: int) -> int:
-        y, x = y // TILE_STRIDE_H * TILE_STRIDE_H, x // TILE_STRIDE_W * TILE_STRIDE_W
-        return self.coords.get((y, x), self.default)
+    def at(self, y: int, x: int) -> int:
+        return self.tiles.get((y, x), self.base)
 
 
 class Rotting:
@@ -441,6 +440,69 @@ class Transform:
 @component(slots=True, kw_only=True)
 class Wearable:
     slot: Slot
+
+
+@component(slots=True, kw_only=True)
+class Wyrd:
+    """Player is in wyrd state - carrying anima through darkness."""
+
+    anima: EntityId
+    added_components: list[type]
+
+
+@component(slots=True, kw_only=True)
+class Anima:
+    """Sacrifice item - piece of soul made physical."""
+
+    source_anchor: EntityId
+    source_player: EntityId
+    stat: str = ""  # "grace" / "grit" / "wit" for stat sickness
+    skill: str = ""  # which skill for XP sacrifice
+    rank: int = 0  # rank at sacrifice
+
+
+@component(slots=True, kw_only=True)
+class DamageTakenMultiplier:
+    """Multiplier applied to damage taken."""
+
+    value: float  # no default
+
+
+@component(slots=True, kw_only=True)
+class ProcBonus:
+    """Bonus to proc chance."""
+
+    value: float  # no default
+
+
+@component(slots=True, kw_only=True)
+class Anchor:
+    """Light against the darkness."""
+
+    rank: int  # no default
+    threshold: int = 24  # manhattan distance for protection
+
+
+@component(slots=True, kw_only=True)
+class LastRestGains:
+    """Tracks ranks gained on last rest for XP sacrifice."""
+
+    gains: dict[str, int] = field(default_factory=dict)  # skill -> ranks gained
+
+
+@component(slots=True, kw_only=True)
+class StatSickness:
+    """Temporary stat reduction from sacrifice."""
+
+    stat: str  # "grace" / "grit" / "wit"
+    nights_remaining: int
+
+
+@component(slots=True, kw_only=True)
+class Target:
+    """Current target for behavior system."""
+
+    entity: EntityId
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:
