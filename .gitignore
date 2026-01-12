@@ -3,6 +3,7 @@ __pycache__/
 
 notes/
 dist/
+docs/plans/
 
 ninjamagic.env
 droplet.ninjamagic.env
