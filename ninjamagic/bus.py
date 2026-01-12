@@ -458,6 +458,14 @@ class WaveMobAttacksAnchor(Signal):
     mob_strength: int
 
 
+@signal(frozen=True, slots=True, kw_only=True)
+class ItemDropped(Signal):
+    """An item was dropped from a player's hands."""
+
+    source: EntityId  # player who dropped
+    item: EntityId
+
+
 def is_empty[T: Signal](cls: type[T]) -> bool:
     return not bool(qs[cls])
 

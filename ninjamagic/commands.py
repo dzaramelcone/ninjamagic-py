@@ -4,8 +4,11 @@ from typing import Protocol
 
 import esper
 
-from ninjamagic import bus, reach, story, util
+from ninjamagic import bus, reach, story, util, wyrd
+from ninjamagic.anchor import find_anchor_at
 from ninjamagic.component import (
+    Anchor,
+    Anima,
     ContainedBy,
     Container,
     Cookware,
@@ -277,6 +280,15 @@ class Kneel(Command):
     text: str = "kneel"
 
     def trigger(self, root: bus.Inbound) -> Out:
+        # Check if player is at an anchor
+        loc = transform(root.source)
+        anchor_eid = find_anchor_at(loc.map_id, loc.y, loc.x)
+
+        if anchor_eid:
+            # Start wyrd prompt flow
+            wyrd.start_wyrd_prompt(root.source, anchor_eid)
+            return OK
+
         return handle_stance(new_stance="kneeling", cmd="Kneel", root=root)
 
 
@@ -519,7 +531,8 @@ class Drop(Command):
         loc = transform(root.source)
         story.echo("{0} {0:drops} {1}.", root.source, eid, range=reach.visible)
         bus.pulse(
-            bus.MovePosition(source=eid, to_map_id=loc.map_id, to_y=loc.y, to_x=loc.x, quiet=True)
+            bus.MovePosition(source=eid, to_map_id=loc.map_id, to_y=loc.y, to_x=loc.x, quiet=True),
+            bus.ItemDropped(source=root.source, item=eid),
         )
         return OK
 
@@ -598,6 +611,21 @@ class Put(Command):
 
         c_eid, _, _ = container
         if esper.has_component(c_eid, ProvidesHeat):
+            # Anima + fire = new anchor
+            if esper.has_component(s_eid, Anima):
+                anima = esper.component_for_entity(s_eid, Anima)
+
+                # Convert fire to anchor
+                esper.add_component(c_eid, Anchor(rank=1, threshold=24))
+                wyrd.exit_wyrd_state(anima.source_player)
+                esper.delete_entity(s_eid)
+
+                story.echo(
+                    "{0} {0:places} the anima. Fire blooms from darkness.",
+                    root.source,
+                )
+                return OK
+
             if esper.has_components(s_eid, Container, Cookware):
                 story.echo(
                     "{0} {0:puts} {1} in the heat of {2}...",
