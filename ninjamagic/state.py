@@ -29,6 +29,7 @@ from ninjamagic import (
     scheduler,
     survive,
     visibility,
+    wyrd,
 )
 from ninjamagic.phases import process_announcements, process_phase_changes
 from ninjamagic.util import get_looptime
@@ -97,6 +98,7 @@ class State:
             decay.process()
             combat.process(now=now)
             proc.process(now=now)
+            wyrd.process()
             move.process()
             visibility.process()
 
