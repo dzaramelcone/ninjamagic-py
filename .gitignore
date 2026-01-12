@@ -4,6 +4,7 @@ __pycache__/
 notes/
 dist/
 docs/plans/
+tests/unit/
 
 ninjamagic.env
 droplet.ninjamagic.env

@@ -1,6 +1,6 @@
 # tests/test_pathfind.py
-import pytest
 from ninjamagic.pathfind import find_path, get_next_step
+
 
 def test_find_path_straight_line():
     """Find path in a straight line."""
