@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass as component, field, fields
-from enum import Enum, StrEnum, auto
+from enum import StrEnum, auto
 from typing import Literal, NewType, TypeVar
 
 import esper
@@ -140,23 +140,6 @@ class LastAnchorRest:
         now = NightClock()
         then = self.nightclock
         return (now - then).nights()
-
-
-@component(slots=True, kw_only=True)
-class Anchor:
-    """The entity is an anchor (bonfire) that creates a stability radius.
-
-    Attributes:
-        strength: Base strength from sacrifice (0.0-1.0). Affects radius size.
-        fuel: Current fuel level (0.0-max_fuel). Depletes over time.
-        max_fuel: Maximum fuel capacity.
-        eternal: If True, never runs out of fuel (the genesis anchor).
-    """
-
-    strength: float = 1.0
-    fuel: float = 100.0
-    max_fuel: float = 100.0
-    eternal: bool = False
 
 
 @component(slots=True, kw_only=True)
@@ -535,115 +518,3 @@ def get_worn(
         for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
     ]
-
-
-class SacrificeType(Enum):
-    """Types of sacrifice for anchor creation."""
-
-    XP = "xp"
-    HEALTH = "health"
-    ITEM = "item"
-
-
-@component(slots=True, kw_only=True)
-class Sacrifice:
-    """A sacrifice item that can be used to create an anchor.
-
-    Attributes:
-        sacrifice_type: What was sacrificed.
-        amount: How much was sacrificed.
-        source_anchor: The anchor where sacrifice was made.
-        source_player: The player who made the sacrifice.
-    """
-
-    sacrifice_type: SacrificeType
-    amount: float
-    source_anchor: int
-    source_player: int
-
-
-def get_sacrifice_strength(sacrifice: Sacrifice) -> float:
-    """Calculate anchor strength from sacrifice amount.
-
-    Returns 0.0 to 1.0 based on sacrifice.
-    """
-    if sacrifice.sacrifice_type == SacrificeType.XP:
-        # 100 XP = ~0.33 strength, 300 XP = 1.0
-        return min(1.0, sacrifice.amount / 300.0)
-    elif sacrifice.sacrifice_type == SacrificeType.HEALTH:
-        # 25 health = 0.5 strength, 50 health = 1.0
-        return min(1.0, sacrifice.amount / 50.0)
-    else:
-        # Items have fixed strength
-        return 0.75
-
-
-class MobType(Enum):
-    """Types of mobs with different behaviors."""
-
-    SWARM = "swarm"  # Weak, numerous
-    PACK = "pack"  # Coordinated group
-    DEATH_KNIGHT = "death_knight"  # Strong 1v1
-    BOSS = "boss"  # Special encounter
-
-
-class BehaviorState(Enum):
-    """Mob behavior states."""
-
-    IDLE = "idle"  # Not doing anything
-    PATHING = "pathing"  # Moving toward target
-    ENGAGING = "engaging"  # In combat
-    FLANKING = "flanking"  # Circling around (pack behavior)
-    SUMMONING = "summoning"  # Spawning adds (boss behavior)
-    RETREATING = "retreating"  # Backing off
-
-
-@component(slots=True, kw_only=True)
-class MobBehavior:
-    """Mob AI behavior state.
-
-    Attributes:
-        state: Current behavior state.
-        target_entity: Entity being targeted (player or anchor).
-        cooldown: Time until next action.
-        pack_leader: For pack mobs, the leader entity.
-    """
-
-    state: BehaviorState = BehaviorState.IDLE
-    target_entity: int | None = None
-    cooldown: float = 0.0
-    pack_leader: int | None = None
-
-
-@component(slots=True, kw_only=True)
-class Mob:
-    """Marks an entity as a hostile mob with AI behavior.
-
-    Attributes:
-        mob_type: The mob phenotype (affects behavior).
-        aggro_range: Distance at which mob notices players.
-        target: Current target entity (anchor or player).
-    """
-
-    mob_type: MobType = MobType.SWARM
-    aggro_range: int = 6
-    target: int | None = None
-
-
-@component(slots=True, kw_only=True)
-class PilgrimageState:
-    """Marks a player as on pilgrimage (carrying a sacrifice).
-
-    Glass cannon state: more powerful but more fragile.
-
-    Attributes:
-        sacrifice_entity: The sacrifice item being carried.
-        start_time: When pilgrimage began.
-        stress_rate_multiplier: How fast stress accumulates (default 3x).
-        damage_taken_multiplier: How much more damage taken (default 1.5x).
-    """
-
-    sacrifice_entity: int
-    start_time: float = 0.0
-    stress_rate_multiplier: float = 3.0
-    damage_taken_multiplier: float = 1.5

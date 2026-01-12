@@ -18,7 +18,6 @@ from ninjamagic.component import (
     stance,
     transform,
 )
-from ninjamagic.pilgrimage import cancel_pilgrimage
 from ninjamagic.util import (
     RNG,
     Looptime,
@@ -192,7 +191,6 @@ def process(now: Looptime):
 
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
-        cancel_pilgrimage(sig.source)
         bus.pulse(bus.ConditionChanged(source=sig.source, condition="dead"))
         if not esper.has_component(sig.source, Connection):
             continue
