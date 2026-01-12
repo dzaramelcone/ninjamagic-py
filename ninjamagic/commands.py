@@ -5,7 +5,6 @@ from typing import Protocol
 import esper
 
 from ninjamagic import bus, reach, story, util, wyrd
-from ninjamagic.anchor import find_anchor_at
 from ninjamagic.component import (
     Anchor,
     Anima,
@@ -280,15 +279,6 @@ class Kneel(Command):
     text: str = "kneel"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        # Check if player is at an anchor
-        loc = transform(root.source)
-        anchor_eid = find_anchor_at(loc.map_id, loc.y, loc.x)
-
-        if anchor_eid:
-            # Start wyrd prompt flow
-            wyrd.start_wyrd_prompt(root.source, anchor_eid)
-            return OK
-
         return handle_stance(new_stance="kneeling", cmd="Kneel", root=root)
 
 
