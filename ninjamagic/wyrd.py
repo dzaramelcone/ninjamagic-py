@@ -14,6 +14,7 @@ import esper
 from ninjamagic import bus, story
 from ninjamagic.anchor import find_anchor_at, grow_anchor
 from ninjamagic.component import (
+    Anchor,
     Anima,
     ContainedBy,
     DamageTakenMultiplier,
@@ -24,7 +25,6 @@ from ninjamagic.component import (
     ProcBonus,
     Prompt,
     Pronouns,
-    ProvidesHeat,
     Slot,
     Stats,
     StatSickness,
@@ -295,10 +295,10 @@ def process() -> None:
             exit_wyrd_state(player_eid)
             story.echo("The anima slips from your grasp. The fire fades.", player_eid)
 
-    # Handle kneeling at fire - start wyrd prompt
+    # Handle kneeling at anchor - start wyrd prompt
     for sig in bus.iter(bus.StanceChanged):
         if sig.stance != "kneeling":
             continue
-        if not sig.prop or not esper.has_component(sig.prop, ProvidesHeat):
+        if not sig.prop or not esper.has_component(sig.prop, Anchor):
             continue
         start_wyrd_prompt(sig.source, sig.prop)

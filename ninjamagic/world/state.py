@@ -2,6 +2,7 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import (
+    Anchor,
     Chips,
     ChipSet,
     ContainedBy,
@@ -105,6 +106,7 @@ def build_hub(map_id: EntityId, chips: Chips):
         Transform(map_id=map_id, y=9, x=4),
         ProvidesHeat(),
         ProvidesLight(),
+        Anchor(rank=10, threshold=24),
         Noun(value="bonfire", pronoun=Pronouns.IT),
     )
     esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
