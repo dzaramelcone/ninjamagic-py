@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 
 # Wyrd state modifiers
 WYRD_DAMAGE_MULTIPLIER = 2.0
-WYRD_PROC_BONUS = 0.1
+WYRD_PROC_BONUS = 0.5
 
 # Stat sickness duration
 STAT_SICKNESS_NIGHTS = 3
