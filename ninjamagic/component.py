@@ -506,6 +506,16 @@ class Target:
     entity: EntityId
 
 
+@component(slots=True, kw_only=True)
+class BehaviorQueue:
+    """Priority queue of behaviors for mob AI.
+
+    Behaviors are tried in order until one succeeds.
+    """
+
+    behaviors: list  # list[Behavior] - using Any to avoid circular import
+
+
 def get_component[T](entity: EntityId, component: type[T]) -> T:
     return esper.component_for_entity(entity, component)
 
