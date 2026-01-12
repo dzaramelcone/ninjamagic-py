@@ -15,9 +15,7 @@ def cue_at(sig: bus.Signal, at: NightClock, recur: Rule | None = None) -> None:
     heapq.heappush(pq, (at, serial(), sig, recur))
 
 
-def cue(
-    sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
-) -> None:
+def cue(sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None) -> None:
     eta = clock + clock.next(time or NightTime())
     cue_at(sig, eta, recur)
 
@@ -39,6 +37,7 @@ def start() -> None:
         recur=recurring(forever=True),
     )
     cue(bus.RestCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
+    cue(bus.DecayCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
 
 
 def process() -> None:

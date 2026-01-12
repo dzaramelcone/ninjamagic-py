@@ -131,6 +131,9 @@ class RestCheck(Signal): ...
 class CoverCheck(Signal): ...
 
 
+class DecayCheck(Signal): ...
+
+
 @signal(frozen=True, slots=True, kw_only=True)
 class MoveEntity(Signal):
     "`source` moved into `container` in `slot`."
@@ -429,6 +432,15 @@ class PhaseChanged(Signal):
 
     old_phase: str  # Phase enum value
     new_phase: str
+
+
+@signal(frozen=True, slots=True, kw_only=True)
+class TileDecay(Signal):
+    """A terrain tile should decay during nightstorm."""
+
+    map_id: EntityId
+    y: int
+    x: int
 
 
 def is_empty[T: Signal](cls: type[T]) -> bool:
