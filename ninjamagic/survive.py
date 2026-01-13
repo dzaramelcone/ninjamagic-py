@@ -218,18 +218,19 @@ def process_cover() -> None:
             continue
 
         # Prompt them to take cover.
+        prompt_end = get_looptime() + nightclock.NightClock().nightstorm_eta
         esper.add_component(
             eid,
             Prompt(
                 text="take cover",
-                end=get_looptime() + nightclock.NightClock().nightstorm_eta,
+                end=prompt_end,
                 on_ok=on_cover_ok,
                 on_err=on_cover_err,
             ),
         )
         bus.pulse(
             bus.Outbound(to=eid, text="The worst of night is imminent! Take cover!"),
-            bus.OutboundPrompt(to=eid, text="take cover"),
+            bus.OutboundPrompt(to=eid, text="take cover", end=prompt_end),
         )
 
 

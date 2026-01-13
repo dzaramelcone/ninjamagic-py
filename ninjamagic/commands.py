@@ -369,18 +369,19 @@ class Fart(Command):
         story.echo("{0} {0:farts}.", root.source)
         bus.pulse(bus.CreateGas(loc=(tform.map_id, tform.y, tform.x)))
 
+        prompt_end = get_looptime() + 4.0
         esper.add_component(
             root.source,
             Prompt(
                 text="inhale deeply",
-                end=get_looptime() + 4.0,
+                end=prompt_end,
                 on_ok=_ok,
                 on_err=_err,
                 on_expired_ok=_ok_exp,
                 on_expired_err=_err_exp,
             ),
         )
-        bus.pulse(bus.OutboundPrompt(to=root.source, text="inhale deeply"))
+        bus.pulse(bus.OutboundPrompt(to=root.source, text="inhale deeply", end=prompt_end))
         return OK
 
 

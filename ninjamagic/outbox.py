@@ -88,6 +88,8 @@ def try_insert(
         case bus.OutboundPrompt():
             msg = envelope.add().prompt
             msg.text = sig.text
+            if sig.end:
+                msg.end = sig.end
             return True
         case bus.OutboundDatetime():
             dt = envelope.add().datetime

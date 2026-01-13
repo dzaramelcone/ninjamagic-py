@@ -81,6 +81,7 @@ message Datetime {
 
 message Prompt {
   string text = 1;
+  optional double end = 2;
 }
 
 // A wrapper that can contain any of our specific message types.

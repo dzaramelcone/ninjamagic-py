@@ -299,6 +299,7 @@ class Outbound(Signal):
 class OutboundPrompt(Signal):
     to: EntityId
     text: str
+    end: Looptime = Looptime(0)
 
 
 @signal(frozen=True, slots=True, kw_only=True)
