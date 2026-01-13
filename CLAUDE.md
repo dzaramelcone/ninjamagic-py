@@ -5,17 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+# Start postgres (required for tests)
+docker compose up -d
+
 # Run the server (requires a running postgres with ninjamagic database)
 uv run uvicorn ninjamagic.main:app --reload
 
 # Run all tests (requires server running at localhost:8000)
-uv run pytest
+uv run python -m pytest
 
 # Run a single test
-uv run pytest tests/test_stories.py::test_foo -v
+uv run python -m pytest tests/test_stories.py::test_foo -v
 
 # Update golden files
-uv run pytest -G
+uv run python -m pytest -G
+
+# Regenerate protobuf (MUST use --ts_opt flag or frontend breaks)
+cd fe && npx protoc --ts_out=src/gen --proto_path=.. ../messages.proto --ts_opt=use_proto_field_name
 
 # Lint and format
 uv run ruff check --fix
