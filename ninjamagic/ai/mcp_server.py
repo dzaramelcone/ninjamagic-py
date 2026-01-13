@@ -118,7 +118,7 @@ async def ensure_connected() -> bool:
 
     # Check if websocket is still open
     ws = _game.client._ws
-    if ws and not ws.closed:
+    if ws and ws.close_code is None:
         return True
 
     # Try to reconnect
@@ -200,13 +200,31 @@ async def status() -> str:
         return "Disconnected. Need to establish session first."
 
     ws = _game.client._ws
-    if not ws or ws.closed:
+    if not ws or ws.close_code is not None:
         # Try to reconnect
         if await ensure_connected():
             return "Reconnected as Vigil."
         return "WebSocket disconnected. Reconnect failed."
 
     return "Connected as Vigil."
+
+
+@mcp.tool()
+def skills() -> str:
+    """See your skills and experience progress."""
+    if _game is None:
+        return "Not connected to ninjamagic."
+
+    if not _game.client.state.skills:
+        return "No skills yet."
+
+    lines = ["=== SKILLS ==="]
+    for name, skill in sorted(_game.client.state.skills.items()):
+        # tnl is progress to next level (0.0 to 1.0)
+        progress = int(skill.tnl * 100)
+        lines.append(f"  {name}: rank {skill.rank} ({progress}% to next)")
+
+    return "\n".join(lines)
 
 
 def main():
