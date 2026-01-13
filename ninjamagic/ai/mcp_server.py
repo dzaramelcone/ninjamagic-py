@@ -14,10 +14,15 @@ from dataclasses import dataclass, field
 
 from mcp.server.fastmcp import FastMCP
 
-from ninjamagic.ai.client import Client, PROD_BASE_URL, PROD_WS_URL, load_session_cookie
+from ninjamagic.ai.client import Client, PROD_BASE_URL, PROD_WS_URL, load_session_cookie, PlayerSetup
+from ninjamagic.component import Noun
 
 
 log = logging.getLogger(__name__)
+
+# Local dev server
+LOCAL_BASE_URL = "http://localhost:8000"
+LOCAL_WS_URL = "ws://localhost:8000"
 
 # File where new messages are written for the hook to read
 NOTIFICATION_FILE = os.path.expanduser("~/.ninjamagic_notifications")
@@ -225,6 +230,38 @@ def skills() -> str:
         lines.append(f"  {name}: rank {skill.rank} ({progress}% to next)")
 
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def connect_local() -> str:
+    """Connect to localhost:8000 for local playtesting. Requires server running locally."""
+    global _game, _watcher_task
+
+    # Disconnect existing connection
+    if _game is not None:
+        if _watcher_task:
+            _watcher_task.cancel()
+            try:
+                await _watcher_task
+            except asyncio.CancelledError:
+                pass
+        await _game.client.disconnect()
+        _game = None
+        _watcher_task = None
+
+    # Connect to local server
+    client = Client(base_url=LOCAL_BASE_URL, ws_url=LOCAL_WS_URL)
+    try:
+        await client.connect(PlayerSetup(noun=Noun(value="Vigil")))
+        _game = GameConnection(
+            client=client,
+            messages=deque(maxlen=100),
+            seen_messages=set(client.state.messages),
+        )
+        _watcher_task = asyncio.create_task(message_watcher(_game))
+        return "Connected to localhost:8000 as Vigil."
+    except Exception as e:
+        return f"Failed to connect to localhost: {e}"
 
 
 def main():
