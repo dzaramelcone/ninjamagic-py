@@ -1,6 +1,6 @@
 {
   "client": "alice",
-  "len": "119 B",
+  "len": "175 B",
   "parsed": {
     "envelope": [
       {
@@ -14,8 +14,13 @@
         }
       },
       {
+        "msg": {
+          "text": "You gain two ranks in Evasion."
+        }
+      },
+      {
         "health": {
-          "pct": -0.060525957,
+          "pct": -0.060530808,
           "stress_pct": 0.025
         }
       },
@@ -27,6 +32,13 @@
       {
         "condition": {
           "text": "in shock"
+        }
+      },
+      {
+        "skill": {
+          "name": "Evasion",
+          "rank": 2,
+          "tnl": 0.41632652
         }
       }
     ]

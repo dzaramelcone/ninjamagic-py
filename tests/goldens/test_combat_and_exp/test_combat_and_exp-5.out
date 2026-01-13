@@ -20,20 +20,20 @@
       },
       {
         "health": {
-          "id": 13,
-          "pct": -0.060525957,
+          "id": 15,
+          "pct": -0.060530808,
           "stress_pct": 0.025
         }
       },
       {
         "stance": {
-          "id": 13,
+          "id": 15,
           "text": "lying prone"
         }
       },
       {
         "condition": {
-          "id": 13,
+          "id": 15,
           "text": "in shock"
         }
       },
@@ -41,7 +41,7 @@
         "skill": {
           "name": "Martial Arts",
           "rank": 2,
-          "tnl": 0.7072
+          "tnl": 0.41632652
         }
       }
     ]
