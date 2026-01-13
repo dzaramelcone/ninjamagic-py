@@ -27,6 +27,19 @@ from ninjamagic.util import Trial, contest, get_looptime, tags
 
 log = logging.getLogger(__name__)
 
+
+def get_anchor_in_tile(map_id: int, y: int, x: int) -> EntityId:
+    """Return anchor entity in the same tile, or 0 if none.
+
+    TODO: O(n) scan - could use spatial index if perf matters.
+    """
+    target = (map_id, y // 16, x // 16)
+    for eid, (tf, _) in esper.get_components(Transform, Anchor):
+        if (tf.map_id, tf.y // 16, tf.x // 16) == target:
+            return eid
+    return 0
+
+
 # Tuning constants
 REST_HEALTH = 45
 REST_STRESS = -75
@@ -217,6 +230,14 @@ def process_cover() -> None:
                 story.echo("{0:s} stomach growls.", eid)
             continue
 
+        # Check if in same tile as an anchor - protects even if standing
+        tf = esper.component_for_entity(eid, Transform)
+        if anchor_eid := get_anchor_in_tile(tf.map_id, tf.y, tf.x):
+            story.echo(
+                "The worst of night comes, though {0:def} holds against it.", anchor_eid
+            )
+            continue
+
         # Prompt them to take cover.
         esper.add_component(
             eid,
@@ -268,14 +289,17 @@ def process_rest() -> None:
         )
         if health.condition != "normal":
             continue
-        if not stance.camping():
+
+        # Check if in same tile as an anchor (protects even if standing)
+        if not stance.camping() and not get_anchor_in_tile(loc.map_id, loc.y, loc.x):
             handle_bad_rest(eid)
             continue
 
         skill = esper.component_for_entity(eid, Skills)
         prop = stance.prop
         survival_rank = skill.survival.rank
-        at_anchor = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
+        at_anchor_prop = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
+        at_anchor = get_anchor_in_tile(loc.map_id, loc.y, loc.x) or at_anchor_prop
         rested = False
 
         if at_anchor:
