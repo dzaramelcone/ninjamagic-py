@@ -232,6 +232,17 @@ class Say(Command):
         return OK
 
 
+class Emote(Command):
+    text: str = "emote"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Emote what?"
+        story.echo("{0} {action}", root.source, action=rest)
+        return OK
+
+
 def handle_stance(
     new_stance: Stances, root: bus.Inbound, cmd: str, inf: str = ""
 ) -> Out:
@@ -806,6 +817,7 @@ commands: list[Command] = [
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
     Look(),
     Say(),
+    Emote(),
     Attack(),
     Stand(),
     Sit(),
