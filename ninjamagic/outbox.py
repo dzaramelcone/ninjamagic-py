@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from collections import defaultdict
 from typing import Protocol
 from weakref import WeakKeyDictionary
@@ -90,6 +91,7 @@ def try_insert(
             msg.text = sig.text
             if sig.end:
                 msg.end = sig.end
+                msg.server_time = time.time()
             return True
         case bus.OutboundDatetime():
             dt = envelope.add().datetime

@@ -254,7 +254,7 @@ const handlerMap = {
   },
   prompt: (body: Prompt) => {
     const el = document.getElementById("prompt") as TuiPrompt | null;
-    el?.setPrompt(body.text);
+    el?.setPrompt(body.text, body.end, body.server_time);
   },
 };
 

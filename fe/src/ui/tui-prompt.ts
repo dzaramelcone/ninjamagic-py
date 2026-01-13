@@ -1,11 +1,15 @@
 // src/ui/tui-prompt.ts
 import { LitElement, html, css } from "lit";
-import { customElement, property, query } from "lit/decorators.js";
+import { customElement, property, query, state } from "lit/decorators.js";
+import "./tui-micro-bar";
 
 @customElement("tui-prompt")
 export class TuiPrompt extends LitElement {
   @property({ type: String, attribute: "text", reflect: true })
   text: string = "";
+
+  @state() private timerValue: number = 1; // 0-1 for micro-bar
+  @state() private hasTiming: boolean = false;
 
   @query("slot") private slotEl!: HTMLSlotElement;
   @query(".overlay") private overlayEl!: HTMLElement;
@@ -15,6 +19,9 @@ export class TuiPrompt extends LitElement {
 
   private input: HTMLInputElement | null = null;
   private ro: ResizeObserver | null = null;
+  private countdownInterval: number | null = null;
+  private ttlMs: number = 0;
+  private startedAt: number = 0;
 
   private charW = 0;
   private padL = 0;
@@ -125,6 +132,20 @@ export class TuiPrompt extends LitElement {
         opacity: 0.35;
       }
     }
+
+    .timer-bar {
+      position: absolute;
+      right: 0.5ch;
+      top: 50%;
+      transform: translateY(-50%);
+      --tui-micro-bar-width: 6ch;
+      --tui-duration: 0.1s;
+      --tui-ease: linear;
+    }
+
+    .timer-bar[hidden] {
+      display: none;
+    }
   `;
 
   render() {
@@ -134,6 +155,11 @@ export class TuiPrompt extends LitElement {
           <span class="typed"></span><span class="prompt"></span>
           <span class="caret"></span>
         </div>
+        <tui-micro-bar
+          class="timer-bar"
+          .value=${this.timerValue}
+          ?hidden=${!this.hasTiming}
+        ></tui-micro-bar>
         <slot @slotchange=${this.onSlotChange}></slot>
       </div>
     `;
@@ -150,16 +176,53 @@ export class TuiPrompt extends LitElement {
   }
 
   /** Public API */
-  setPrompt(t: string) {
+  setPrompt(t: string, end?: number, serverTime?: number) {
     this.text = t ?? "";
     if (!this.text) this.removeAttribute("text");
+
+    this.stopCountdown();
+
+    if (end && serverTime) {
+      const ttlSeconds = end - serverTime;
+      if (ttlSeconds > 0) {
+        this.startCountdown(ttlSeconds * 1000);
+      }
+    }
+
     queueMicrotask(() => this.renderOverlay());
   }
 
   clearPrompt() {
     this.text = "";
     this.removeAttribute("text");
+    this.stopCountdown();
     this.renderOverlay();
+  }
+
+  private startCountdown(ttlMs: number) {
+    this.ttlMs = ttlMs;
+    this.startedAt = performance.now();
+    this.timerValue = 1;
+    this.hasTiming = true;
+
+    this.countdownInterval = window.setInterval(() => {
+      const elapsed = performance.now() - this.startedAt;
+      const remaining = Math.max(0, this.ttlMs - elapsed);
+      this.timerValue = remaining / this.ttlMs;
+
+      if (remaining <= 0) {
+        this.clearPrompt();
+      }
+    }, 50);
+  }
+
+  private stopCountdown() {
+    if (this.countdownInterval !== null) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+    this.hasTiming = false;
+    this.timerValue = 1;
   }
 
   private onSlotChange = () => {

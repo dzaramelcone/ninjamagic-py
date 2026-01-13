@@ -242,6 +242,10 @@ export interface Prompt {
      * @generated from protobuf field: optional double end = 2
      */
     end?: number;
+    /**
+     * @generated from protobuf field: optional double server_time = 3
+     */
+    server_time?: number;
 }
 /**
  * A wrapper that can contain any of our specific message types.
@@ -1138,7 +1142,8 @@ class Prompt$Type extends MessageType<Prompt> {
     constructor() {
         super("ninjamagic.Prompt", [
             { no: 1, name: "text", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "end", kind: "scalar", opt: true, T: 1 /*ScalarType.DOUBLE*/ }
+            { no: 2, name: "end", kind: "scalar", opt: true, T: 1 /*ScalarType.DOUBLE*/ },
+            { no: 3, name: "server_time", kind: "scalar", localName: "server_time", opt: true, T: 1 /*ScalarType.DOUBLE*/ }
         ]);
     }
     create(value?: PartialMessage<Prompt>): Prompt {
@@ -1159,6 +1164,9 @@ class Prompt$Type extends MessageType<Prompt> {
                 case /* optional double end */ 2:
                     message.end = reader.double();
                     break;
+                case /* optional double server_time */ 3:
+                    message.server_time = reader.double();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1177,6 +1185,9 @@ class Prompt$Type extends MessageType<Prompt> {
         /* optional double end = 2; */
         if (message.end !== undefined)
             writer.tag(2, WireType.Bit64).double(message.end);
+        /* optional double server_time = 3; */
+        if (message.server_time !== undefined)
+            writer.tag(3, WireType.Bit64).double(message.server_time);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
