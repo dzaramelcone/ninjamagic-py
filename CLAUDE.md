@@ -47,6 +47,14 @@ She likes dark humor. Catch her wordplay.
 - Keep the code legible and minimal.
 - Emergent system details need to be surfaced from very careful consideration.
 
+### Conventions
+
+| Rule | Principle | Example | Escape hatch |
+|------|-----------|---------|--------------|
+| No None checks | Prefer a falsy value in the range | `EntityId` returns 0, not `EntityId \| None` | No falsy value? Ask. |
+| Domain modules | No central `query.py` or `utils.py` | survive.py queries live in survive.py | Domain unclear? Ask. |
+| Semantic queries | Extract esper queries into named functions | `get_anchor_in_tile()` | — |
+
 ## Design Philosophy
 
 - Emergence happens at the player level, not the code level.
@@ -66,6 +74,12 @@ The dark urge isn't Bhaal here; it's efficiency. The pull to optimize, extract, 
 The genre deconstruction came from Undertale: "there's always a non-violent solution if you try hard enough."
 
 We try to reconstruct it: Yes, it is dark here. Can we name it, reckon with it, overcome it? There is an egg-shell fragile self in each of us that will be crushed by efficiency, but flourish by love and reciprocity.
+
+## Terminology
+
+- **Tile** - 16x16 chunk in the sparse map of a level
+- **Cell** - Individual position (x, y) within the world
+- **Anchor** - Safe point (bonfire, etc.) that protects during nightstorm
 
 ## Architecture
 
