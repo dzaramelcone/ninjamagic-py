@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from collections import defaultdict
 from typing import Protocol
 from weakref import WeakKeyDictionary
@@ -12,6 +11,7 @@ from fastapi.websockets import WebSocketState
 from ninjamagic import bus
 from ninjamagic.component import Connection, EntityId
 from ninjamagic.gen.messages_pb2 import Kind, Packet
+from ninjamagic.util import get_looptime
 from ninjamagic.world.state import get_tile
 
 log = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ def try_insert(
             msg.text = sig.text
             if sig.end:
                 msg.end = sig.end
-                msg.server_time = time.time()
+                msg.server_time = get_looptime()
             return True
         case bus.OutboundDatetime():
             dt = envelope.add().datetime

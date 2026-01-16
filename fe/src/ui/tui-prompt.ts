@@ -20,8 +20,6 @@ export class TuiPrompt extends LitElement {
   private input: HTMLInputElement | null = null;
   private ro: ResizeObserver | null = null;
   private countdownInterval: number | null = null;
-  private ttlMs: number = 0;
-  private startedAt: number = 0;
 
   private charW = 0;
   private padL = 0;
@@ -139,8 +137,9 @@ export class TuiPrompt extends LitElement {
       top: 50%;
       transform: translateY(-50%);
       --tui-micro-bar-width: 6ch;
-      --tui-duration: 0.1s;
+      --tui-duration: 0.2s;
       --tui-ease: linear;
+      --tui-monotonic: decrease;
     }
 
     .timer-bar[hidden] {
@@ -200,25 +199,31 @@ export class TuiPrompt extends LitElement {
   }
 
   private startCountdown(ttlMs: number) {
-    this.ttlMs = ttlMs;
-    this.startedAt = performance.now();
-    this.timerValue = 1;
     this.hasTiming = true;
 
-    this.countdownInterval = window.setInterval(() => {
-      const elapsed = performance.now() - this.startedAt;
-      const remaining = Math.max(0, this.ttlMs - elapsed);
-      this.timerValue = remaining / this.ttlMs;
+    // Set animation duration to match TTL, then animate from 1→0 once
+    const timerBar = this.shadowRoot?.querySelector(
+      ".timer-bar"
+    ) as HTMLElement | null;
+    if (timerBar) {
+      timerBar.style.setProperty("--tui-duration", `${ttlMs}ms`);
+    }
 
-      if (remaining <= 0) {
-        this.clearPrompt();
-      }
-    }, 50);
+    // Start at full, then drop to 0 - single smooth animation
+    this.timerValue = 1;
+    requestAnimationFrame(() => {
+      this.timerValue = 0;
+    });
+
+    // Clear prompt when timer expires
+    this.countdownInterval = window.setTimeout(() => {
+      this.clearPrompt();
+    }, ttlMs);
   }
 
   private stopCountdown() {
     if (this.countdownInterval !== null) {
-      clearInterval(this.countdownInterval);
+      clearTimeout(this.countdownInterval);
       this.countdownInterval = null;
     }
     this.hasTiming = false;
