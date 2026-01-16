@@ -374,28 +374,28 @@ class Fart(Command):
     text: str = "fart"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        def _ok(eid: EntityId) -> None:
+        def _ok(source: EntityId) -> None:
             story.echo(
                 "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
-                eid,
+                source,
             ),
 
-        def _err(eid: EntityId) -> None:
+        def _err(source: EntityId) -> None:
             story.echo(
                 "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
-                eid,
+                source,
             ),
 
-        def _ok_exp(eid: EntityId) -> None:
+        def _ok_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
-                eid,
+                source,
             ),
 
-        def _err_exp(eid: EntityId) -> None:
+        def _err_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
-                eid,
+                source,
             ),
 
         tform = transform(root.source)
@@ -833,6 +833,112 @@ class Recall(Command):
         return OK
 
 
+HELP_TEXTS: dict[str, str] = {
+    "look": "Look at something or in a container.\n"
+    "Usage: look at <target>\n       look in <container>",
+    "say": "Say something out loud.\n"
+    "Usage: say <message>\n       '<message> (shortcut)",
+    "emote": "Perform an action/emote.\nUsage: emote <action>",
+    "attack": "Attack a target.\nUsage: attack <target>",
+    "stand": "Stand up.\nUsage: stand [beside <target>]",
+    "sit": "Sit down.\nUsage: sit [beside <target>]",
+    "lie": "Lie down.\nUsage: lie [beside <target>]",
+    "rest": "Rest (lie down).\nUsage: rest [beside <target>]",
+    "kneel": "Kneel down.\nUsage: kneel [beside <target>]",
+    "block": "Block incoming attacks.\nUsage: block",
+    "recall": "Return to your bind point.\nUsage: recall",
+    "inventory": "View your inventory.\nUsage: inventory",
+    "get": "Pick up an item.\n"
+    "Usage: get <item>\n       get <item> from <container>",
+    "put": "Put an item somewhere.\nUsage: put <item> in <container>",
+    "stow": "Stow an item in a container.\nUsage: stow <item> [in <container>]",
+    "drop": "Drop an item.\nUsage: drop <item>",
+    "wear": "Wear an item.\nUsage: wear <item>",
+    "remove": "Remove worn item.\nUsage: remove <item>",
+    "swap": "Swap items between hands.\nUsage: swap",
+    "forage": "Forage for items.\nUsage: forage",
+    "eat": "Eat food.\nUsage: eat <food>",
+    "time": "Check the current time.\nUsage: time",
+    "help": "Get help for a command.\nUsage: help <command>\n\n"
+    "Type 'commands' to see available commands.",
+    "commands": "List available commands.\nUsage: commands",
+}
+
+
+class Help(Command):
+    text: str = "help"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+    requires_standing: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        rest = rest.strip().lower()
+
+        if not rest:
+            bus.pulse(
+                bus.Outbound(to=root.source, text=HELP_TEXTS["help"])
+            )
+            return OK
+
+        if rest == "help":
+            bus.pulse(
+                bus.Outbound(to=root.source, text="You need somebody.")
+            )
+            return OK
+
+        cmd_match = None
+        for cmd in commands:
+            if cmd.text.startswith(rest):
+                cmd_match = cmd
+                break
+
+        if not cmd_match:
+            bus.pulse(
+                bus.Outbound(
+                    to=root.source, text=f"No command '{rest}'. Type 'commands' for list."
+                )
+            )
+            return OK
+
+        parts = [f"Command: {cmd_match.text}"]
+        if cmd_match.requires_standing:
+            parts.append("Requires: standing")
+        if cmd_match.requires_healthy:
+            parts.append("Requires: healthy")
+
+        if help_text := HELP_TEXTS.get(cmd_match.text):
+            parts.append("")
+            parts.append(help_text)
+
+        bus.pulse(bus.Outbound(to=root.source, text="\n".join(parts)))
+        return OK
+
+
+class Commands(Command):
+    text: str = "commands"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+    requires_standing: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        hidden = {"commands", *[d.value for d in Compass], "ne", "nw", "se", "sw"}
+        cmd_names = sorted({cmd.text for cmd in commands} - hidden)
+        width = max(len(name) for name in cmd_names) + 2
+        rows = []
+        for i in range(0, len(cmd_names), 5):
+            row = [name.ljust(width) for name in cmd_names[i : i + 5]]
+            rows.append("".join(row).rstrip())
+        grid = "\n".join(rows)
+        bus.pulse(
+            bus.Outbound(
+                to=root.source,
+                text=f"Commands:\n{grid}\n\nType 'help <command>' for details.",
+            )
+        )
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -860,4 +966,6 @@ commands: list[Command] = [
     Forage(),
     Eat(),
     Time(),
+    Help(),
+    Commands(),
 ]
