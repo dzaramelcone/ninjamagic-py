@@ -341,28 +341,28 @@ class Fart(Command):
     text: str = "fart"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        def _ok(eid: EntityId) -> None:
+        def _ok(source: EntityId) -> None:
             story.echo(
                 "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
-                eid,
+                source,
             ),
 
-        def _err(eid: EntityId) -> None:
+        def _err(source: EntityId) -> None:
             story.echo(
                 "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
-                eid,
+                source,
             ),
 
-        def _ok_exp(eid: EntityId) -> None:
+        def _ok_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
-                eid,
+                source,
             ),
 
-        def _err_exp(eid: EntityId) -> None:
+        def _err_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
-                eid,
+                source,
             ),
 
         tform = transform(root.source)
@@ -813,6 +813,130 @@ class Recall(Command):
         return OK
 
 
+class Help(Command):
+    text: str = "help"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+    requires_standing: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        rest = rest.strip()
+
+        if rest:
+            # Help for a specific command
+            cmd_match = None
+            for cmd in commands:
+                if cmd.text.startswith(rest.lower()):
+                    cmd_match = cmd
+                    break
+
+            if not cmd_match:
+                bus.pulse(
+                    bus.Outbound(
+                        to=root.source,
+                        text=f"No command found matching '{rest}'. Type 'help' to see all commands.",
+                    )
+                )
+                return OK
+
+            # Build description for the command
+            desc_parts = [f"Command: {cmd_match.text}"]
+            if cmd_match.requires_standing:
+                desc_parts.append("Requires: standing")
+            if cmd_match.requires_healthy:
+                desc_parts.append("Requires: healthy")
+            if not cmd_match.requires_not_busy:
+                desc_parts.append("Can use while busy")
+
+            # Add specific help text based on command
+            help_text = self._get_command_help(cmd_match.text)
+            if help_text:
+                desc_parts.append("")
+                desc_parts.append(help_text)
+
+            bus.pulse(
+                bus.Outbound(to=root.source, text="\n".join(desc_parts))
+            )
+            return OK
+
+        # List all commands
+        cmd_names = sorted(set(cmd.text for cmd in commands))
+        bus.pulse(
+            bus.Outbound(
+                to=root.source,
+                text=f"Available commands: {', '.join(cmd_names)}\n\nType 'help <command>' for more information about a specific command.",
+            )
+        )
+        return OK
+
+    def _get_command_help(self, cmd_name: str) -> str:
+        """Return help text for a specific command."""
+        # Movement commands
+        movement = {
+            "north": "Move north.\nUsage: north (or n)",
+            "south": "Move south.\nUsage: south (or s)",
+            "east": "Move east.\nUsage: east (or e)",
+            "west": "Move west.\nUsage: west (or w)",
+            "northeast": "Move northeast.\nUsage: northeast (or ne)",
+            "northwest": "Move northwest.\nUsage: northwest (or nw)",
+            "southeast": "Move southeast.\nUsage: southeast (or se)",
+            "southwest": "Move southwest.\nUsage: southwest (or sw)",
+            "n": "Move north.\nUsage: north (or n)",
+            "s": "Move south.\nUsage: south (or s)",
+            "e": "Move east.\nUsage: east (or e)",
+            "w": "Move west.\nUsage: west (or w)",
+            "ne": "Move northeast.\nUsage: northeast (or ne)",
+            "nw": "Move northwest.\nUsage: northwest (or nw)",
+            "se": "Move southeast.\nUsage: southeast (or se)",
+            "sw": "Move southwest.\nUsage: southwest (or sw)",
+        }
+        if cmd_name in movement:
+            return movement[cmd_name]
+
+        help_texts = {
+            "look": "Look at something or look in a container.\nUsage: look at <target>\n       look in <container>",
+            "say": "Say something out loud.\nUsage: say <message>\n       '<message> (shortcut)",
+            "emote": "Perform an action/emote.\nUsage: emote <action>",
+            "attack": "Attack a target.\nUsage: attack <target>",
+            "stand": "Stand up.\nUsage: stand [beside <target>]",
+            "sit": "Sit down.\nUsage: sit [beside <target>]",
+            "lie": "Lie down.\nUsage: lie [beside <target>]",
+            "rest": "Rest (lie down).\nUsage: rest [beside <target>]",
+            "kneel": "Kneel down.\nUsage: kneel [beside <target>]",
+            "block": "Block incoming attacks.\nUsage: block",
+            "fart": "Fart and create gas.\nUsage: fart",
+            "stress": "Add stress (debug command).\nUsage: stress [amount]",
+            "recall": "Return to your bind point.\nUsage: recall",
+            "inventory": "View your inventory.\nUsage: inventory",
+            "get": "Pick up an item.\nUsage: get <item>\n       get <item> from <container>",
+            "put": "Put an item somewhere.\nUsage: put <item> in <container>",
+            "stow": "Stow an item in a container.\nUsage: stow <item> [in <container>]",
+            "drop": "Drop an item.\nUsage: drop <item>\n       drop left\n       drop right",
+            "wear": "Wear an item.\nUsage: wear <item>",
+            "remove": "Remove worn item.\nUsage: remove <item>",
+            "swap": "Swap items between hands.\nUsage: swap",
+            "forage": "Forage for items.\nUsage: forage",
+            "eat": "Eat food.\nUsage: eat <food>",
+            "time": "Check the current time.\nUsage: time",
+            "help": "Show help information.\nUsage: help\n       help <command>",
+            "commands": "List available commands (alias for help).\nUsage: commands\n       commands <command>",
+        }
+        return help_texts.get(cmd_name, "")
+
+
+class Commands(Command):
+    """Alias for help command."""
+    text: str = "commands"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+    requires_standing: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        # Delegate to Help command
+        return Help().trigger(root)
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -840,4 +964,6 @@ commands: list[Command] = [
     Forage(),
     Eat(),
     Time(),
+    Help(),
+    Commands(),
 ]
