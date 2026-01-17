@@ -49,3 +49,14 @@ def find(
         if not noun.matches(prefix):
             continue
         yield other, noun, other_transform
+
+
+def find_one(
+    source: EntityId,
+    prefix: str,
+    in_range: Selector,
+    *,
+    with_components: tuple[type[Any], ...] = (),
+) -> tuple[EntityId, Noun, Transform] | None:
+    """Find first matching entity or None."""
+    return next(find(source, prefix, in_range, with_components=with_components), None)

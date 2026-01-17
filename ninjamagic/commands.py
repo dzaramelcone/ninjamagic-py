@@ -86,14 +86,11 @@ class Look(Command):
 
         if look_in:
             match = match_contents(root.source, rest)
-            match = match or next(
-                reach.find(
-                    root.source,
-                    rest,
-                    reach.adjacent,
-                    with_components=(Container,),
-                ),
-                None,
+            match = match or reach.find_one(
+                root.source,
+                rest,
+                reach.adjacent,
+                with_components=(Container,),
             )
             if not match:
                 return False, "Look in what?"
@@ -115,9 +112,7 @@ class Look(Command):
             )
             return OK
 
-        match = next(
-            reach.find(source=root.source, prefix=rest, in_range=reach.visible), None
-        )
+        match = reach.find_one(source=root.source, prefix=rest, in_range=reach.visible)
         if not match:
             return False, "Look at what?"
         eid, _, _ = match
@@ -148,14 +143,11 @@ class Attack(Command):
         _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "Attack whom?"
-        match = next(
-            reach.find(
-                root.source,
-                rest,
-                reach.adjacent,
-                with_components=(Health, Stance, Skills),
-            ),
-            None,
+        match = reach.find_one(
+            root.source,
+            rest,
+            reach.adjacent,
+            with_components=(Health, Stance, Skills),
         )
         if not match:
             return False, "Attack whom?"
@@ -257,9 +249,7 @@ def handle_stance(
         bus.pulse(bus.StanceChanged(source=root.source, stance=new_stance, echo=True))
         return OK
 
-    match = next(
-        reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None
-    )
+    match = reach.find_one(source=root.source, prefix=rest, in_range=reach.adjacent)
     if match:
         prop, _, _ = match
         if stance.cur == new_stance and prop == stance.prop:
@@ -323,8 +313,8 @@ class Eat(Command):
         match = match_hands(root.source, rest)
         in_hands = bool(match)
 
-        match = match or next(
-            reach.find(source=root.source, prefix=rest, in_range=reach.adjacent), None
+        match = match or reach.find_one(
+            source=root.source, prefix=rest, in_range=reach.adjacent
         )
         if not match:
             return False, "Eat what?"
@@ -470,14 +460,11 @@ class Get(Command):
             return False, "Get what?"
 
         if second:
-            container = match_contents(root.source, second) or next(
-                reach.find(
-                    source=root.source,
-                    prefix=second,
-                    in_range=reach.adjacent,
-                    with_components=(Container,),
-                ),
-                None,
+            container = match_contents(root.source, second) or reach.find_one(
+                source=root.source,
+                prefix=second,
+                in_range=reach.adjacent,
+                with_components=(Container,),
             )
             if not container:
                 return False, "Get from where?"
@@ -516,14 +503,11 @@ class Get(Command):
             bus.pulse(bus.MoveEntity(source=s_eid, container=root.source, slot=dest))
             return OK
 
-        if match := next(
-            reach.find(
-                root.source,
-                rest,
-                reach.adjacent,
-                with_components=(Noun, ContainedBy, Slot),
-            ),
-            None,
+        if match := reach.find_one(
+            root.source,
+            rest,
+            reach.adjacent,
+            with_components=(Noun, ContainedBy, Slot),
         ):
             c_eid, _, _ = match
             story.echo("{0} {0:gets} {1}.", root.source, c_eid, range=reach.visible)
@@ -644,13 +628,10 @@ class Put(Command):
             return False, "Put that where?"
 
         container = match_contents(root.source, second)
-        container = container or next(
-            reach.find(
-                source=root.source,
-                prefix=second,
-                in_range=reach.adjacent,
-            ),
-            None,
+        container = container or reach.find_one(
+            source=root.source,
+            prefix=second,
+            in_range=reach.adjacent,
         )
 
         if not container:
@@ -724,14 +705,11 @@ class Stow(Command):
         if not match:
             # Check on the floor if they have a free hand.
             l_hand, r_hand = get_hands(root.source)
-            match = next(
-                reach.find(
-                    root.source,
-                    first,
-                    reach.adjacent,
-                    with_components=(Noun, ContainedBy, Slot),
-                ),
-                None,
+            match = reach.find_one(
+                root.source,
+                first,
+                reach.adjacent,
+                with_components=(Noun, ContainedBy, Slot),
             )
             if match and l_hand and r_hand:
                 return False, "Your hands are full!"

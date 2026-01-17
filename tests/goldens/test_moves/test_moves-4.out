@@ -5,7 +5,7 @@
     "envelope": [
       {
         "pos": {
-          "id": 12,
+          "id": 24,
           "map_id": 1,
           "x": 13,
           "y": 13
@@ -15,26 +15,26 @@
         "glyph": {
           "glyph": "@",
           "h": 0.5833,
-          "id": 12,
+          "id": 24,
           "s": 0.7,
           "v": 0.828
         }
       },
       {
         "noun": {
-          "id": 12,
+          "id": 24,
           "text": "Bob"
         }
       },
       {
         "health": {
-          "id": 12,
+          "id": 24,
           "pct": 1.0
         }
       },
       {
         "stance": {
-          "id": 12,
+          "id": 24,
           "text": "standing"
         }
       }
