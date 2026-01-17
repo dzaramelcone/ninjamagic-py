@@ -158,7 +158,7 @@ class DijkstraMap:
 
     def transform(self, fn: Callable[[float], float]) -> None:
         """Apply fn to every cost."""
-        for arr in self.tiles.values:
+        for arr in self.tiles.values():
             for i, v in enumerate(arr):
                 arr[i] = fn(v)
 
