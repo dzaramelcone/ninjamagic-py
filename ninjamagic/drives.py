@@ -16,6 +16,7 @@ from ninjamagic.component import (
     Transform,
 )
 from ninjamagic.dijkstra import DijkstraMap
+from ninjamagic.util import EIGHT_DIRS
 from ninjamagic.world.state import can_enter
 
 
@@ -119,15 +120,10 @@ def best_direction(
         return None
 
     # Score each neighbor - all additive, always roll downhill
-    neighbors = [
-        (-1, 0), (1, 0), (0, -1), (0, 1),  # Cardinals
-        (-1, -1), (-1, 1), (1, -1), (1, 1),  # Diagonals
-    ]
-
     best_score = float("inf")
     best_move = None
 
-    for dy, dx in neighbors:
+    for dy, dx in EIGHT_DIRS:
         ny, nx = loc.y + dy, loc.x + dx
         if not can_enter(map_id=loc.map_id, y=ny, x=nx):
             continue
