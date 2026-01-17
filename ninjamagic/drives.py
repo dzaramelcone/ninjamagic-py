@@ -26,6 +26,7 @@ from ninjamagic.component import (
     Health,
     Needs,
     Noun,
+    Stance,
     Transform,
 )
 from ninjamagic.util import (
@@ -85,6 +86,20 @@ def player_far(distance: float) -> Predicate:
     return check
 
 
+def player_near(distance: float) -> Predicate:
+    def check(eid: EntityId) -> bool:
+        loc = esper.component_for_entity(eid, Transform)
+        for _, (tf, _, health) in esper.get_components(Transform, Connection, Health):
+            if tf.map_id != loc.map_id or health.condition == "dead":
+                continue
+            d = abs(tf.y - loc.y) + abs(tf.x - loc.x)
+            if d <= distance:
+                return True
+        return False
+
+    return check
+
+
 def near_den(distance: float) -> Predicate:
     def check(eid: EntityId) -> bool:
         loc = esper.component_for_entity(eid, Transform)
@@ -117,10 +132,11 @@ def fed(threshold: float = 0.3) -> Predicate:
 
 # Behavior templates - state machines defining drives and transitions
 
-Templates = Literal["goblin"]
+TemplateName = Literal["goblin"]
 State = Literal["home", "flee", "rest", "return", "eat"]
-Template = dict[Templates, tuple[Drives, list[tuple[Predicate, State]]]]
-TEMPLATES: dict[State, Template] = {
+StateData = tuple[Drives, list[tuple[Predicate, State]]]
+Template = dict[State, StateData]
+TEMPLATES: dict[TemplateName, Template] = {
     "goblin": {
         "home": (
             Drives(seek_player=1.0, seek_den=1.0),
@@ -128,11 +144,11 @@ TEMPLATES: dict[State, Template] = {
         ),
         "flee": (
             Drives(flee_player=1.0, flee_anchor=1.0),
-            [(player_far(12), "rest")],
+            [(player_far(20), "rest")],
         ),
         "rest": (
             Drives(flee_player=0.5, seek_den=0.5, flee_anchor=0.5),
-            [(hp_above(70.0), "return")],
+            [(player_near(4), "flee"), (hp_above(70.0), "return")],
         ),
         "return": (
             Drives(seek_player=0.3, seek_den=1.0, flee_anchor=0.5),
@@ -163,9 +179,12 @@ class DijkstraMap:
                 arr[i] = fn(v)
 
     def __mul__(self, rhs: float) -> "DijkstraMap":
+        def mul(v: float) -> float:
+            return v * rhs if v < self.max_cost else self.max_cost
+
         return DijkstraMap(
             tiles={
-                k: array("f", [v * rhs for v in tile]) for k, tile in self.tiles.items()
+                k: array("f", [mul(v) for v in tile]) for k, tile in self.tiles.items()
             },
             max_cost=self.max_cost,
         )
@@ -242,13 +261,16 @@ def process() -> None:
     if now - _last_tick < 1.0 / TICK_RATE:
         return
     _last_tick = now
-    mobs_by_map: dict[EntityId, list[tuple[EntityId, Behavior, Transform, Health]]] = {}
-    for eid, (behavior, loc, health) in esper.get_components(
-        Behavior, Transform, Health
+
+    mobs_by_map: dict[
+        EntityId, list[tuple[EntityId, Behavior, Transform, Health, Stance]]
+    ] = {}
+    for eid, (behavior, loc, health, stance) in esper.get_components(
+        Behavior, Transform, Health, Stance
     ):
         if loc.map_id not in mobs_by_map:
             mobs_by_map[loc.map_id] = []
-        mobs_by_map[loc.map_id].append((eid, behavior, loc, health))
+        mobs_by_map[loc.map_id].append((eid, behavior, loc, health, stance))
 
     for map_id, mobs in mobs_by_map.items():
         player_layer = DijkstraMap()
@@ -293,18 +315,12 @@ def process() -> None:
 
         den_layer.scan(goals=dens, map_id=map_id)
         den_layer.transform(quadratic_growth)
-        for eid, behavior, loc, health in mobs:
+        for eid, behavior, loc, health, stance in mobs:
             if act.is_busy(eid):
                 continue
 
-            template = TEMPLATES.get(behavior.template)
-            if not template:
-                continue
-
-            # Check transitions, first match wins
-            state_data = template.get(behavior.state)
-            if not state_data:
-                continue
+            template = TEMPLATES[behavior.template]
+            state_data = template[behavior.state]
             drives, transitions = state_data
             for predicate, next_state in transitions:
                 if predicate(eid):
@@ -314,15 +330,16 @@ def process() -> None:
 
             y, x = loc.y, loc.x
 
-            # React: attack player if aggressive
+            # React: attack player if aggressive (must be standing)
             if drives.seek_player > 0.3:
-                attacked = False
-                for player_tf, name in players:
-                    if reach.adjacent(loc, player_tf):
-                        bus.pulse(bus.Inbound(source=eid, text=f"attack {name}"))
-                        attacked = True
-                        break
-                if attacked:
+                if stance.cur != "standing":
+                    bus.pulse(bus.Inbound(source=eid, text="stand"))
+                    continue
+
+                if name := next(
+                    (noun for tf, noun in players if reach.adjacent(loc, tf)), None
+                ):
+                    bus.pulse(bus.Inbound(source=eid, text=f"attack {name}"))
                     continue
 
             # Movement: find minimum-cost neighbor (stay put if already at minimum)
@@ -355,10 +372,13 @@ def process() -> None:
                     best_direction = direction
 
             if best_direction:
+                if stance.cur != "standing":
+                    bus.pulse(bus.Inbound(source=eid, text="stand"))
+                    continue
                 bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
                 continue
-            # else at local minimum
 
+            # else at local minimum
             if health.cur < 100.0:
                 bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue
@@ -382,7 +402,7 @@ def expo_decay(v: float) -> float:
     # │ 24       │ 15.2                   │ 0.04     │
     # └──────────┴────────────────────────┴──────────┘
     # Gradient itself decays exponentially.
-    return 16 * (1 - math.exp(-v / 1.4))
+    return 16 * (1 - math.exp(-v / 0.8))
 
 
 def quadratic_growth(v: float) -> float:
@@ -403,4 +423,4 @@ def quadratic_growth(v: float) -> float:
     # │ 8        │ 16.0 │ 4.0      │
     # └──────────┴──────┴──────────┘
     # Weak pull when close, increasingly urgent the further you stray.
-    return 1 / 4 * v**2
+    return 1 / 8 * v**2
