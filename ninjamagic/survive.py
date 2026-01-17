@@ -29,10 +29,6 @@ REST_HEALTH = 45
 REST_STRESS = -75
 REST_AGGRAVATED_STRESS = -125
 
-ROUGH_NIGHT_HEALTH = -75.0
-ROUGH_NIGHT_STRESS = 100.0
-ROUGH_NIGHT_AGGRAVATED = 100.0
-
 
 def get_max_nights_away(survival_rank: int):
     # can buff this in teams
@@ -192,15 +188,7 @@ def process_rest() -> None:
 
     def handle_bad_rest(eid: EntityId):
         """Player did not rest properly."""
-        bus.pulse(
-            bus.HealthChanged(
-                source=eid,
-                health_change=ROUGH_NIGHT_HEALTH,
-                stress_change=ROUGH_NIGHT_STRESS,
-                aggravated_stress_change=ROUGH_NIGHT_AGGRAVATED,
-            )
-        )
-        story.echo("{0} {0:is} lost into the horror of night!", eid)
+        story.echo("{0} {0:endures} a rough night.", eid)
 
     for eid, cmps in esper.get_components(Connection, Transform, Health, Stance):
         _, loc, health, stance = cmps
