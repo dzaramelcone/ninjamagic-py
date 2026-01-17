@@ -15,6 +15,7 @@ from ninjamagic import (
     combat,
     conn,
     cook,
+    drives,
     echo,
     experience,
     forage,
@@ -84,6 +85,7 @@ class State:
             # invoke systems        #
             scheduler.process()
             conn.process()
+            drives.process()
             inbound.process(now=now)
             parser.process()
             regen.process(now=now)
