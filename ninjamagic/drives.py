@@ -157,14 +157,6 @@ class DijkstraMap:
             max_cost=self.max_cost,
         )
 
-    def __pow__(self, rhs: float) -> "DijkstraMap":
-        return DijkstraMap(
-            tiles={
-                k: array("f", [v**rhs for v in tile]) for k, tile in self.tiles.items()
-            },
-            max_cost=self.max_cost**rhs,
-        )
-
     def scan(self, goals: list[tuple[int, int]], map_id: EntityId) -> None:
         """Seed goals at cost 0, propagate."""
         self.tiles.clear()
@@ -250,16 +242,51 @@ def _dump_layer(f, name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> 
         f.write("    " + " ".join(cells) + "\n")
 
 
+def _dump_combined_cost(
+    f,
+    tile_key: tuple[int, int],
+    drives: Drives,
+    player_layer: DijkstraMap,
+    flee_player_layer: DijkstraMap,
+    food_layer: DijkstraMap,
+    den_layer: DijkstraMap,
+    flee_anchor_layer: DijkstraMap,
+) -> None:
+    """Dump the combined cost for each cell in a tile."""
+    f.write("  combined_cost:\n")
+    for row in range(TILE_STRIDE_H):
+        cells = []
+        for col in range(TILE_STRIDE_W):
+            y = tile_key[0] + row
+            x = tile_key[1] + col
+            cost = (
+                player_layer.get_cost(y, x) * drives.seek_player
+                + flee_player_layer.get_cost(y, x) * drives.flee_player
+                + food_layer.get_cost(y, x) * drives.seek_food
+                + den_layer.get_cost(y, x) * drives.seek_den
+                + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
+            )
+            if cost >= 100:
+                cells.append(" -- ")
+            else:
+                cells.append(f"{cost:4.1f}")
+        f.write("    " + " ".join(cells) + "\n")
+
+
 def _dump_debug(
     tick: int,
     map_id: EntityId,
     mobs: list[tuple[EntityId, "Behavior", Transform]],
     player_layer: DijkstraMap,
-    den_layer: DijkstraMap,
+    flee_player_layer: DijkstraMap,
     food_layer: DijkstraMap,
+    den_layer: DijkstraMap,
     anchor_layer: DijkstraMap,
+    flee_anchor_layer: DijkstraMap,
     dens: list[tuple[int, int]],
     players: list[tuple[Transform, "Noun"]],
+    anchors: list[tuple[int, int]],
+    food: list[tuple[int, int]],
 ) -> None:
     """Dump debug info for drives system to file."""
     filename = f"drives_debug_{tick}.txt"
@@ -267,13 +294,24 @@ def _dump_debug(
         f.write("=" * 60 + "\n")
         f.write(f"DRIVES DEBUG TICK {tick}\n")
         f.write("=" * 60 + "\n")
-        f.write(f"dens found: {dens}\n")
-        f.write(f"players found: {[(tf.y, tf.x) for tf, _ in players]}\n\n")
+        f.write(f"players: {[(tf.y, tf.x) for tf, _ in players]}\n")
+        f.write(f"dens: {dens}\n")
+        f.write(f"anchors: {anchors}\n")
+        f.write(f"food: {food}\n\n")
 
         for eid, behavior, loc in mobs:
+            template = TEMPLATES.get(behavior.template)
+            state_data = template.get(behavior.state) if template else None
+            drives = state_data[0] if state_data else Drives()
+
             f.write(
                 f"mob {eid} at ({loc.y}, {loc.x}) state={behavior.state} "
                 f"template={behavior.template}\n"
+            )
+            f.write(
+                f"  drives: seek_player={drives.seek_player} flee_player={drives.flee_player} "
+                f"seek_food={drives.seek_food} seek_den={drives.seek_den} "
+                f"flee_anchor={drives.flee_anchor}\n"
             )
 
             # Dump layers for the tile containing this mob
@@ -283,7 +321,21 @@ def _dump_debug(
             f.write(f"  tile: {tile_key}\n")
 
             _dump_layer(f, "player_layer", player_layer, tile_key)
+            _dump_layer(f, "flee_player_layer", flee_player_layer, tile_key)
+            _dump_layer(f, "food_layer", food_layer, tile_key)
             _dump_layer(f, "den_layer", den_layer, tile_key)
+            _dump_layer(f, "anchor_layer", anchor_layer, tile_key)
+            _dump_layer(f, "flee_anchor_layer", flee_anchor_layer, tile_key)
+            _dump_combined_cost(
+                f,
+                tile_key,
+                drives,
+                player_layer,
+                flee_player_layer,
+                food_layer,
+                den_layer,
+                flee_anchor_layer,
+            )
 
     log.info("wrote %s", filename)
 
@@ -344,7 +396,6 @@ def process() -> None:
         flee_anchor_layer.relax(map_id)
 
         den_layer.scan(goals=dens, map_id=map_id)
-        den_layer = den_layer**1.5
 
         # Debug dump
         global _debug_tick
@@ -355,11 +406,15 @@ def process() -> None:
                 map_id=map_id,
                 mobs=mobs,
                 player_layer=player_layer,
-                den_layer=den_layer,
+                flee_player_layer=flee_player_layer,
                 food_layer=food_layer,
+                den_layer=den_layer,
                 anchor_layer=anchor_layer,
+                flee_anchor_layer=flee_anchor_layer,
                 dens=dens,
                 players=players,
+                anchors=anchors,
+                food=food,
             )
 
         for eid, behavior, loc in mobs:
@@ -396,7 +451,7 @@ def process() -> None:
                 + flee_player_layer.get_cost(y, x) * drives.flee_player
                 + food_layer.get_cost(y, x) * drives.seek_food
                 + den_layer.get_cost(y, x) * drives.seek_den
-                # + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
+                + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
             )
             best_score = current_score
             best_direction: Compass | None = None
@@ -412,7 +467,7 @@ def process() -> None:
                     + flee_player_layer.get_cost(ny, nx) * drives.flee_player
                     + food_layer.get_cost(ny, nx) * drives.seek_food
                     + den_layer.get_cost(ny, nx) * drives.seek_den
-                    # + flee_anchor_layer.get_cost(ny, nx) * drives.flee_anchor
+                    + flee_anchor_layer.get_cost(ny, nx) * drives.flee_anchor
                 )
 
                 if score < best_score:
