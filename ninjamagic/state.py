@@ -15,6 +15,7 @@ from ninjamagic import (
     combat,
     conn,
     cook,
+    drives,
     echo,
     experience,
     forage,
@@ -92,6 +93,7 @@ class State:
             forage.process()
             cook.process()
             survive.process()
+            drives.process()
             combat.process(now=now)
             proc.process(now=now)
             move.process()

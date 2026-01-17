@@ -8,6 +8,7 @@ from ninjamagic.component import (
     ContainedBy,
     Container,
     Cookware,
+    Drives,
     EntityId,
     ForageEnvironment,
     Glyph,
@@ -150,6 +151,14 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, 0, ContainedBy)
     esper.add_component(bedroll, 10, Level)
     esper.add_component(bedroll, ("]", 47 / 360, 0.60, 0.85), Glyph)
+
+    goblin = esper.create_entity(
+        Transform(map_id=map_id, y=5, x=12),
+        Noun(value="goblin", pronoun=Pronouns.IT),
+        Health(),
+        Drives(aggression=1.0, detection_range=6),
+    )
+    esper.add_component(goblin, ("g", 0.25, 0.7, 0.6), Glyph)
 
     # fmt: off
     chips[(0,0)] = bytearray([
