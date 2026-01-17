@@ -157,18 +157,25 @@ class Attack(Command):
 
     def trigger(self, root: bus.Inbound) -> Out:
         _, _, rest = root.text.partition(" ")
-        if not rest:
-            return False, "Attack whom?"
-        match = reach.find_one(
-            root.source,
-            rest,
-            reach.adjacent,
-            with_components=(Health, Stance, Skills),
-        )
-        if not match:
-            return False, "Attack whom?"
 
-        target, _, _ = match
+        target = 0
+        if not rest:
+            # Default to current attacker if in combat
+            ft = esper.try_component(root.source, FightTimer)
+            if ft and ft.is_active() and ft.attacker and esper.entity_exists(ft.attacker):
+                target = ft.attacker
+            else:
+                return False, "Attack whom?"
+        else:
+            match = reach.find_one(
+                root.source,
+                rest,
+                reach.adjacent,
+                with_components=(Health, Stance, Skills),
+            )
+            if not match:
+                return False, "Attack whom?"
+            target, _, _ = match
 
         target_health = esper.try_component(target, Health)
         if target_health and target_health.condition != "normal":
