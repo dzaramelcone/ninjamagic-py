@@ -13,8 +13,7 @@ def process():
         source_sig = sig.make_source_sig or sig.make_sig
         target_sig = sig.make_target_sig or sig.make_sig
         other_sig = sig.make_other_sig or sig.make_sig
-        # TODO: some reaches wont care about origin
-        origin = esper.try_component(sig.source, Transform)
+        origin = esper.try_component(sig.source, Transform) if sig.source else None
         for eid, comps in clients:
             _, pos = comps
 
@@ -27,6 +26,5 @@ def process():
                     bus.pulse(target_sig(to=eid))
                 continue
 
-            in_range = origin and sig.reach(origin, pos) or not origin and sig.reach(pos, pos)
-            if other_sig and in_range:
+            if other_sig and sig.reach(origin or pos, pos):
                 bus.pulse(other_sig(to=eid))
