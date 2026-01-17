@@ -374,28 +374,28 @@ class Fart(Command):
     text: str = "fart"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        def _ok(eid: EntityId) -> None:
+        def _ok(source: EntityId) -> None:
             story.echo(
                 "{0} {0:empties} {0:their} lungs, then deeply {0:inhales} {0:their} own fart-stink.",
-                eid,
+                source,
             ),
 
-        def _err(eid: EntityId) -> None:
+        def _err(source: EntityId) -> None:
             story.echo(
                 "{0} {0:coughs} and {0:gags} trying to suck in the smell of {0:their} own fart!",
-                eid,
+                source,
             ),
 
-        def _ok_exp(eid: EntityId) -> None:
+        def _ok_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, but only a faint memory remains of {0:their} fart.",
-                eid,
+                source,
             ),
 
-        def _err_exp(eid: EntityId) -> None:
+        def _err_exp(source: EntityId) -> None:
             story.echo(
                 "{0} {0:draws} back a deep breath, then {0:lapses} into a coughing fit!",
-                eid,
+                source,
             ),
 
         tform = transform(root.source)
@@ -824,12 +824,105 @@ class Recall(Command):
     text: str = "recall"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        to_map_id, to_y, to_x = get_recall(root.source)
+        _, to_map_id, to_y, to_x = get_recall(root.source)
         bus.pulse(
             bus.MovePosition(
                 source=root.source, to_map_id=to_map_id, to_y=to_y, to_x=to_x
             )
         )
+        return OK
+
+
+HELP_TEXTS: dict[str, tuple[str, str]] = {
+    "look": ("look at <target>\nlook in <container>", "Look at something or in a container."),
+    "say": ("say <message>\n'<message>", "Say something out loud."),
+    "emote": ("emote <action>", "Perform an action/emote."),
+    "attack": ("attack <target>", "Attack a target."),
+    "stand": ("stand [beside <target>]", "Stand up."),
+    "sit": ("sit [beside <target>]", "Sit down."),
+    "lie": ("lie [beside <target>]", "Lie down."),
+    "rest": ("rest [beside <target>]", "Rest (lie down)."),
+    "kneel": ("kneel [beside <target>]", "Kneel down."),
+    "block": ("block", "Raise your guard."),
+    "recall": ("recall", "Return to your bind point."),
+    "inventory": ("inventory", "View your inventory."),
+    "get": ("get <item>\nget <item> from <container>", "Pick up an item."),
+    "put": ("put <item> in <container>", "Put an item somewhere."),
+    "stow": ("stow <item> [in <container>]", "Stow an item in a container."),
+    "drop": ("drop <item>", "Drop an item."),
+    "wear": ("wear <item>", "Wear an item."),
+    "remove": ("remove <item>", "Remove worn item."),
+    "swap": ("swap", "Swap items between hands."),
+    "forage": ("forage", "Forage for items."),
+    "eat": ("eat <food>", "Eat food."),
+    "time": ("time", "Check the current time."),
+    "help": ("help [command]", "Get help for a command, or list all commands."),
+}
+
+
+class Help(Command):
+    text: str = "help"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+    requires_standing: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        rest = rest.strip().lower()
+
+        if not rest:
+            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw", "stress"}
+            cmd_names = sorted({cmd.text for cmd in commands} - hidden)
+            width = max(len(name) for name in cmd_names) + 2
+            rows = []
+            for i in range(0, len(cmd_names), 5):
+                row = [name.ljust(width) for name in cmd_names[i : i + 5]]
+                rows.append("".join(row).rstrip())
+            grid = "\n".join(rows)
+            bus.pulse(
+                bus.Outbound(
+                    to=root.source,
+                    text=f"Commands:\n{grid}\n\nType 'help <command>' for details.",
+                )
+            )
+            return OK
+
+        if rest == "help help":
+            bus.pulse(
+                bus.Outbound(to=root.source, text="You need somebody.")
+            )
+            return OK
+
+        if rest == "help":
+            usage, desc = HELP_TEXTS["help"]
+            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
+            bus.pulse(
+                bus.Outbound(to=root.source, text=f"Usage:\n{usage_lines}\n\n  {desc}")
+            )
+            return OK
+
+        cmd_match = None
+        for cmd in commands:
+            if cmd.text.startswith(rest):
+                cmd_match = cmd
+                break
+
+        if not cmd_match:
+            bus.pulse(
+                bus.Outbound(
+                    to=root.source, text=f"No command '{rest}'. Type 'help' for list."
+                )
+            )
+            return OK
+
+        if help_entry := HELP_TEXTS.get(cmd_match.text):
+            usage, desc = help_entry
+            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
+            text = f"Usage:\n{usage_lines}\n\n  {desc}"
+        else:
+            text = f"No help available for '{cmd_match.text}'."
+
+        bus.pulse(bus.Outbound(to=root.source, text=text))
         return OK
 
 
@@ -860,4 +953,5 @@ commands: list[Command] = [
     Forage(),
     Eat(),
     Time(),
+    Help(),
 ]
