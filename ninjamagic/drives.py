@@ -32,12 +32,21 @@ def get_blocked(map_id: EntityId, y: int, x: int, radius: int = 16) -> set[tuple
 
 
 def compute_layer(
-    map_id: EntityId, origin_y: int, origin_x: int, goals: list[tuple[int, int]]
+    map_id: EntityId,
+    origin_y: int,
+    origin_x: int,
+    goals: list[tuple[int, int]],
+    max_range: int = 0,
 ) -> DijkstraMap:
     """Compute a Dijkstra layer for a set of goals."""
     dm = DijkstraMap()
     if not goals:
         return dm
+    if max_range > 0:
+        goals = [(y, x) for y, x in goals
+                 if abs(y - origin_y) + abs(x - origin_x) <= max_range]
+        if not goals:
+            return dm
     blocked = get_blocked(map_id, origin_y, origin_x)
     dm.compute(goals=goals, blocked=blocked)
     return dm
@@ -71,10 +80,14 @@ def find_food(map_id: EntityId) -> list[tuple[int, int]]:
 
 
 def compute_flee_layer(
-    map_id: EntityId, origin_y: int, origin_x: int, threats: list[tuple[int, int]]
+    map_id: EntityId,
+    origin_y: int,
+    origin_x: int,
+    threats: list[tuple[int, int]],
+    max_range: int = 0,
 ) -> DijkstraMap:
     """Compute inverted layer - rolling downhill moves away from threats."""
-    dm = compute_layer(map_id, origin_y, origin_x, threats)
+    dm = compute_layer(map_id, origin_y, origin_x, threats, max_range)
     dm.invert()
     return dm
 
@@ -86,6 +99,7 @@ def best_direction(
     fear: float = 0.0,
     hunger: float = 0.0,
     anchor_hate: float = 0.0,
+    detection_range: int = 0,
 ) -> tuple[int, int] | None:
     """Get best movement direction based on drives.
 
@@ -102,9 +116,13 @@ def best_direction(
     players = find_players(loc.map_id)
     if players:
         if aggression > 0:
-            layers.append((compute_layer(loc.map_id, loc.y, loc.x, players), aggression))
+            layer = compute_layer(loc.map_id, loc.y, loc.x, players, detection_range)
+            if layer.costs:
+                layers.append((layer, aggression))
         if fear > 0:
-            layers.append((compute_flee_layer(loc.map_id, loc.y, loc.x, players), fear))
+            layer = compute_flee_layer(loc.map_id, loc.y, loc.x, players, detection_range)
+            if layer.costs:
+                layers.append((layer, fear))
 
     if hunger > 0:
         food = find_food(loc.map_id)
@@ -171,6 +189,7 @@ def process() -> None:
             fear=drives.fear,
             hunger=drives.hunger,
             anchor_hate=drives.anchor_hate,
+            detection_range=drives.detection_range,
         )
 
         if move:

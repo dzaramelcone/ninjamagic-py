@@ -452,6 +452,7 @@ class Drives:
     fear: float = 0.0  # Flee from players
     hunger: float = 0.0  # Seek food
     anchor_hate: float = 0.0  # Attack anchors
+    detection_range: int = 6  # Range to detect players for aggression/fear
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:
