@@ -824,7 +824,7 @@ class Recall(Command):
     text: str = "recall"
 
     def trigger(self, root: bus.Inbound) -> Out:
-        to_map_id, to_y, to_x = get_recall(root.source)
+        _, to_map_id, to_y, to_x = get_recall(root.source)
         bus.pulse(
             bus.MovePosition(
                 source=root.source, to_map_id=to_map_id, to_y=to_y, to_x=to_x
