@@ -184,13 +184,14 @@ def process() -> None:
 
     from ninjamagic.component import Drives
 
-    for eid, (drives, loc) in esper.get_components(Drives, Transform):
+    for eid, (drives, loc, health) in esper.get_components(Drives, Transform, Health):
         players = find_players(loc.map_id)
         dist = nearest_dist(loc, players) if players else float("inf")
+        hp_pct = health.cur / 100.0
 
         move = best_direction(
             loc,
-            aggression=drives.effective_aggression(dist),
+            aggression=drives.effective_aggression(dist, hp_pct),
             fear=drives.effective_fear(dist),
             hunger=drives.hunger,
             anchor_hate=drives.anchor_hate,

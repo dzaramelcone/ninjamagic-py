@@ -450,8 +450,8 @@ class Drives:
     hunger: float = 0.0
     anchor_hate: float = 0.0
 
-    def effective_aggression(self, dist: float) -> float:
-        return self.aggression * 6.0 / max(dist, 1.0)
+    def effective_aggression(self, dist: float, hp_pct: float) -> float:
+        return self.aggression * hp_pct * 6.0 / max(dist, 1.0)
 
     def effective_fear(self, dist: float) -> float:
         return self.fear * 6.0 / max(dist, 1.0)

@@ -1,6 +1,5 @@
 import esper
 
-from ninjamagic import bus
 from ninjamagic.component import (
     Anchor,
     Chips,
@@ -32,10 +31,35 @@ from ninjamagic.util import (
     TILE_STRIDE,
     TILE_STRIDE_H,
     TILE_STRIDE_W,
+    Pronoun,
     Pronouns,
     pop_random,
 )
 from ninjamagic.world import simple
+
+
+def create_mob(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    pronoun: Pronoun = Pronouns.IT,
+    drives: Drives | None = None,
+) -> EntityId:
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(value=name, pronoun=pronoun),
+        Health(),
+        Stance(),
+        Skills(),
+        Stats(),
+    )
+    esper.add_component(eid, glyph, Glyph)
+    if drives:
+        esper.add_component(eid, drives)
+    return eid
 
 
 def build_nowhere() -> EntityId:
@@ -84,23 +108,13 @@ def build_demo() -> EntityId:
 
 
 def build_hub(map_id: EntityId, chips: Chips):
-    wanderer = esper.create_entity(Transform(map_id=0, y=0, x=0))
-    esper.add_component(wanderer, ("w", 0.12, 0.55, 0.75), Glyph)
-    esper.add_component(wanderer, Noun(value="wanderer", pronoun=Pronouns.HE))
-    esper.add_component(wanderer, Health())
-    esper.add_component(wanderer, Stance())
-    esper.add_component(wanderer, Skills())
-    esper.add_component(wanderer, Stats())
-    bus.pulse(
-        bus.PositionChanged(
-            source=wanderer,
-            from_map_id=0,
-            from_y=0,
-            from_x=0,
-            to_map_id=map_id,
-            to_y=8,
-            to_x=5,
-        )
+    create_mob(
+        map_id=map_id,
+        y=8,
+        x=5,
+        name="wanderer",
+        glyph=("w", 0.12, 0.55, 0.75),
+        pronoun=Pronouns.HE,
     )
 
     bonfire = esper.create_entity(
@@ -152,14 +166,14 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, 10, Level)
     esper.add_component(bedroll, ("]", 47 / 360, 0.60, 0.85), Glyph)
 
-    goblin = esper.create_entity(
-        Transform(map_id=map_id, y=5, x=12),
-        Noun(value="goblin", pronoun=Pronouns.IT),
-        Health(),
-        Stance(),
-        Drives(aggression=1.0),
+    create_mob(
+        map_id=map_id,
+        y=5,
+        x=12,
+        name="goblin",
+        glyph=("g", 0.25, 0.7, 0.6),
+        drives=Drives(aggression=1.0),
     )
-    esper.add_component(goblin, ("g", 0.25, 0.7, 0.6), Glyph)
 
     # fmt: off
     chips[(0,0)] = bytearray([
