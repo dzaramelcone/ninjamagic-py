@@ -233,7 +233,9 @@ class Shout(Command):
         _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "Shout what?"
-        story.echo("{0} {0:shouts}, '{speech}'", root.source, speech=rest, range=reach.world)
+        story.echo(
+            "{0} {0:shouts}, '{speech}'", root.source, speech=rest, range=reach.world
+        )
         return OK
 
 
@@ -278,9 +280,44 @@ def handle_stance(
 
 class Stand(Command):
     text: str = "stand"
+    story: str = "{0} {0:climbs} to {0:their} feet..."
 
     def trigger(self, root: bus.Inbound) -> Out:
-        return handle_stance(new_stance="standing", root=root, cmd="Stand")
+        _, _, rest = root.text.strip().partition(" ")
+        stance = esper.component_for_entity(root.source, Stance)
+
+        if not rest or rest in ("here", "up"):
+            if stance.cur == "standing":
+                return False, "You're already standing."
+            story.echo(Stand.story, root.source)
+            bus.pulse(
+                bus.Act(
+                    source=root.source,
+                    delay=get_melee_delay(),
+                    then=(
+                        bus.StanceChanged(
+                            source=root.source, stance="standing", echo=True
+                        ),
+                    ),
+                )
+            )
+            return OK
+
+        match = reach.find_one(source=root.source, prefix=rest, in_range=reach.adjacent)
+        if match:
+            prop, _, _ = match
+            if stance.cur == "standing" and prop == stance.prop:
+                noun = esper.component_for_entity(prop, Noun)
+                return False, f"You're already standing beside {noun:def}."
+            story.echo(Stand.story, root.source)
+            then = bus.StanceChanged(
+                source=root.source, stance="standing", prop=prop, echo=True
+            )
+            bus.pulse(
+                bus.Act(source=root.source, delay=get_melee_delay(), then=(then,))
+            )
+            return OK
+        return False, "Stand where?"
 
 
 class Lie(Command):
@@ -352,7 +389,11 @@ class Eat(Command):
                 auto_sat = True
 
         # Check eating conditions for feedback (use anchor if we auto-sat)
-        prop = anchor if auto_sat else (stance.prop if esper.entity_exists(stance.prop) else 0)
+        prop = (
+            anchor
+            if auto_sat
+            else (stance.prop if esper.entity_exists(stance.prop) else 0)
+        )
         is_warm = prop and esper.has_component(prop, ProvidesHeat)
         is_lit = prop and esper.has_component(prop, ProvidesLight)
         is_lit = is_lit or NightClock().brightness_index >= 6
@@ -856,7 +897,10 @@ class Announce(Command):
 
 
 HELP_TEXTS: dict[str, tuple[str, str]] = {
-    "look": ("look at <target>\nlook in <container>", "Look at something or in a container."),
+    "look": (
+        "look at <target>\nlook in <container>",
+        "Look at something or in a container.",
+    ),
     "say": ("say <message>\n'<message>", "Say something out loud."),
     "shout": ("shout <message>", "Shout to the whole world."),
     "emote": ("emote <action>", "Perform an action/emote."),
@@ -894,7 +938,15 @@ class Help(Command):
         rest = rest.strip().lower()
 
         if not rest:
-            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw", "stress", "announce"}
+            hidden = {
+                *[d.value for d in Compass],
+                "ne",
+                "nw",
+                "se",
+                "sw",
+                "stress",
+                "announce",
+            }
             cmd_names = sorted({cmd.text for cmd in commands} - hidden)
             width = max(len(name) for name in cmd_names) + 2
             rows = []
@@ -911,9 +963,7 @@ class Help(Command):
             return OK
 
         if rest == "help help":
-            bus.pulse(
-                bus.Outbound(to=root.source, text="You need somebody.")
-            )
+            bus.pulse(bus.Outbound(to=root.source, text="You need somebody."))
             return OK
 
         if rest == "help":
