@@ -176,7 +176,7 @@ def build_goblin_den(map_id: EntityId, chips: Chips):
 
 
 def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
-    """Spawn swarms of 1-20 goblins in each tile (except hub at 0,0)."""
+    """Spawn a den and 1-3 goblins in each tile (except hub at 0,0)."""
     for (tile_y, tile_x), tile in chips.items():
         if (tile_y, tile_x) == (0, 0):
             continue
@@ -191,6 +191,18 @@ def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
 
         if not walkable:
             continue
+
+        # Place a den
+        den_y, den_x = RNG.choice(walkable)
+        den = create_prop(
+            map_id=map_id,
+            y=den_y,
+            x=den_x,
+            name="hovel",
+            adjective="goblin",
+            glyph=("π", 0.08, 0.30, 0.40),
+        )
+        esper.add_component(den, Den())
 
         # Spawn 1-3 goblins
         count = RNG.randint(1, 3)
