@@ -157,11 +157,6 @@ class Sheltered:
 
 
 @component(slots=True, kw_only=True)
-class TookCover:
-    """The entity desperately took cover by nightstorm prompt. Used by camping."""
-
-
-@component(slots=True, kw_only=True)
 class FightTimer:
     """The entity has been in a fight recently.
     - `last_atk_proc`  used by the procs per minute system to award tokens on attack.

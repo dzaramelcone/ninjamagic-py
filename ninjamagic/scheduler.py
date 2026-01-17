@@ -33,11 +33,6 @@ def recurring(
 
 
 def start() -> None:
-    cue(
-        bus.CoverCheck(),
-        time=NightTime(hour=1, minute=50),
-        recur=recurring(forever=True),
-    )
     cue(bus.RestCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
 
 
