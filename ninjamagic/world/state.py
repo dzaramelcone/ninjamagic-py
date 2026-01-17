@@ -2,12 +2,13 @@ import esper
 
 from ninjamagic.component import (
     Anchor,
+    Behavior,
     Chips,
     ChipSet,
     ContainedBy,
     Container,
     Cookware,
-    Drives,
+    Den,
     EntityId,
     ForageEnvironment,
     Glyph,
@@ -46,7 +47,7 @@ def create_mob(
     name: str,
     glyph: tuple[str, float, float, float],
     pronoun: Pronoun = Pronouns.IT,
-    drives: Drives | None = None,
+    behavior: Behavior | None = None,
 ) -> EntityId:
     eid = esper.create_entity(
         Transform(map_id=map_id, y=y, x=x),
@@ -57,8 +58,8 @@ def create_mob(
         Stats(),
     )
     esper.add_component(eid, glyph, Glyph)
-    if drives:
-        esper.add_component(eid, drives)
+    if behavior:
+        esper.add_component(eid, behavior)
     return eid
 
 

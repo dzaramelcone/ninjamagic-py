@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass as signal, field
@@ -25,6 +26,8 @@ from ninjamagic.component import (
 from ninjamagic.gen.models import Character
 from ninjamagic.reach import Selector, adjacent
 from ninjamagic.util import Compass, Looptime, get_looptime, serial
+
+log = logging.getLogger(__name__)
 
 
 class Signal:
@@ -64,6 +67,10 @@ class Inbound(Signal):
 
     source: EntityId
     text: str
+
+    def __post_init__(self):
+        log.debug("inbound %s: %s", self.source, self.text)
+        return self
 
 
 @signal(frozen=True, slots=True, kw_only=True)

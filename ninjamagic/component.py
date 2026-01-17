@@ -153,6 +153,11 @@ class Anchor:
     rankup_echo: str
 
 
+@component(slots=True)
+class Den:
+    """Mob safe zone."""
+
+
 @component(slots=True, kw_only=True)
 class Sheltered:
     """The entity is sheltered by a `prop` with `Shelter`. Used by camping."""
@@ -443,22 +448,24 @@ class Wearable:
 
 @component(slots=True, kw_only=True)
 class Drives:
-    """Mob AI drives that weight different goals."""
+    """Layer weights. seek_ = toward goal, flee_ = relaxed escape routes."""
 
-    aggression: float = 0.0
-    fear: float = 0.0
-    hunger: float = 0.0
-    anchor_hate: float = 0.0
-    flee_threshold: float = 0.15  # HP% below which fear kicks in
+    seek_player: float = 0.0
+    flee_player: float = 0.0
+    seek_food: float = 0.0
+    seek_den: float = 0.0
+    flee_anchor: float = 0.0
 
-    def effective_aggression(self, hp_pct: float) -> float:
-        return self.aggression * hp_pct
 
-    def effective_fear(self, hp_pct: float) -> float:
-        if hp_pct >= self.flee_threshold:
-            return 0.0
-        fear_pct = (self.flee_threshold - hp_pct) / self.flee_threshold
-        return self.fear * fear_pct
+@component(slots=True, kw_only=True)
+class Needs:
+    hunger: float = 0.0  # 0 = full, 1 = starving
+
+
+@component(slots=True, kw_only=True)
+class Behavior:
+    template: str = "goblin"
+    state: str = "territorial"
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

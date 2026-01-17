@@ -46,6 +46,6 @@ def process() -> None:
             continue
         if eta := next(recur, None):
             heapq.heappush(pq, (due + eta, serial(), sig, recur))
-
+    # todo regional
     for _ in bus.iter(bus.NightstormWarning):
-        story.echo("The worst of night approaches.", range=reach.world)
+        story.echo("The worst of night approaches! Take cover!", range=reach.world)

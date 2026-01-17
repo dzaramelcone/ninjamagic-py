@@ -188,7 +188,7 @@ def process_rest() -> None:
 
     def handle_bad_rest(eid: EntityId):
         """Player did not rest properly."""
-        story.echo("{0} {0:endures} a rough night.", eid)
+        story.echo("{0} {0:crashes} out into the horror of night!", eid)
 
     for eid, cmps in esper.get_components(Connection, Transform, Health, Stance):
         _, loc, health, stance = cmps
