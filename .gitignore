@@ -2,6 +2,7 @@
 __pycache__/
 
 notes/
+docs/
 dist/
 
 ninjamagic.env
