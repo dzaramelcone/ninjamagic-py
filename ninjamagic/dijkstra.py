@@ -9,7 +9,7 @@ Compute is designed to run N times per second, not per tick.
 import heapq
 from dataclasses import dataclass, field
 
-from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W, Compass
+from ninjamagic.util import EIGHT_DIRS, TILE_STRIDE_H, TILE_STRIDE_W, Compass
 
 INF = float("inf")
 
@@ -58,12 +58,12 @@ class DijkstraMap:
             self._set_cost(y, x, cost)
 
             # Expand to neighbors
-            for dy, dx, move_cost in _NEIGHBORS:
+            for dy, dx in EIGHT_DIRS:
                 ny, nx = y + dy, x + dx
                 if (ny, nx) in blocked:
                     continue
 
-                new_cost = cost + move_cost
+                new_cost = cost + 1.0
                 if new_cost < visited.get((ny, nx), INF):
                     visited[(ny, nx)] = new_cost
                     heapq.heappush(pq, (new_cost, ny, nx))
@@ -98,7 +98,7 @@ class DijkstraMap:
                 if tile[i] != INF:
                     tile[i] = self.max_cost - tile[i]
 
-    def best_direction(self, y: int, x: int) -> Compass | None:
+    def roll_downhill(self, y: int, x: int) -> Compass | None:
         """Direction to lowest cost neighbor. Returns None if at goal or unreachable."""
         current_cost = self.get_cost(y, x)
         if current_cost == INF:
@@ -109,36 +109,11 @@ class DijkstraMap:
         best_dir = None
         best_cost = current_cost
 
-        for dy, dx, _ in _NEIGHBORS:
+        for dy, dx in EIGHT_DIRS:
             ny, nx = y + dy, x + dx
             neighbor_cost = self.get_cost(ny, nx)
             if neighbor_cost < best_cost:
                 best_cost = neighbor_cost
-                best_dir = _VECTOR_TO_COMPASS.get((dy, dx))
+                best_dir = Compass.from_vector(dy, dx)
 
         return best_dir
-
-
-# 8-directional neighbors: (dy, dx, cost)
-_NEIGHBORS = [
-    (-1, 0, 1.0),  # North
-    (1, 0, 1.0),  # South
-    (0, -1, 1.0),  # West
-    (0, 1, 1.0),  # East
-    (-1, -1, 1.0),  # NW
-    (-1, 1, 1.0),  # NE
-    (1, -1, 1.0),  # SW
-    (1, 1, 1.0),  # SE
-]
-
-# Map (dy, dx) to Compass
-_VECTOR_TO_COMPASS = {
-    (-1, 0): Compass.NORTH,
-    (1, 0): Compass.SOUTH,
-    (0, -1): Compass.WEST,
-    (0, 1): Compass.EAST,
-    (-1, -1): Compass.NORTHWEST,
-    (-1, 1): Compass.NORTHEAST,
-    (1, -1): Compass.SOUTHWEST,
-    (1, 1): Compass.SOUTHEAST,
-}
