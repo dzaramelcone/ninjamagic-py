@@ -872,8 +872,10 @@ class Help(Command):
         rest = rest.strip().lower()
 
         if not rest:
+            usage, desc = HELP_TEXTS["help"]
+            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
             bus.pulse(
-                bus.Outbound(to=root.source, text=HELP_TEXTS["help"])
+                bus.Outbound(to=root.source, text=f"Usage:\n{usage_lines}\n\n  {desc}")
             )
             return OK
 
