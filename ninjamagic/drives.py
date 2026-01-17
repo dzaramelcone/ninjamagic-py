@@ -6,7 +6,7 @@ Movement emerges from combined layer costs. Actions are reactive based on surrou
 
 import esper
 
-from ninjamagic import bus
+from ninjamagic import act, bus
 from ninjamagic.component import (
     Anchor,
     Connection,
@@ -165,6 +165,8 @@ def best_direction(
 
 def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
     """React to surroundings after moving. Returns True if action taken."""
+    if act.is_busy(eid):
+        return True
     if aggression > 0.3:
         for _, (player_loc, _, health, noun) in esper.get_components(
             Transform, Connection, Health, Noun
