@@ -10,6 +10,7 @@ from ninjamagic import act, bus
 from ninjamagic.component import (
     Anchor,
     Connection,
+    Drives,
     EntityId,
     Food,
     Health,
@@ -23,6 +24,12 @@ from ninjamagic.world.state import can_enter
 
 TICK_RATE = 2.0  # Mobs decide twice per second
 _last_tick = 0.0
+
+# Cached layers per map, recomputed each tick
+_player_layer: dict[EntityId, DijkstraMap] = {}
+_flee_layer: dict[EntityId, DijkstraMap] = {}
+_food_layer: dict[EntityId, DijkstraMap] = {}
+_anchor_flee_layer: dict[EntityId, DijkstraMap] = {}
 
 
 def get_blocked(map_id: EntityId, y: int, x: int, radius: int = 16) -> set[tuple[int, int]]:
@@ -78,18 +85,6 @@ def find_food(map_id: EntityId) -> list[tuple[int, int]]:
     ]
 
 
-def compute_flee_layer(
-    map_id: EntityId,
-    origin_y: int,
-    origin_x: int,
-    threats: list[tuple[int, int]],
-) -> DijkstraMap:
-    """Compute inverted layer - rolling downhill moves away from threats."""
-    dm = compute_layer(map_id, origin_y, origin_x, threats)
-    dm.invert()
-    return dm
-
-
 def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
     """Manhattan distance to nearest target."""
     if not targets:
@@ -97,18 +92,18 @@ def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
     return min(abs(y - loc.y) + abs(x - loc.x) for y, x in targets)
 
 
-def nearest_threat_attack(loc: Transform) -> float:
+def nearest_threat_attack(map_id: EntityId, y: int, x: int) -> float:
     """Get the attack rank of the nearest living player threat."""
     best_dist = float("inf")
     best_attack = 0.0
     for _, (player_loc, _, skills, health) in esper.get_components(
         Transform, Connection, Skills, Health
     ):
-        if player_loc.map_id != loc.map_id:
+        if player_loc.map_id != map_id:
             continue
         if health.condition == "dead":
             continue
-        dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
+        dist = abs(player_loc.y - y) + abs(player_loc.x - x)
         if dist < best_dist:
             best_dist = dist
             best_attack = skills.martial_arts.rank
@@ -118,43 +113,32 @@ def nearest_threat_attack(loc: Transform) -> float:
 def best_direction(
     loc: Transform,
     *,
+    player_layer: DijkstraMap,
+    flee_layer: DijkstraMap,
+    food_layer: DijkstraMap,
+    anchor_flee_layer: DijkstraMap,
     aggression: float = 0.0,
     fear: float = 0.0,
     hunger: float = 0.0,
     anchor_hate: float = 0.0,
 ) -> tuple[int, int] | None:
-    """Get best movement direction based on drives.
-
-    Returns (dy, dx) or None if no good move.
-    All layers use "roll downhill" - lower cost is better.
-    Aggression/fear scale inversely with distance to nearest player.
-    """
+    """Get best movement direction based on drives and pre-computed layers."""
     if not any([aggression, fear, hunger, anchor_hate]):
         return None
 
     layers: list[tuple[DijkstraMap, float]] = []
-
-    players = find_players(loc.map_id)
-    if players:
-        if aggression > 0:
-            layers.append((compute_layer(loc.map_id, loc.y, loc.x, players), aggression))
-        if fear > 0:
-            layers.append((compute_flee_layer(loc.map_id, loc.y, loc.x, players), fear))
-
-    if hunger > 0:
-        food = find_food(loc.map_id)
-        if food:
-            layers.append((compute_layer(loc.map_id, loc.y, loc.x, food), hunger))
-
-    if anchor_hate > 0:
-        anchors = find_anchors(loc.map_id)
-        if anchors:
-            layers.append((compute_flee_layer(loc.map_id, loc.y, loc.x, anchors), anchor_hate))
+    if aggression > 0 and player_layer.costs:
+        layers.append((player_layer, aggression))
+    if fear > 0 and flee_layer.costs:
+        layers.append((flee_layer, fear))
+    if hunger > 0 and food_layer.costs:
+        layers.append((food_layer, hunger))
+    if anchor_hate > 0 and anchor_flee_layer.costs:
+        layers.append((anchor_flee_layer, anchor_hate))
 
     if not layers:
         return None
 
-    # Only move downhill - compare against current position
     current_score = 0.0
     for layer, weight in layers:
         cost = layer.get_cost(loc.y, loc.x)
@@ -209,42 +193,95 @@ def process() -> None:
         return
     _last_tick = now
 
-    from ninjamagic.component import Drives
+    # Clear cached layers
+    _player_layer.clear()
+    _flee_layer.clear()
+    _food_layer.clear()
+    _anchor_flee_layer.clear()
 
+    # Collect mobs by map to compute layers once per map
+    mobs_by_map: dict[EntityId, list[tuple[EntityId, Drives, Transform, Health, Skills]]] = {}
     for eid, (drives, loc, health, skills) in esper.get_components(
         Drives, Transform, Health, Skills
     ):
-        players = find_players(loc.map_id)
-        dist = nearest_dist(loc, players) if players else float("inf")
-        hp_pct = health.cur / 100.0
+        if loc.map_id not in mobs_by_map:
+            mobs_by_map[loc.map_id] = []
+        mobs_by_map[loc.map_id].append((eid, drives, loc, health, skills))
 
-        # Contest mob's evasion vs nearest threat's attack
-        threat_attack = nearest_threat_attack(loc)
-        evasion_mult = contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
+    for map_id, mobs in mobs_by_map.items():
+        # Compute layers once per map
+        players = find_players(map_id)
+        if players:
+            # Use first mob's position as origin for blocked computation
+            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
+            blocked = get_blocked(map_id, origin_y, origin_x)
 
-        eff_aggression = drives.effective_aggression(dist, hp_pct)
-        eff_fear = drives.effective_fear(dist, hp_pct, evasion_mult)
+            player_dm = DijkstraMap()
+            player_dm.compute(goals=players, blocked=blocked)
+            _player_layer[map_id] = player_dm
 
-        # Try to react first (attack adjacent targets) - but only if not too scared
-        if react(eid, loc, eff_aggression, eff_fear):
-            continue
+            flee_dm = DijkstraMap()
+            flee_dm.compute(goals=players, blocked=blocked)
+            flee_dm.invert()
+            _flee_layer[map_id] = flee_dm
+        else:
+            _player_layer[map_id] = DijkstraMap()
+            _flee_layer[map_id] = DijkstraMap()
 
-        # Otherwise, decide movement
-        move = best_direction(
-            loc,
-            aggression=eff_aggression,
-            fear=eff_fear,
-            hunger=drives.hunger,
-            anchor_hate=drives.anchor_hate,
-        )
+        food = find_food(map_id)
+        if food:
+            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
+            blocked = get_blocked(map_id, origin_y, origin_x)
+            food_dm = DijkstraMap()
+            food_dm.compute(goals=food, blocked=blocked)
+            _food_layer[map_id] = food_dm
+        else:
+            _food_layer[map_id] = DijkstraMap()
 
-        if move:
-            dy, dx = move
-            bus.pulse(
-                bus.MovePosition(
-                    source=eid,
-                    to_map_id=loc.map_id,
-                    to_y=loc.y + dy,
-                    to_x=loc.x + dx,
-                )
+        anchors = find_anchors(map_id)
+        if anchors:
+            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
+            blocked = get_blocked(map_id, origin_y, origin_x)
+            anchor_dm = DijkstraMap()
+            anchor_dm.compute(goals=anchors, blocked=blocked)
+            anchor_dm.invert()
+            _anchor_flee_layer[map_id] = anchor_dm
+        else:
+            _anchor_flee_layer[map_id] = DijkstraMap()
+
+        # Process each mob
+        for eid, drives, loc, health, skills in mobs:
+            dist = nearest_dist(loc, players) if players else float("inf")
+            hp_pct = health.cur / 100.0
+
+            threat_attack = nearest_threat_attack(map_id, loc.y, loc.x)
+            evasion_mult = contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
+
+            eff_aggression = drives.effective_aggression(dist, hp_pct)
+            eff_fear = drives.effective_fear(dist, hp_pct, evasion_mult)
+
+            if react(eid, loc, eff_aggression, eff_fear):
+                continue
+
+            move = best_direction(
+                loc,
+                player_layer=_player_layer[map_id],
+                flee_layer=_flee_layer[map_id],
+                food_layer=_food_layer[map_id],
+                anchor_flee_layer=_anchor_flee_layer[map_id],
+                aggression=eff_aggression,
+                fear=eff_fear,
+                hunger=drives.hunger,
+                anchor_hate=drives.anchor_hate,
             )
+
+            if move:
+                dy, dx = move
+                bus.pulse(
+                    bus.MovePosition(
+                        source=eid,
+                        to_map_id=loc.map_id,
+                        to_y=loc.y + dy,
+                        to_x=loc.x + dx,
+                    )
+                )
