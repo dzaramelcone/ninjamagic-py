@@ -107,7 +107,7 @@ def nearest_threat_attack(loc: Transform) -> float:
         dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
         if dist < best_dist:
             best_dist = dist
-            best_attack = skills.martial_arts.ranks
+            best_attack = skills.martial_arts.rank
     return best_attack
 
 
@@ -216,7 +216,7 @@ def process() -> None:
 
         # Contest mob's evasion vs nearest threat's attack
         threat_attack = nearest_threat_attack(loc)
-        evasion_mult = contest(skills.evasion.ranks, threat_attack) if threat_attack else 1.0
+        evasion_mult = contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
 
         eff_aggression = drives.effective_aggression(dist, hp_pct)
         eff_fear = drives.effective_fear(dist, hp_pct, evasion_mult)
