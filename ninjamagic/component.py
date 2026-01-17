@@ -175,11 +175,13 @@ class FightTimer:
     - `last_atk_proc`  used by the procs per minute system to award tokens on attack.
     - `last_def_proc`  used by the procs per minute system to award tokens on defense.
     - `last_refresh`   used to prevent logging out to escape combat.
+    - `attacker`       who is currently attacking this entity.
     """
 
     last_atk_proc: Looptime
     last_def_proc: Looptime
     last_refresh: Looptime
+    attacker: EntityId = 0
 
     def is_active(self) -> bool:
         return get_looptime() - self.last_refresh < settings.fight_timer_len
