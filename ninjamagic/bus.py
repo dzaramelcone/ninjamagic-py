@@ -136,6 +136,9 @@ class MoveCompass(Signal):
 class RestCheck(Signal): ...
 
 
+class NightstormWarning(Signal): ...
+
+
 @signal(frozen=True, slots=True, kw_only=True)
 class MoveEntity(Signal):
     "`source` moved into `container` in `slot`."
