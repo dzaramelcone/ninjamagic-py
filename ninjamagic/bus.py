@@ -68,10 +68,6 @@ class Inbound(Signal):
     source: EntityId
     text: str
 
-    def __post_init__(self):
-        log.debug("inbound %s: %s", self.source, self.text)
-        return self
-
 
 @signal(frozen=True, slots=True, kw_only=True)
 class InboundPrompt(Signal):
