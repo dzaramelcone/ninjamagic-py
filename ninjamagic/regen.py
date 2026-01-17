@@ -1,7 +1,7 @@
 import esper
 
 from ninjamagic import bus
-from ninjamagic.component import Health, Stance
+from ninjamagic.component import FightTimer, Health, Stance
 from ninjamagic.config import settings
 from ninjamagic.util import Looptime
 
@@ -13,6 +13,8 @@ def process(now: Looptime):
     while now >= next_call:
         for eid, (health, stance) in esper.get_components(Health, Stance):
             if health.condition != "normal":
+                continue
+            if (ft := esper.try_component(eid, FightTimer)) and ft.is_active():
                 continue
             if stance.cur == "lying prone":
                 bus.pulse(

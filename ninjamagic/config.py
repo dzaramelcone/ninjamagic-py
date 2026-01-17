@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     stun_len: float = 5.0
 
     base_proc_odds: float = 0.10
+    fight_timer_len: float = 10.0
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__", env_file="ninjamagic.env"
