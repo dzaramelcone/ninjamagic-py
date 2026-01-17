@@ -192,8 +192,8 @@ def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
         if not walkable:
             continue
 
-        # Spawn 1-20 goblins
-        count = RNG.randint(1, 20)
+        # Spawn 1-3 goblins
+        count = RNG.randint(1, 3)
         spots = RNG.sample(walkable, min(count, len(walkable)))
 
         for gy, gx in spots:
