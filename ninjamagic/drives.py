@@ -32,7 +32,9 @@ _food_layer: dict[EntityId, DijkstraMap] = {}
 _anchor_flee_layer: dict[EntityId, DijkstraMap] = {}
 
 
-def get_blocked(map_id: EntityId, y: int, x: int, radius: int = 16) -> set[tuple[int, int]]:
+def get_blocked(
+    map_id: EntityId, y: int, x: int, radius: int = 16
+) -> set[tuple[int, int]]:
     """Get blocked cells around a point."""
     blocked = set()
     for dy in range(-radius, radius + 1):
@@ -85,57 +87,27 @@ def find_food(map_id: EntityId) -> list[tuple[int, int]]:
     ]
 
 
-def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
-    """Manhattan distance to nearest target."""
-    if not targets:
-        return float("inf")
-    return min(abs(y - loc.y) + abs(x - loc.x) for y, x in targets)
-
-
-def nearest_threat_attack(map_id: EntityId, y: int, x: int) -> float:
-    """Get the attack rank of the nearest living player threat."""
-    best_dist = float("inf")
-    best_attack = 0.0
+def threat_attack_at(map_id: EntityId, y: int, x: int) -> float:
+    """Get max attack rank of living players at this position."""
+    max_attack = 0.0
     for _, (player_loc, _, skills, health) in esper.get_components(
         Transform, Connection, Skills, Health
     ):
         if player_loc.map_id != map_id:
             continue
+        if player_loc.y != y or player_loc.x != x:
+            continue
         if health.condition == "dead":
             continue
-        dist = abs(player_loc.y - y) + abs(player_loc.x - x)
-        if dist < best_dist:
-            best_dist = dist
-            best_attack = skills.martial_arts.rank
-    return best_attack
+        max_attack = max(max_attack, skills.martial_arts.rank)
+    return max_attack
 
 
 def best_direction(
     loc: Transform,
-    *,
-    player_layer: DijkstraMap,
-    flee_layer: DijkstraMap,
-    food_layer: DijkstraMap,
-    anchor_flee_layer: DijkstraMap,
-    aggression: float = 0.0,
-    fear: float = 0.0,
-    hunger: float = 0.0,
-    anchor_hate: float = 0.0,
+    layers: list[tuple[DijkstraMap, float]],
 ) -> tuple[int, int] | None:
-    """Get best movement direction based on drives and pre-computed layers."""
-    if not any([aggression, fear, hunger, anchor_hate]):
-        return None
-
-    layers: list[tuple[DijkstraMap, float]] = []
-    if aggression > 0 and player_layer.costs:
-        layers.append((player_layer, aggression))
-    if fear > 0 and flee_layer.costs:
-        layers.append((flee_layer, fear))
-    if hunger > 0 and food_layer.costs:
-        layers.append((food_layer, hunger))
-    if anchor_hate > 0 and anchor_flee_layer.costs:
-        layers.append((anchor_flee_layer, anchor_hate))
-
+    """Get best movement direction based on pre-computed weighted layers."""
     if not layers:
         return None
 
@@ -200,7 +172,9 @@ def process() -> None:
     _anchor_flee_layer.clear()
 
     # Collect mobs by map to compute layers once per map
-    mobs_by_map: dict[EntityId, list[tuple[EntityId, Drives, Transform, Health, Skills]]] = {}
+    mobs_by_map: dict[
+        EntityId, list[tuple[EntityId, Drives, Transform, Health, Skills]]
+    ] = {}
     for eid, (drives, loc, health, skills) in esper.get_components(
         Drives, Transform, Health, Skills
     ):
@@ -251,29 +225,31 @@ def process() -> None:
 
         # Process each mob
         for eid, drives, loc, health, skills in mobs:
-            dist = nearest_dist(loc, players) if players else float("inf")
             hp_pct = health.cur / 100.0
 
-            threat_attack = nearest_threat_attack(map_id, loc.y, loc.x)
-            evasion_mult = contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
+            threat_attack = threat_attack_at(map_id, loc.y, loc.x)
+            evasion_mult = (
+                contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
+            )
 
-            eff_aggression = drives.effective_aggression(dist, hp_pct)
-            eff_fear = drives.effective_fear(dist, hp_pct, evasion_mult)
+            eff_aggression = drives.effective_aggression(hp_pct)
+            eff_fear = drives.effective_fear(hp_pct, evasion_mult)
 
             if react(eid, loc, eff_aggression, eff_fear):
                 continue
 
-            move = best_direction(
-                loc,
-                player_layer=_player_layer[map_id],
-                flee_layer=_flee_layer[map_id],
-                food_layer=_food_layer[map_id],
-                anchor_flee_layer=_anchor_flee_layer[map_id],
-                aggression=eff_aggression,
-                fear=eff_fear,
-                hunger=drives.hunger,
-                anchor_hate=drives.anchor_hate,
-            )
+            # Build layers list for this mob
+            layers: list[tuple[DijkstraMap, float]] = []
+            if eff_aggression > 0 and _player_layer[map_id].costs:
+                layers.append((_player_layer[map_id], eff_aggression))
+            if eff_fear > 0 and _flee_layer[map_id].costs:
+                layers.append((_flee_layer[map_id], eff_fear))
+            if drives.hunger > 0 and _food_layer[map_id].costs:
+                layers.append((_food_layer[map_id], drives.hunger))
+            if drives.anchor_hate > 0 and _anchor_flee_layer[map_id].costs:
+                layers.append((_anchor_flee_layer[map_id], drives.anchor_hate))
+
+            move = best_direction(loc, layers)
 
             if move:
                 dy, dx = move
