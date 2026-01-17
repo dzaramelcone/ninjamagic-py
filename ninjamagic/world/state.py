@@ -1,3 +1,5 @@
+import logging
+
 import esper
 
 from ninjamagic.component import (
@@ -43,6 +45,8 @@ from ninjamagic.world.goblin_den import (
     pick_adjacent_tile,
     stamp_den_prefab,
 )
+
+log = logging.getLogger(__name__)
 
 
 def create_mob(
@@ -118,6 +122,7 @@ def build_goblin_den(map_id: EntityId, chips: Chips):
     """Build a goblin den in a tile adjacent to (0,0)."""
     tile_key = pick_adjacent_tile(chips, origin=(0, 0))
     tile = chips[tile_key]
+    log.info("goblin den placed in tile %s", tile_key)
 
     prefab = generate_den_prefab()
     lut = [1, 2]  # 0 (walkable) -> 1 (floor), 1 (wall) -> 2 (wall)
