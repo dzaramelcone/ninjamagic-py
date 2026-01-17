@@ -62,6 +62,51 @@ def create_mob(
     return eid
 
 
+def create_prop(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    adjective: str = "",
+    pronoun: Pronoun = Pronouns.IT,
+) -> EntityId:
+    """Non-pickupable scenery."""
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(adjective=adjective, value=name, pronoun=pronoun),
+    )
+    esper.add_component(eid, glyph, Glyph)
+    return eid
+
+
+def create_item(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    adjective: str = "",
+    wearable_slot: Slot = Slot.ANY,
+    container: bool = False,
+    contained_by: EntityId = 0,
+) -> EntityId:
+    """Pickupable item."""
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(adjective=adjective, value=name),
+        Wearable(slot=wearable_slot),
+        Slot.ANY,
+    )
+    esper.add_component(eid, glyph, Glyph)
+    esper.add_component(eid, contained_by, ContainedBy)
+    if container:
+        esper.add_component(eid, Container())
+    return eid
+
+
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
     h, w = TILE_STRIDE
@@ -117,54 +162,54 @@ def build_hub(map_id: EntityId, chips: Chips):
         pronoun=Pronouns.HE,
     )
 
-    bonfire = esper.create_entity(
-        Transform(map_id=map_id, y=9, x=4),
-        Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness."),
-        ProvidesHeat(),
-        ProvidesLight(),
-        Noun(value="bonfire", pronoun=Pronouns.IT),
+    bonfire = create_prop(
+        map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65)
     )
-    esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
-
-    lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
-    esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
-    esper.add_component(lily_pad, Noun(value="lily pad"))
-    esper.add_component(lily_pad, 0, ContainedBy)
-    esper.add_component(lily_pad, Slot.ANY, Slot)
-    esper.add_component(lily_pad, Wearable(slot=Slot.ANY))
-
-    fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
-    esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
-    esper.add_component(fern, Noun(value="fern", pronoun=Pronouns.IT))
-
-    backpack = esper.create_entity(Transform(map_id=map_id, y=4, x=9))
-    esper.add_component(backpack, ("]", 47 / 360, 0.60, 0.85), Glyph)
-    esper.add_component(backpack, Noun(value="backpack"))
-    esper.add_component(backpack, 0, ContainedBy)
-    esper.add_component(backpack, Slot.ANY, Slot)
-    esper.add_component(backpack, Wearable(slot=Slot.BACK))
-    esper.add_component(backpack, Container())
-
-    pot = esper.create_entity(
-        Transform(map_id=0, y=0, x=0),
-        Noun(adjective="crude", value="cookpot"),
-        Container(),
-        Cookware(),
-        Slot.ANY,
+    esper.add_component(
+        bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
-    esper.add_component(pot, ("]", 47 / 360, 0.60, 0.85), Glyph)
-    esper.add_component(pot, backpack, ContainedBy)
+    esper.add_component(bonfire, ProvidesHeat())
+    esper.add_component(bonfire, ProvidesLight())
 
-    bedroll = esper.create_entity(
-        Transform(map_id=map_id, y=4, x=9),
-        Noun(adjective="leather", value="bedroll"),
-        ProvidesShelter(prompt="settle into bedroll"),
-        Wearable(slot=Slot.SHOULDER),
-        Slot.ANY,
+    create_item(
+        map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55)
     )
-    esper.add_component(bedroll, 0, ContainedBy)
+
+    create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
+
+    backpack = create_item(
+        map_id=map_id,
+        y=4,
+        x=9,
+        name="backpack",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        wearable_slot=Slot.BACK,
+        container=True,
+    )
+
+    pot = create_item(
+        map_id=0,
+        y=0,
+        x=0,
+        name="cookpot",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        adjective="crude",
+        container=True,
+        contained_by=backpack,
+    )
+    esper.add_component(pot, Cookware())
+
+    bedroll = create_item(
+        map_id=map_id,
+        y=4,
+        x=9,
+        name="bedroll",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        adjective="leather",
+        wearable_slot=Slot.SHOULDER,
+    )
+    esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
     esper.add_component(bedroll, 10, Level)
-    esper.add_component(bedroll, ("]", 47 / 360, 0.60, 0.85), Glyph)
 
     create_mob(
         map_id=map_id,
