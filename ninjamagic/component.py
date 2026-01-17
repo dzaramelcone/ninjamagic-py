@@ -443,16 +443,18 @@ class Wearable:
 
 @component(slots=True, kw_only=True)
 class Drives:
-    """Mob AI drives that weight different goals.
+    """Mob AI drives that weight different goals."""
 
-    Higher values = stronger pull toward that goal type.
-    Aggression/fear scale with distance - closer players have more pull.
-    """
+    aggression: float = 0.0
+    fear: float = 0.0
+    hunger: float = 0.0
+    anchor_hate: float = 0.0
 
-    aggression: float = 0.0  # Attack players
-    fear: float = 0.0  # Flee from players
-    hunger: float = 0.0  # Seek food
-    anchor_hate: float = 0.0  # Attack anchors
+    def effective_aggression(self, dist: float) -> float:
+        return self.aggression * 6.0 / max(dist, 1.0)
+
+    def effective_fear(self, dist: float) -> float:
+        return self.fear * 6.0 / max(dist, 1.0)
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

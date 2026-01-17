@@ -115,17 +115,11 @@ def best_direction(
     layers: list[tuple[DijkstraMap, float]] = []
 
     players = find_players(loc.map_id)
-    if players and (aggression > 0 or fear > 0):
-        dist = nearest_dist(loc, players)
-        scale = 6.0 / max(dist, 1.0)  # Full strength at dist=6, falls off beyond
+    if players:
         if aggression > 0:
-            layer = compute_layer(loc.map_id, loc.y, loc.x, players)
-            if layer.costs:
-                layers.append((layer, aggression * scale))
+            layers.append((compute_layer(loc.map_id, loc.y, loc.x, players), aggression))
         if fear > 0:
-            layer = compute_flee_layer(loc.map_id, loc.y, loc.x, players)
-            if layer.costs:
-                layers.append((layer, fear * scale))
+            layers.append((compute_flee_layer(loc.map_id, loc.y, loc.x, players), fear))
 
     if hunger > 0:
         food = find_food(loc.map_id)
@@ -191,11 +185,13 @@ def process() -> None:
     from ninjamagic.component import Drives
 
     for eid, (drives, loc) in esper.get_components(Drives, Transform):
-        # Decide movement
+        players = find_players(loc.map_id)
+        dist = nearest_dist(loc, players) if players else float("inf")
+
         move = best_direction(
             loc,
-            aggression=drives.aggression,
-            fear=drives.fear,
+            aggression=drives.effective_aggression(dist),
+            fear=drives.effective_fear(dist),
             hunger=drives.hunger,
             anchor_hate=drives.anchor_hate,
         )
