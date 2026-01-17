@@ -135,8 +135,14 @@ def best_direction(
     if not layers:
         return None
 
-    # Score each neighbor - all additive, always roll downhill
-    best_score = float("inf")
+    # Only move downhill - compare against current position
+    current_score = 0.0
+    for layer, weight in layers:
+        cost = layer.get_cost(loc.y, loc.x)
+        if cost != float("inf"):
+            current_score += cost * weight
+
+    best_score = current_score
     best_move = None
 
     for dy, dx in EIGHT_DIRS:
@@ -185,6 +191,11 @@ def process() -> None:
     from ninjamagic.component import Drives
 
     for eid, (drives, loc, health) in esper.get_components(Drives, Transform, Health):
+        # Try to react first (attack adjacent targets)
+        if react(eid, loc, drives.aggression):
+            continue
+
+        # Otherwise, decide movement
         players = find_players(loc.map_id)
         dist = nearest_dist(loc, players) if players else float("inf")
         hp_pct = health.cur / 100.0
@@ -207,6 +218,3 @@ def process() -> None:
                     to_x=loc.x + dx,
                 )
             )
-
-        # React to surroundings
-        react(eid, loc, drives.aggression)
