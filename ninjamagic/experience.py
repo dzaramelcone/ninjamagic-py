@@ -94,5 +94,4 @@ def process():
             anchor.tnl -= 1.0
             anchor.tnl *= RANKUP_FALLOFF
             log.info("anchor_rankup: anchor=%s rank=%s", sig.anchor, anchor.rank)
-            if anchor.rankup_echo:
-                story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)
+            story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)
