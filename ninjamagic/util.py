@@ -259,7 +259,6 @@ class Compass(StrEnum):
             case _:
                 raise ValueError(f"Unknown compass {self!r}")
 
-
 SERIAL = itertools.count(1)
 
 

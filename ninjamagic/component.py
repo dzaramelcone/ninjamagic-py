@@ -23,7 +23,9 @@ from ninjamagic.util import (
 Biomes = Literal["cave", "forest"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
-ProcVerb = Literal["slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"]
+ProcVerb = Literal[
+    "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
+]
 T = TypeVar("T")
 EntityId = int
 MAX_HEALTH = 100.0
@@ -151,6 +153,13 @@ class Anchor:
     rank: int = 1
     tnl: float = 0
     rankup_echo: str
+
+
+@component(slots=True)
+class Den:
+    """Mob safe zone."""
+
+    influence_range: int = 2
 
 
 @component(slots=True, kw_only=True)
@@ -439,6 +448,28 @@ class Transform:
 @component(slots=True, kw_only=True)
 class Wearable:
     slot: Slot
+
+
+@component(slots=True, kw_only=True)
+class Drives:
+    """Layer weights. seek_ = toward goal, flee_ = relaxed escape routes."""
+
+    seek_player: float = 0.0
+    flee_player: float = 0.0
+    seek_food: float = 0.0
+    seek_den: float = 0.0
+    flee_anchor: float = 0.0
+
+
+@component(slots=True, kw_only=True)
+class Needs:
+    hunger: float = 0.0  # 0 = full, 1 = starving
+
+
+@component(slots=True, kw_only=True)
+class Behavior:
+    template: str = "goblin"
+    state: str = "home"
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

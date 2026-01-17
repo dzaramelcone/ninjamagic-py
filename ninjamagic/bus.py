@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass as signal, field
@@ -25,6 +26,8 @@ from ninjamagic.component import (
 from ninjamagic.gen.models import Character
 from ninjamagic.reach import Selector, adjacent
 from ninjamagic.util import Compass, Looptime, get_looptime, serial
+
+log = logging.getLogger(__name__)
 
 
 class Signal:

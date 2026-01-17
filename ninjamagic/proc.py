@@ -29,4 +29,4 @@ def process(now: Looptime) -> None:
                 )
                 esper.add_component(sig.source, DoubleDamage())
             case _:
-                raise NotImplementedError
+                raise NotImplementedError(f"proc verb {sig.verb!r} not implemented")

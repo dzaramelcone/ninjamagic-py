@@ -1,13 +1,16 @@
+import logging
+
 import esper
 
-from ninjamagic import bus
 from ninjamagic.component import (
     Anchor,
+    Behavior,
     Chips,
     ChipSet,
     ContainedBy,
     Container,
     Cookware,
+    Den,
     EntityId,
     ForageEnvironment,
     Glyph,
@@ -31,10 +34,189 @@ from ninjamagic.util import (
     TILE_STRIDE,
     TILE_STRIDE_H,
     TILE_STRIDE_W,
+    Pronoun,
     Pronouns,
     pop_random,
 )
 from ninjamagic.world import simple
+from ninjamagic.world.goblin_den import (
+    find_open_spots,
+    generate_den_prefab,
+    pick_adjacent_tile,
+    stamp_den_prefab,
+)
+
+log = logging.getLogger(__name__)
+
+
+def create_mob(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    pronoun: Pronoun = Pronouns.IT,
+    behavior: Behavior | None = None,
+) -> EntityId:
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(value=name, pronoun=pronoun),
+        Health(),
+        Stance(),
+        Skills(),
+        Stats(),
+    )
+    esper.add_component(eid, glyph, Glyph)
+    if behavior:
+        esper.add_component(eid, behavior)
+    return eid
+
+
+def create_prop(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    adjective: str = "",
+    pronoun: Pronoun = Pronouns.IT,
+) -> EntityId:
+    """Non-pickupable scenery."""
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(adjective=adjective, value=name, pronoun=pronoun),
+    )
+    esper.add_component(eid, glyph, Glyph)
+    return eid
+
+
+def create_item(
+    *,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    name: str,
+    glyph: tuple[str, float, float, float],
+    adjective: str = "",
+    wearable_slot: Slot = Slot.ANY,
+    container: bool = False,
+    contained_by: EntityId = 0,
+) -> EntityId:
+    """Pickupable item."""
+    eid = esper.create_entity(
+        Transform(map_id=map_id, y=y, x=x),
+        Noun(adjective=adjective, value=name),
+        Wearable(slot=wearable_slot),
+        Slot.ANY,
+    )
+    esper.add_component(eid, glyph, Glyph)
+    esper.add_component(eid, contained_by, ContainedBy)
+    if container:
+        esper.add_component(eid, Container())
+    return eid
+
+
+def build_goblin_den(map_id: EntityId, chips: Chips):
+    """Build a goblin den in a tile adjacent to (0,0)."""
+    tile_key = pick_adjacent_tile(chips, origin=(0, 0))
+    tile = chips[tile_key]
+    log.info("goblin den placed in tile %s", tile_key)
+
+    prefab = generate_den_prefab()
+    lut = [1, 2]  # 0 (walkable) -> 1 (floor), 1 (wall) -> 2 (wall)
+    offset_y, offset_x = stamp_den_prefab(tile, prefab, lut)
+
+    tile_y, tile_x = tile_key
+
+    # Find open spots for placing objects
+    spots = find_open_spots(tile, offset_y, offset_x, walkable_id=1, n=5)
+
+    # Place the goblin hut (with Den component)
+    hut_y, hut_x = spots[0]
+    hut = create_prop(
+        map_id=map_id,
+        y=tile_y + hut_y,
+        x=tile_x + hut_x,
+        name="hut",
+        adjective="goblin",
+        glyph=("Π", 0.08, 0.35, 0.45),
+    )
+    esper.add_component(hut, Den())
+
+    # Place some goblin props
+    prop_defs = [
+        ("bones", "⸸", 0.08, 0.15, 0.75),
+        ("skull", "☠", 0.08, 0.10, 0.85),
+        ("totem", "ᚲ", 0.08, 0.40, 0.50),
+    ]
+    for i, (name, glyph, h, s, v) in enumerate(prop_defs):
+        if i + 1 >= len(spots):
+            break
+        py, px = spots[i + 1]
+        create_prop(
+            map_id=map_id,
+            y=tile_y + py,
+            x=tile_x + px,
+            name=name,
+            glyph=(glyph, h, s, v),
+        )
+
+    # Place the goblin near the hut
+    goblin_y, goblin_x = spots[0] if len(spots) == 1 else spots[1]
+    create_mob(
+        map_id=map_id,
+        y=tile_y + goblin_y,
+        x=tile_x + goblin_x,
+        name="goblin",
+        glyph=("g", 0.25, 0.7, 0.6),
+        behavior=Behavior(),
+    )
+
+
+def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
+    """Spawn a den and 1-3 goblins in each tile (except hub at 0,0)."""
+    for (tile_y, tile_x), tile in chips.items():
+        if (tile_y, tile_x) == (0, 0):
+            continue
+
+        # Find walkable spots in this tile
+        walkable = []
+        for offset in range(TILE_STRIDE_H * TILE_STRIDE_W):
+            if tile[offset] == 1:  # walkable floor
+                y = tile_y + offset // TILE_STRIDE_W
+                x = tile_x + offset % TILE_STRIDE_W
+                walkable.append((y, x))
+
+        if not walkable:
+            continue
+
+        # Place a den
+        den_y, den_x = RNG.choice(walkable)
+        den = create_prop(
+            map_id=map_id,
+            y=den_y,
+            x=den_x,
+            name="hovel",
+            adjective="goblin",
+            glyph=("π", 0.08, 0.30, 0.40),
+        )
+        esper.add_component(den, Den())
+
+        # Spawn 1-3 goblins
+        count = RNG.randint(1, 3)
+        spots = RNG.sample(walkable, min(count, len(walkable)))
+
+        for gy, gx in spots:
+            create_mob(
+                map_id=map_id,
+                y=gy,
+                x=gx,
+                name="goblin",
+                glyph=("g", 0.25, 0.7, 0.6),
+                behavior=Behavior(),
+            )
 
 
 def build_nowhere() -> EntityId:
@@ -83,73 +265,66 @@ def build_demo() -> EntityId:
 
 
 def build_hub(map_id: EntityId, chips: Chips):
-    wanderer = esper.create_entity(Transform(map_id=0, y=0, x=0))
-    esper.add_component(wanderer, ("w", 0.12, 0.55, 0.75), Glyph)
-    esper.add_component(wanderer, Noun(value="wanderer", pronoun=Pronouns.HE))
-    esper.add_component(wanderer, Health())
-    esper.add_component(wanderer, Stance())
-    esper.add_component(wanderer, Skills())
-    esper.add_component(wanderer, Stats())
-    bus.pulse(
-        bus.PositionChanged(
-            source=wanderer,
-            from_map_id=0,
-            from_y=0,
-            from_x=0,
-            to_map_id=map_id,
-            to_y=8,
-            to_x=5,
-        )
+    create_mob(
+        map_id=map_id,
+        y=8,
+        x=5,
+        name="wanderer",
+        glyph=("w", 0.12, 0.55, 0.75),
+        pronoun=Pronouns.HE,
     )
 
-    bonfire = esper.create_entity(
-        Transform(map_id=map_id, y=9, x=4),
-        Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness."),
-        ProvidesHeat(),
-        ProvidesLight(),
-        Noun(value="bonfire", pronoun=Pronouns.IT),
+    bonfire = create_prop(
+        map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65)
     )
-    esper.add_component(bonfire, ("⚶", 0.95, 0.6, 0.65), Glyph)
-
-    lily_pad = esper.create_entity(Transform(map_id=map_id, y=11, x=8))
-    esper.add_component(lily_pad, ("ო", 0.33, 0.65, 0.55), Glyph)
-    esper.add_component(lily_pad, Noun(value="lily pad"))
-    esper.add_component(lily_pad, 0, ContainedBy)
-    esper.add_component(lily_pad, Slot.ANY, Slot)
-    esper.add_component(lily_pad, Wearable(slot=Slot.ANY))
-
-    fern = esper.create_entity(Transform(map_id=map_id, y=12, x=5))
-    esper.add_component(fern, ("ᖗ", 0.33, 0.65, 0.55), Glyph)
-    esper.add_component(fern, Noun(value="fern", pronoun=Pronouns.IT))
-
-    backpack = esper.create_entity(Transform(map_id=map_id, y=4, x=9))
-    esper.add_component(backpack, ("]", 47 / 360, 0.60, 0.85), Glyph)
-    esper.add_component(backpack, Noun(value="backpack"))
-    esper.add_component(backpack, 0, ContainedBy)
-    esper.add_component(backpack, Slot.ANY, Slot)
-    esper.add_component(backpack, Wearable(slot=Slot.BACK))
-    esper.add_component(backpack, Container())
-
-    pot = esper.create_entity(
-        Transform(map_id=0, y=0, x=0),
-        Noun(adjective="crude", value="cookpot"),
-        Container(),
-        Cookware(),
-        Slot.ANY,
+    esper.add_component(
+        bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
-    esper.add_component(pot, ("]", 47 / 360, 0.60, 0.85), Glyph)
-    esper.add_component(pot, backpack, ContainedBy)
+    esper.add_component(bonfire, ProvidesHeat())
+    esper.add_component(bonfire, ProvidesLight())
 
-    bedroll = esper.create_entity(
-        Transform(map_id=map_id, y=4, x=9),
-        Noun(adjective="leather", value="bedroll"),
-        ProvidesShelter(prompt="settle into bedroll"),
-        Wearable(slot=Slot.SHOULDER),
-        Slot.ANY,
+    create_item(
+        map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55)
     )
-    esper.add_component(bedroll, 0, ContainedBy)
+
+    create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
+
+    backpack = create_item(
+        map_id=map_id,
+        y=4,
+        x=9,
+        name="backpack",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        wearable_slot=Slot.BACK,
+        container=True,
+    )
+
+    pot = create_item(
+        map_id=0,
+        y=0,
+        x=0,
+        name="cookpot",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        adjective="crude",
+        container=True,
+        contained_by=backpack,
+    )
+    esper.add_component(pot, Cookware())
+
+    bedroll = create_item(
+        map_id=map_id,
+        y=4,
+        x=9,
+        name="bedroll",
+        glyph=("]", 47 / 360, 0.60, 0.85),
+        adjective="leather",
+        wearable_slot=Slot.SHOULDER,
+    )
+    esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
     esper.add_component(bedroll, 10, Level)
-    esper.add_component(bedroll, ("]", 47 / 360, 0.60, 0.85), Glyph)
+
+    build_goblin_den(map_id, chips)
+    spawn_goblin_swarms(map_id, chips)
 
     # fmt: off
     chips[(0,0)] = bytearray([
