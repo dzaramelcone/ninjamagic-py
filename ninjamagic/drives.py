@@ -39,17 +39,11 @@ def compute_layer(
     origin_y: int,
     origin_x: int,
     goals: list[tuple[int, int]],
-    max_range: int = 0,
 ) -> DijkstraMap:
     """Compute a Dijkstra layer for a set of goals."""
     dm = DijkstraMap()
     if not goals:
         return dm
-    if max_range > 0:
-        goals = [(y, x) for y, x in goals
-                 if abs(y - origin_y) + abs(x - origin_x) <= max_range]
-        if not goals:
-            return dm
     blocked = get_blocked(map_id, origin_y, origin_x)
     dm.compute(goals=goals, blocked=blocked)
     return dm
@@ -87,12 +81,18 @@ def compute_flee_layer(
     origin_y: int,
     origin_x: int,
     threats: list[tuple[int, int]],
-    max_range: int = 0,
 ) -> DijkstraMap:
     """Compute inverted layer - rolling downhill moves away from threats."""
-    dm = compute_layer(map_id, origin_y, origin_x, threats, max_range)
+    dm = compute_layer(map_id, origin_y, origin_x, threats)
     dm.invert()
     return dm
+
+
+def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
+    """Manhattan distance to nearest target."""
+    if not targets:
+        return float("inf")
+    return min(abs(y - loc.y) + abs(x - loc.x) for y, x in targets)
 
 
 def best_direction(
@@ -102,30 +102,30 @@ def best_direction(
     fear: float = 0.0,
     hunger: float = 0.0,
     anchor_hate: float = 0.0,
-    detection_range: int = 0,
 ) -> tuple[int, int] | None:
     """Get best movement direction based on drives.
 
     Returns (dy, dx) or None if no good move.
     All layers use "roll downhill" - lower cost is better.
+    Aggression/fear scale inversely with distance to nearest player.
     """
-    # Skip if no drives
     if not any([aggression, fear, hunger, anchor_hate]):
         return None
 
-    # Compute relevant layers
     layers: list[tuple[DijkstraMap, float]] = []
 
     players = find_players(loc.map_id)
-    if players:
+    if players and (aggression > 0 or fear > 0):
+        dist = nearest_dist(loc, players)
+        scale = 6.0 / max(dist, 1.0)  # Full strength at dist=6, falls off beyond
         if aggression > 0:
-            layer = compute_layer(loc.map_id, loc.y, loc.x, players, detection_range)
+            layer = compute_layer(loc.map_id, loc.y, loc.x, players)
             if layer.costs:
-                layers.append((layer, aggression))
+                layers.append((layer, aggression * scale))
         if fear > 0:
-            layer = compute_flee_layer(loc.map_id, loc.y, loc.x, players, detection_range)
+            layer = compute_flee_layer(loc.map_id, loc.y, loc.x, players)
             if layer.costs:
-                layers.append((layer, fear))
+                layers.append((layer, fear * scale))
 
     if hunger > 0:
         food = find_food(loc.map_id)
@@ -198,7 +198,6 @@ def process() -> None:
             fear=drives.fear,
             hunger=drives.hunger,
             anchor_hate=drives.anchor_hate,
-            detection_range=drives.detection_range,
         )
 
         if move:
