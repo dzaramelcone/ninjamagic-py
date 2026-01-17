@@ -871,7 +871,7 @@ class Help(Command):
         rest = rest.strip().lower()
 
         if not rest:
-            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw"}
+            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw", "stress"}
             cmd_names = sorted({cmd.text for cmd in commands} - hidden)
             width = max(len(name) for name in cmd_names) + 2
             rows = []
