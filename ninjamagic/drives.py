@@ -145,15 +145,15 @@ def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
     """React to surroundings after moving. Returns True if action taken."""
     # Check for adjacent players to attack
     if aggression > 0.3:
-        for player_eid, (player_loc, _) in esper.get_components(Transform, Connection):
+        for player_eid, (player_loc, _, health) in esper.get_components(
+            Transform, Connection, Health
+        ):
             if player_loc.map_id != loc.map_id:
+                continue
+            if health.condition == "dead":
                 continue
             dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
             if dist <= 1:
-                # Check target is alive
-                health = esper.try_component(player_eid, Health)
-                if health and health.condition == "dead":
-                    continue
                 bus.pulse(bus.Melee(source=eid, target=player_eid, verb="slash"))
                 return True
     return False
