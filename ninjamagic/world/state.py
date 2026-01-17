@@ -8,6 +8,7 @@ from ninjamagic.component import (
     ContainedBy,
     Container,
     Cookware,
+    Den,
     EntityId,
     ForageEnvironment,
     Glyph,
@@ -36,6 +37,12 @@ from ninjamagic.util import (
     pop_random,
 )
 from ninjamagic.world import simple
+from ninjamagic.world.goblin_den import (
+    find_open_spots,
+    generate_den_prefab,
+    pick_adjacent_tile,
+    stamp_den_prefab,
+)
 
 
 def create_mob(
@@ -107,6 +114,62 @@ def create_item(
     return eid
 
 
+def build_goblin_den(map_id: EntityId, chips: Chips):
+    """Build a goblin den in a tile adjacent to (0,0)."""
+    tile_key = pick_adjacent_tile(chips, origin=(0, 0))
+    tile = chips[tile_key]
+
+    prefab = generate_den_prefab()
+    lut = [1, 2]  # 0 (walkable) -> 1 (floor), 1 (wall) -> 2 (wall)
+    offset_y, offset_x = stamp_den_prefab(tile, prefab, lut)
+
+    tile_y, tile_x = tile_key
+
+    # Find open spots for placing objects
+    spots = find_open_spots(tile, offset_y, offset_x, walkable_id=1, n=5)
+
+    # Place the goblin hut (with Den component)
+    hut_y, hut_x = spots[0]
+    hut = create_prop(
+        map_id=map_id,
+        y=tile_y + hut_y,
+        x=tile_x + hut_x,
+        name="hut",
+        adjective="goblin",
+        glyph=("Π", 0.08, 0.35, 0.45),
+    )
+    esper.add_component(hut, Den())
+
+    # Place some goblin props
+    prop_defs = [
+        ("bones", "⸸", 0.08, 0.15, 0.75),
+        ("skull", "☠", 0.08, 0.10, 0.85),
+        ("totem", "ᚲ", 0.08, 0.40, 0.50),
+    ]
+    for i, (name, glyph, h, s, v) in enumerate(prop_defs):
+        if i + 1 >= len(spots):
+            break
+        py, px = spots[i + 1]
+        create_prop(
+            map_id=map_id,
+            y=tile_y + py,
+            x=tile_x + px,
+            name=name,
+            glyph=(glyph, h, s, v),
+        )
+
+    # Place the goblin near the hut
+    goblin_y, goblin_x = spots[0] if len(spots) == 1 else spots[1]
+    create_mob(
+        map_id=map_id,
+        y=tile_y + goblin_y,
+        x=tile_x + goblin_x,
+        name="goblin",
+        glyph=("g", 0.25, 0.7, 0.6),
+        behavior=Behavior(),
+    )
+
+
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
     h, w = TILE_STRIDE
@@ -162,18 +225,14 @@ def build_hub(map_id: EntityId, chips: Chips):
         pronoun=Pronouns.HE,
     )
 
-    bonfire = create_prop(
-        map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65)
-    )
+    bonfire = create_prop(map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65))
     esper.add_component(
         bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
     esper.add_component(bonfire, ProvidesHeat())
     esper.add_component(bonfire, ProvidesLight())
 
-    create_item(
-        map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55)
-    )
+    create_item(map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55))
 
     create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
 
@@ -211,14 +270,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
     esper.add_component(bedroll, 10, Level)
 
-    create_mob(
-        map_id=map_id,
-        y=5,
-        x=12,
-        name="goblin",
-        glyph=("g", 0.25, 0.7, 0.6),
-        behavior=Behavior(),
-    )
+    build_goblin_den(map_id, chips)
 
     # fmt: off
     chips[(0,0)] = bytearray([
@@ -252,9 +304,7 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
     return grid[y * TILE_STRIDE_W + x] in {1, 3}
 
 
-def get_tile(
-    *, map_id: EntityId, top: int, left: int
-) -> tuple[int, int, bytearray | None]:
+def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytearray | None]:
     """Get a 16x16 tile from a map. Floors (top, left) to factors of TILE_STRIDE."""
 
     chips = esper.component_for_entity(map_id, Chips)
