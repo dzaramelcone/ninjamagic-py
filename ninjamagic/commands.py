@@ -843,7 +843,7 @@ HELP_TEXTS: dict[str, tuple[str, str]] = {
     "lie": ("lie [beside <target>]", "Lie down."),
     "rest": ("rest [beside <target>]", "Rest (lie down)."),
     "kneel": ("kneel [beside <target>]", "Kneel down."),
-    "block": ("block", "Block incoming attacks."),
+    "block": ("block", "Raise your guard."),
     "recall": ("recall", "Return to your bind point."),
     "inventory": ("inventory", "View your inventory."),
     "get": ("get <item>\nget <item> from <container>", "Pick up an item."),
