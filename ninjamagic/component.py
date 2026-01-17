@@ -8,6 +8,7 @@ import esper
 from fastapi import WebSocket
 
 from ninjamagic import util
+from ninjamagic.config import settings
 from ninjamagic.nightclock import NightClock
 from ninjamagic.util import (
     TILE_STRIDE_H,
@@ -16,6 +17,7 @@ from ninjamagic.util import (
     Num,
     Pronoun,
     Pronouns,
+    get_looptime,
 )
 
 Biomes = Literal["cave", "forest"]
@@ -167,6 +169,9 @@ class FightTimer:
     last_atk_proc: Looptime
     last_def_proc: Looptime
     last_refresh: Looptime
+
+    def is_active(self) -> bool:
+        return get_looptime() - self.last_refresh < settings.fight_timer_len
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
