@@ -259,30 +259,6 @@ class Compass(StrEnum):
             case _:
                 raise ValueError(f"Unknown compass {self!r}")
 
-    @classmethod
-    def from_vector(cls, dy: int, dx: int) -> "Compass | None":
-        "Create from a (dy, dx) tuple."
-        match (dy, dx):
-            case (-1, 0):
-                return cls.NORTH
-            case (-1, 1):
-                return cls.NORTHEAST
-            case (0, 1):
-                return cls.EAST
-            case (1, 1):
-                return cls.SOUTHEAST
-            case (1, 0):
-                return cls.SOUTH
-            case (1, -1):
-                return cls.SOUTHWEST
-            case (0, -1):
-                return cls.WEST
-            case (-1, -1):
-                return cls.NORTHWEST
-            case _:
-                return None
-
-
 SERIAL = itertools.count(1)
 
 
