@@ -226,6 +226,17 @@ class Say(Command):
         return OK
 
 
+class Shout(Command):
+    text: str = "shout"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Shout what?"
+        story.echo("{0} {0:shouts}, '{speech}'", root.source, speech=rest, range=reach.world)
+        return OK
+
+
 class Emote(Command):
     text: str = "emote"
 
@@ -833,9 +844,21 @@ class Recall(Command):
         return OK
 
 
+class Announce(Command):
+    text: str = "announce"
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        _, _, rest = root.text.partition(" ")
+        if not rest:
+            return False, "Announce what?"
+        story.echo(rest, range=reach.world)
+        return OK
+
+
 HELP_TEXTS: dict[str, tuple[str, str]] = {
     "look": ("look at <target>\nlook in <container>", "Look at something or in a container."),
     "say": ("say <message>\n'<message>", "Say something out loud."),
+    "shout": ("shout <message>", "Shout to the whole world."),
     "emote": ("emote <action>", "Perform an action/emote."),
     "attack": ("attack <target>", "Attack a target."),
     "stand": ("stand [beside <target>]", "Stand up."),
@@ -871,7 +894,7 @@ class Help(Command):
         rest = rest.strip().lower()
 
         if not rest:
-            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw", "stress"}
+            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw", "stress", "announce"}
             cmd_names = sorted({cmd.text for cmd in commands} - hidden)
             width = max(len(name) for name in cmd_names) + 2
             rows = []
@@ -931,6 +954,7 @@ commands: list[Command] = [
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
     Look(),
     Say(),
+    Shout(),
     Emote(),
     Attack(),
     Stand(),
@@ -942,6 +966,7 @@ commands: list[Command] = [
     Fart(),
     Stress(),
     Recall(),
+    Announce(),
     Inventory(),
     Get(),
     Put(),

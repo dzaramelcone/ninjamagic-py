@@ -27,5 +27,6 @@ def process():
                     bus.pulse(target_sig(to=eid))
                 continue
 
-            if other_sig and origin and sig.reach(origin, pos):
+            in_range = origin and sig.reach(origin, pos) or not origin and sig.reach(pos, pos)
+            if other_sig and in_range:
                 bus.pulse(other_sig(to=eid))
