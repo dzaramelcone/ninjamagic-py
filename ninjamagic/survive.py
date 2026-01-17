@@ -13,17 +13,14 @@ from ninjamagic.component import (
     Hostility,
     LastAnchorRest,
     Level,
-    Prompt,
     ProvidesHeat,
     ProvidesLight,
     Sheltered,
     Skills,
     Stance,
-    Stunned,
-    TookCover,
     Transform,
 )
-from ninjamagic.util import Trial, contest, get_looptime, tags
+from ninjamagic.util import Trial, contest, tags
 
 log = logging.getLogger(__name__)
 
@@ -31,10 +28,6 @@ log = logging.getLogger(__name__)
 REST_HEALTH = 45
 REST_STRESS = -75
 REST_AGGRAVATED_STRESS = -125
-
-ROUGH_NIGHT_HEALTH = -75.0
-ROUGH_NIGHT_STRESS = 100.0
-ROUGH_NIGHT_AGGRAVATED = 100.0
 
 
 def get_max_nights_away(survival_rank: int):
@@ -44,11 +37,14 @@ def get_max_nights_away(survival_rank: int):
     return 0
 
 
+def hostility_at(tf: Transform) -> int:
+    cmp = esper.try_component(tf.map_id, Hostility)
+    return cmp.get_rank(y=tf.y, x=tf.x) if cmp else 0
+
+
 def process() -> None:
     if not bus.is_empty(bus.Eat):
         process_eating()
-    if not bus.is_empty(bus.CoverCheck):
-        process_cover()
     if not bus.is_empty(bus.RestCheck):
         process_rest()
 
@@ -75,8 +71,7 @@ def process_eating() -> None:
         if not is_safe:
             # survival contest against hostility.
             tf = esper.component_for_entity(sig.source, Transform)
-            cmp = esper.try_component(tf.map_id, Hostility)
-            hostility = cmp.get_rank(y=tf.y, x=tf.x) if cmp else 0
+            hostility = hostility_at(tf)
             mult = contest(survival, hostility)
             is_safe = Trial.check(mult=mult)
             bus.pulse(
@@ -188,83 +183,17 @@ def process_eating() -> None:
         )
 
 
-def process_cover() -> None:
-    """~1:50 AM: Prompt players not camping to take cover."""
-
-    def on_cover_ok(source: EntityId):
-        # Partial protection
-        now = get_looptime()
-        nightstorm_eta = nightclock.NightClock().nightstorm_eta
-        bus.pulse(bus.StanceChanged(source=source, stance="lying prone", echo=False))
-        esper.add_component(source, Stunned(end=now + nightstorm_eta))
-        esper.add_component(source, TookCover())
-        story.echo("{0} {0:scrambles} to makeshift safety.", source)
-
-    def on_cover_err(source: EntityId):
-        now = get_looptime()
-        nightstorm_eta = nightclock.NightClock().nightstorm_eta
-        bus.pulse(bus.StanceChanged(source=source, stance="lying prone", echo=False))
-        esper.add_component(source, Stunned(end=now + nightstorm_eta))
-        story.echo("{0} {0:crashes} out, unable to find cover.", source)
-
-    for eid, (_, health, stance) in esper.get_components(Connection, Health, Stance):
-        # Skip anyone camping already.
-        if health.condition != "normal":
-            continue
-
-        if stance.camping():
-            if not esper.has_component(eid, Ate):
-                story.echo("{0:s} stomach growls.", eid)
-            continue
-
-        # Prompt them to take cover.
-        esper.add_component(
-            eid,
-            Prompt(
-                text="take cover",
-                end=get_looptime() + nightclock.NightClock().nightstorm_eta,
-                on_ok=on_cover_ok,
-                on_err=on_cover_err,
-            ),
-        )
-        bus.pulse(
-            bus.Outbound(to=eid, text="The worst of night is imminent! Take cover!"),
-            bus.OutboundPrompt(to=eid, text="take cover"),
-        )
-
-
 def process_rest() -> None:
     """Resolve nightstorm rest for all players."""
 
     def handle_bad_rest(eid: EntityId):
         """Player did not rest properly."""
-        if not esper.try_component(eid, TookCover):
-            # Player did not even take cover:
-            bus.pulse(
-                bus.HealthChanged(
-                    source=eid,
-                    health_change=ROUGH_NIGHT_HEALTH,
-                    stress_change=ROUGH_NIGHT_STRESS,
-                    aggravated_stress_change=ROUGH_NIGHT_AGGRAVATED,
-                )
-            )
-            story.echo("{0} {0:is} lost into the horror of night!", eid)
-            return
-
-        # TODO survival vs area for take cover mult.
-        bus.pulse(
-            bus.HealthChanged(
-                source=eid,
-                stress_change=ROUGH_NIGHT_STRESS,
-                aggravated_stress_change=ROUGH_NIGHT_AGGRAVATED,
-            )
-        )
-        story.echo("{0} {0:endures}. Barely.", eid)
+        story.echo("{0} {0:endures} a rough night.", eid)
 
     for eid, cmps in esper.get_components(Connection, Transform, Health, Stance):
         _, loc, health, stance = cmps
         bus.pulse(
-            bus.Cleanup(source=eid, removed_components=(Ate, Sheltered, TookCover)),
+            bus.Cleanup(source=eid, removed_components=(Ate, Sheltered)),
         )
         if health.condition != "normal":
             continue
@@ -277,22 +206,20 @@ def process_rest() -> None:
         survival_rank = skill.survival.rank
         at_anchor = esper.entity_exists(prop) and esper.has_component(prop, Anchor)
         rested = False
+        hostility = 0
 
         if at_anchor:
             weariness_factor = 1.0
             esper.add_component(eid, LastAnchorRest())
             rested = True
-
-        if not at_anchor:
+        else:
             last_rest = esper.try_component(eid, LastAnchorRest)
             nights_since = last_rest.nights_since() if last_rest else 7
             max_nights = get_max_nights_away(survival_rank=survival_rank)
             weariness = nights_since / max_nights if max_nights else 1
             weariness_factor = max(0.0, 1.0 - weariness)
 
-            hostility = 0
-            if cmp := esper.try_component(loc.map_id, Hostility):
-                hostility = cmp.get_rank(loc.y, loc.x)
+            hostility = hostility_at(loc)
 
             if sheltered := esper.try_component(eid, Sheltered):
                 shelter_level = esper.component_for_entity(sheltered.prop, Level)
