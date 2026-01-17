@@ -453,8 +453,8 @@ class Drives:
     def effective_aggression(self, dist: float, hp_pct: float) -> float:
         return self.aggression * hp_pct * 6.0 / max(dist, 1.0)
 
-    def effective_fear(self, dist: float) -> float:
-        return self.fear * 6.0 / max(dist, 1.0)
+    def effective_fear(self, dist: float, hp_pct: float) -> float:
+        return self.fear * (1 - hp_pct) * 6.0 / max(dist, 1.0)
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

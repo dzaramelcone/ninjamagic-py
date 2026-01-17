@@ -217,7 +217,7 @@ def build_hub(map_id: EntityId, chips: Chips):
         x=12,
         name="goblin",
         glyph=("g", 0.25, 0.7, 0.6),
-        drives=Drives(aggression=1.0),
+        drives=Drives(aggression=1.0, fear=1.0),
     )
 
     # fmt: off

@@ -163,11 +163,11 @@ def best_direction(
     return best_move
 
 
-def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
+def react(eid: EntityId, loc: Transform, aggression: float, fear: float) -> bool:
     """React to surroundings after moving. Returns True if action taken."""
     if act.is_busy(eid):
         return True
-    if aggression > 0.3:
+    if aggression > 0.3 and aggression > fear:
         for _, (player_loc, _, health, noun) in esper.get_components(
             Transform, Connection, Health, Noun
         ):
@@ -193,19 +193,21 @@ def process() -> None:
     from ninjamagic.component import Drives
 
     for eid, (drives, loc, health) in esper.get_components(Drives, Transform, Health):
-        # Try to react first (attack adjacent targets)
-        if react(eid, loc, drives.aggression):
-            continue
-
-        # Otherwise, decide movement
         players = find_players(loc.map_id)
         dist = nearest_dist(loc, players) if players else float("inf")
         hp_pct = health.cur / 100.0
+        eff_aggression = drives.effective_aggression(dist, hp_pct)
+        eff_fear = drives.effective_fear(dist, hp_pct)
 
+        # Try to react first (attack adjacent targets) - but only if not too scared
+        if react(eid, loc, eff_aggression, eff_fear):
+            continue
+
+        # Otherwise, decide movement
         move = best_direction(
             loc,
-            aggression=drives.effective_aggression(dist, hp_pct),
-            fear=drives.effective_fear(dist),
+            aggression=eff_aggression,
+            fear=eff_fear,
             hunger=drives.hunger,
             anchor_hate=drives.anchor_hate,
         )
