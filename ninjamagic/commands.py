@@ -12,6 +12,7 @@ from ninjamagic.component import (
     Cookware,
     Defending,
     EntityId,
+    FightTimer,
     Food,
     Health,
     Ingredient,
@@ -61,6 +62,21 @@ def assert_standing(source: EntityId) -> Out:
     if not stance_is(source, "standing"):
         return False, "You must stand first."
     return OK
+
+
+def assert_target_available(target: EntityId, attacker: EntityId) -> Out:
+    """Check target isn't already engaged with another attacker."""
+    ft = esper.try_component(target, FightTimer)
+    if not ft or not ft.is_active() or not ft.attacker:
+        return OK
+    if ft.attacker == attacker:
+        return OK
+    if not esper.entity_exists(ft.attacker):
+        return OK
+    attacker_health = esper.try_component(ft.attacker, Health)
+    if not attacker_health or attacker_health.condition == "dead":
+        return OK
+    return False, "They're already engaged!"
 
 
 class Command(Protocol):
@@ -154,9 +170,13 @@ class Attack(Command):
 
         target, _, _ = match
 
-        health = esper.try_component(target, Health)
-        if health and health.condition != "normal":
-            return False, f"They're {health.condition}!"
+        target_health = esper.try_component(target, Health)
+        if target_health and target_health.condition != "normal":
+            return False, f"They're {target_health.condition}!"
+
+        ok, err = assert_target_available(target, root.source)
+        if not ok:
+            return False, err
 
         story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
         bus.pulse(
