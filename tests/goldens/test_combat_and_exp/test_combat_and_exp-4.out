@@ -1,16 +1,16 @@
 {
   "client": "bob",
-  "len": "49 B",
+  "len": "50 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "Alice draws back her fist.."
+          "text": "Alice draws back her fist..."
         }
       },
       {
         "health": {
-          "id": 13,
+          "id": 25,
           "pct": 0.04,
           "stress_pct": 0.005
         }

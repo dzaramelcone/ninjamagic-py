@@ -1,11 +1,11 @@
 {
   "client": "alice",
-  "len": "119 B",
+  "len": "174 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "Bob hits you for 10.1% damage!"
+          "text": "Bob hits you for 9.7% damage!"
         }
       },
       {
@@ -14,8 +14,13 @@
         }
       },
       {
+        "msg": {
+          "text": "You gain two ranks in Evasion."
+        }
+      },
+      {
         "health": {
-          "pct": -0.060525957,
+          "pct": -0.05661025,
           "stress_pct": 0.025
         }
       },
@@ -27,6 +32,13 @@
       {
         "condition": {
           "text": "in shock"
+        }
+      },
+      {
+        "skill": {
+          "name": "Evasion",
+          "rank": 2,
+          "tnl": 0.41632652
         }
       }
     ]

@@ -1,6 +1,6 @@
 {
   "client": "alice",
-  "len": "463 B",
+  "len": "477 B",
   "parsed": {
     "envelope": [
       {
@@ -82,8 +82,13 @@
         }
       },
       {
+        "skill": {
+          "name": "Survival"
+        }
+      },
+      {
         "datetime": {
-          "seconds": "1766296619"
+          "seconds": "1768611140"
         }
       }
     ]

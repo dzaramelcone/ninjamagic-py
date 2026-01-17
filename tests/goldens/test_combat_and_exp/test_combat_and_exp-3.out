@@ -1,11 +1,11 @@
 {
   "client": "alice",
-  "len": "45 B",
+  "len": "46 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "You draw back your fist.."
+          "text": "You draw back your fist..."
         }
       },
       {
