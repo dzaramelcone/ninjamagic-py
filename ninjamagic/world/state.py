@@ -156,6 +156,7 @@ def build_hub(map_id: EntityId, chips: Chips):
         Transform(map_id=map_id, y=5, x=12),
         Noun(value="goblin", pronoun=Pronouns.IT),
         Health(),
+        Stance(),
         Drives(aggression=1.0, detection_range=6),
     )
     esper.add_component(goblin, ("g", 0.25, 0.7, 0.6), Glyph)
