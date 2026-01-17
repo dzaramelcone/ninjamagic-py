@@ -70,11 +70,11 @@ def test_pick_adjacent_tile_with_multiple_options():
     assert len(results) > 1, "Should pick different tiles across runs"
 
 
-def test_stamp_den_prefab_overwrites_tile_region():
-    """Stamp should overwrite an 8x8 region with the prefab using LUT."""
-    tile = bytearray([1] * 256)  # All floor
+def test_stamp_den_prefab_only_copies_walkable_cells():
+    """Stamp should only copy walkable cells, preserving existing terrain."""
+    tile = bytearray([2] * 256)  # All walls initially
     prefab = bytearray([0] * 32 + [1] * 32)  # Top half walkable, bottom half wall
-    lut = [3, 4]  # 0 -> 3 (walkable), 1 -> 4 (wall)
+    lut = [1, 2]  # 0 -> 1 (floor), 1 -> 2 (wall)
 
     offset_y, offset_x = stamp_den_prefab(tile, prefab, lut)
 
@@ -82,13 +82,15 @@ def test_stamp_den_prefab_overwrites_tile_region():
     assert 0 <= offset_y <= TILE_STRIDE_H - DEN_SIZE
     assert 0 <= offset_x <= TILE_STRIDE_W - DEN_SIZE
 
-    # Verify some cells in the stamped region
+    # Verify: walkable cells stamped, wall cells left unchanged
     tile_view = memoryview(tile).cast("B", (TILE_STRIDE_H, TILE_STRIDE_W))
     prefab_view = memoryview(prefab).cast("B", (DEN_SIZE, DEN_SIZE))
     for dy in range(DEN_SIZE):
         for dx in range(DEN_SIZE):
-            expected = lut[prefab_view[dy, dx]]
-            assert tile_view[offset_y + dy, offset_x + dx] == expected
+            if prefab_view[dy, dx] == 0:  # Walkable in prefab
+                assert tile_view[offset_y + dy, offset_x + dx] == lut[0]
+            else:  # Wall in prefab - tile unchanged
+                assert tile_view[offset_y + dy, offset_x + dx] == 2
 
 
 def test_stamp_den_prefab_returns_valid_offset():

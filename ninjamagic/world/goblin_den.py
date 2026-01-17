@@ -1,9 +1,7 @@
 from ninjamagic.component import Chips
-from ninjamagic.util import RNG, TILE_STRIDE_H, TILE_STRIDE_W
+from ninjamagic.util import EIGHT_DIRS, FOUR_DIRS, RNG, TILE_STRIDE_H, TILE_STRIDE_W
 
 DEN_SIZE = 8
-CARDINAL_DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-EIGHT_DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 BIRTH = {5, 6, 7}
 SURVIVE = {4, 5, 6, 7}
 
@@ -38,7 +36,9 @@ def _game_of_life(grid: memoryview) -> memoryview:
 def generate_den_prefab() -> bytearray:
     """Generate an 8x8 cave-like prefab using cellular automata."""
     base = memoryview(
-        bytearray([0 if RNG.random() < 0.575 else 1 for _ in range(DEN_SIZE * DEN_SIZE)])
+        bytearray(
+            [0 if RNG.random() < 0.575 else 1 for _ in range(DEN_SIZE * DEN_SIZE)]
+        )
     ).cast("B", (DEN_SIZE, DEN_SIZE))
 
     grid = base
@@ -53,14 +53,20 @@ def pick_adjacent_tile(chips: Chips, origin: tuple[int, int]) -> tuple[int, int]
     oy, ox = origin
     adjacent = [
         (oy + dy * TILE_STRIDE_H, ox + dx * TILE_STRIDE_W)
-        for dy, dx in CARDINAL_DIRS
+        for dy, dx in FOUR_DIRS
         if (oy + dy * TILE_STRIDE_H, ox + dx * TILE_STRIDE_W) in chips
     ]
     return RNG.choice(adjacent)
 
 
-def stamp_den_prefab(tile: bytearray, prefab: bytearray, lut: list[int]) -> tuple[int, int]:
-    """Stamp an 8x8 prefab onto a 16x16 tile at a random offset, using LUT."""
+def stamp_den_prefab(
+    tile: bytearray, prefab: bytearray, lut: list[int]
+) -> tuple[int, int]:
+    """Stamp an 8x8 prefab onto a 16x16 tile at a random offset, using LUT.
+
+    Only copies walkable cells (prefab value 0) to preserve existing terrain
+    connectivity.
+    """
     max_offset = TILE_STRIDE_H - DEN_SIZE
     offset_y = RNG.randint(0, max_offset)
     offset_x = RNG.randint(0, max_offset)
@@ -70,7 +76,8 @@ def stamp_den_prefab(tile: bytearray, prefab: bytearray, lut: list[int]) -> tupl
 
     for dy in range(DEN_SIZE):
         for dx in range(DEN_SIZE):
-            tile_view[offset_y + dy, offset_x + dx] = lut[prefab_view[dy, dx]]
+            if prefab_view[dy, dx] == 0:  # Only copy walkable cells
+                tile_view[offset_y + dy, offset_x + dx] = lut[0]
 
     return offset_y, offset_x
 
