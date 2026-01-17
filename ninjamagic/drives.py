@@ -169,7 +169,7 @@ def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
                 continue
             dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
             if dist <= 1:
-                bus.pulse(bus.Melee(source=eid, target=player_eid, verb="slash"))
+                bus.pulse(bus.Melee(source=eid, target=player_eid, verb="punch"))
                 return True
     return False
 
