@@ -9,6 +9,7 @@
 
 ## Combat
 - Can't move (get lagged) when being attacked
+- FightTimer: add target entity, "attack" defaults to current target
 
 ## Nightstorm
 - "Endure the worst of night" timing off - should trigger at start of nightstorm
