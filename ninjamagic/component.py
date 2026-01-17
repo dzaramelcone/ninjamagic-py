@@ -23,9 +23,7 @@ from ninjamagic.util import (
 Biomes = Literal["cave", "forest"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
-ProcVerb = Literal[
-    "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
-]
+ProcVerb = Literal["slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"]
 T = TypeVar("T")
 EntityId = int
 MAX_HEALTH = 100.0
@@ -148,7 +146,11 @@ class LastAnchorRest:
 
 @component(slots=True, kw_only=True)
 class Anchor:
-    """The entity is an anchor."""
+    """Light against the darkness."""
+
+    rank: int = 1
+    tnl: float = 0
+    rankup_echo: str
 
 
 @component(slots=True, kw_only=True)

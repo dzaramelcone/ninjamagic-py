@@ -85,6 +85,14 @@ class Learn(Signal):
 
 
 @signal(frozen=True, slots=True, kw_only=True)
+class GrowAnchor(Signal):
+    "Contribute to an anchor's growth."
+
+    anchor: EntityId
+    amount: float
+
+
+@signal(frozen=True, slots=True, kw_only=True)
 class AbsorbRestExp(Signal):
     "An entity absorbed their rest exp."
 
