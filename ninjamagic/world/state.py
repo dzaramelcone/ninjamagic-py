@@ -175,6 +175,38 @@ def build_goblin_den(map_id: EntityId, chips: Chips):
     )
 
 
+def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
+    """Spawn swarms of 1-20 goblins in each tile (except hub at 0,0)."""
+    for (tile_y, tile_x), tile in chips.items():
+        if (tile_y, tile_x) == (0, 0):
+            continue
+
+        # Find walkable spots in this tile
+        walkable = []
+        for offset in range(TILE_STRIDE_H * TILE_STRIDE_W):
+            if tile[offset] == 1:  # walkable floor
+                y = tile_y + offset // TILE_STRIDE_W
+                x = tile_x + offset % TILE_STRIDE_W
+                walkable.append((y, x))
+
+        if not walkable:
+            continue
+
+        # Spawn 1-20 goblins
+        count = RNG.randint(1, 20)
+        spots = RNG.sample(walkable, min(count, len(walkable)))
+
+        for gy, gx in spots:
+            create_mob(
+                map_id=map_id,
+                y=gy,
+                x=gx,
+                name="goblin",
+                glyph=("g", 0.25, 0.7, 0.6),
+                behavior=Behavior(),
+            )
+
+
 def build_nowhere() -> EntityId:
     out = esper.create_entity()
     h, w = TILE_STRIDE
@@ -280,6 +312,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, 10, Level)
 
     build_goblin_den(map_id, chips)
+    spawn_goblin_swarms(map_id, chips)
 
     # fmt: off
     chips[(0,0)] = bytearray([
