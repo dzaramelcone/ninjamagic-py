@@ -16,8 +16,11 @@ from ninjamagic.component import (
     Transform,
 )
 from ninjamagic.dijkstra import DijkstraMap
-from ninjamagic.util import EIGHT_DIRS
+from ninjamagic.util import EIGHT_DIRS, get_looptime
 from ninjamagic.world.state import can_enter
+
+TICK_RATE = 2.0  # Mobs decide twice per second
+_last_tick = 0.0
 
 
 def get_blocked(map_id: EntityId, y: int, x: int, radius: int = 16) -> set[tuple[int, int]]:
@@ -179,6 +182,12 @@ def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
 
 def process() -> None:
     """Process all mobs with Drives component."""
+    global _last_tick
+    now = get_looptime()
+    if now - _last_tick < 1.0 / TICK_RATE:
+        return
+    _last_tick = now
+
     from ninjamagic.component import Drives
 
     for eid, (drives, loc) in esper.get_components(Drives, Transform):
