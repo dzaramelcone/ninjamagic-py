@@ -211,6 +211,10 @@ def process_rest() -> None:
         if at_anchor:
             weariness_factor = 1.0
             esper.add_component(eid, LastAnchorRest())
+            anchor = esper.component_for_entity(prop, Anchor)
+            mult = contest(survival_rank, anchor.rank, tag="anchor_growth")
+            award = Trial.get_award(mult=mult)
+            bus.pulse(bus.GrowAnchor(anchor=prop, amount=award))
             rested = True
         else:
             last_rest = esper.try_component(eid, LastAnchorRest)
@@ -227,20 +231,14 @@ def process_rest() -> None:
                 mult = contest(rest_rank, hostility)
                 rested = Trial.check(mult=mult)
                 bus.pulse(
-                    bus.Learn(
-                        source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
-                    )
+                    bus.Learn(source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult)
                 )
 
         # last ditch effort
         if not rested:
             mult = contest(survival_rank * weariness_factor, hostility)
             rested = Trial.check(mult=mult, difficulty=Trial.INFEASIBLE)
-            bus.pulse(
-                bus.Learn(
-                    source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult
-                )
-            )
+            bus.pulse(bus.Learn(source=eid, teacher=loc.map_id, skill=skill.survival, mult=mult))
 
         if rested:
             bus.pulse(
@@ -258,8 +256,6 @@ def process_rest() -> None:
             case True, True:
                 story.echo("{0} {0:rests}.", eid)
             case True, False:
-                story.echo(
-                    "{0} {0:rests} in fits, woken twice by an empty stomach.", eid
-                )
+                story.echo("{0} {0:rests} in fits, woken twice by an empty stomach.", eid)
             case _:
                 story.echo("{0} {0:rests}, but not well.", eid)

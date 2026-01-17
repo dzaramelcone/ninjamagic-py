@@ -3,8 +3,8 @@ from functools import partial
 
 import esper
 
-from ninjamagic import bus, util
-from ninjamagic.component import Ate, EntityId, RestExp, Skills, skills
+from ninjamagic import bus, reach, story, util
+from ninjamagic.component import Anchor, Ate, EntityId, RestExp, Skills, skills
 from ninjamagic.util import Trial
 
 log = logging.getLogger(__name__)
@@ -85,3 +85,13 @@ def process():
                 to=sig.source, name=skill.name, rank=skill.rank, tnl=skill.tnl
             )
         )
+
+    for sig in bus.iter(bus.GrowAnchor):
+        anchor = esper.component_for_entity(sig.anchor, Anchor)
+        anchor.tnl += sig.amount
+        while anchor.tnl >= 1.0:
+            anchor.rank += 1
+            anchor.tnl -= 1.0
+            anchor.tnl *= RANKUP_FALLOFF
+            log.info("anchor_rankup: anchor=%s rank=%s", sig.anchor, anchor.rank)
+            story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)
