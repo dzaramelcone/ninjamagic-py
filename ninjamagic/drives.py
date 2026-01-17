@@ -52,11 +52,11 @@ def compute_layer(
 
 
 def find_players(map_id: EntityId) -> list[tuple[int, int]]:
-    """Find all player positions on a map."""
+    """Find all living player positions on a map."""
     return [
         (tf.y, tf.x)
-        for _, (tf, _) in esper.get_components(Transform, Connection)
-        if tf.map_id == map_id
+        for _, (tf, _, health) in esper.get_components(Transform, Connection, Health)
+        if tf.map_id == map_id and health.condition != "dead"
     ]
 
 
@@ -98,11 +98,15 @@ def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
 
 
 def nearest_threat_attack(loc: Transform) -> float:
-    """Get the attack rank of the nearest player threat."""
+    """Get the attack rank of the nearest living player threat."""
     best_dist = float("inf")
     best_attack = 0.0
-    for _, (player_loc, _, skills) in esper.get_components(Transform, Connection, Skills):
+    for _, (player_loc, _, skills, health) in esper.get_components(
+        Transform, Connection, Skills, Health
+    ):
         if player_loc.map_id != loc.map_id:
+            continue
+        if health.condition == "dead":
             continue
         dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
         if dist < best_dist:
