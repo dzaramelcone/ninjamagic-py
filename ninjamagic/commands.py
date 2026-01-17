@@ -899,7 +899,8 @@ class Help(Command):
 
         if help_entry := HELP_TEXTS.get(cmd_match.text):
             usage, desc = help_entry
-            text = f"{usage}\n\n  {desc}"
+            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
+            text = f"Usage:\n{usage_lines}\n\n  {desc}"
         else:
             text = f"No help available for '{cmd_match.text}'."
 
