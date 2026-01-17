@@ -29,4 +29,4 @@ def process(now: Looptime) -> None:
                 )
                 esper.add_component(sig.source, DoubleDamage())
             case _:
-                raise NotImplementedError
+                pass  # Unknown proc verb - no special effect
