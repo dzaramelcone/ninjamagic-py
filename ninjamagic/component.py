@@ -148,7 +148,7 @@ class Anchor:
 
     rank: int = 1
     tnl: float = 0
-    rankup_echo: str = ""
+    rankup_echo: str
 
 
 @component(slots=True, kw_only=True)
