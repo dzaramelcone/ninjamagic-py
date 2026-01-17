@@ -4,6 +4,8 @@ Mobs have drives (aggression, fear, hunger, greed) that weight different goal la
 Movement emerges from combined layer costs. Actions are reactive based on surroundings.
 """
 
+from dataclasses import dataclass, field
+
 import esper
 
 from ninjamagic import act, bus
@@ -25,11 +27,16 @@ from ninjamagic.world.state import can_enter
 TICK_RATE = 2.0  # Mobs decide twice per second
 _last_tick = 0.0
 
-# Cached layers per map, recomputed each tick
-_player_layer: dict[EntityId, DijkstraMap] = {}
-_flee_layer: dict[EntityId, DijkstraMap] = {}
-_food_layer: dict[EntityId, DijkstraMap] = {}
-_anchor_flee_layer: dict[EntityId, DijkstraMap] = {}
+
+@dataclass(slots=True)
+class MapLayers:
+    player: DijkstraMap = field(default_factory=DijkstraMap)
+    flee: DijkstraMap = field(default_factory=DijkstraMap)
+    food: DijkstraMap = field(default_factory=DijkstraMap)
+    anchor_flee: DijkstraMap = field(default_factory=DijkstraMap)
+
+
+_map_layers: dict[EntityId, MapLayers] = {}
 
 
 def get_blocked(
@@ -43,21 +50,6 @@ def get_blocked(
             if not can_enter(map_id=map_id, y=cy, x=cx):
                 blocked.add((cy, cx))
     return blocked
-
-
-def compute_layer(
-    map_id: EntityId,
-    origin_y: int,
-    origin_x: int,
-    goals: list[tuple[int, int]],
-) -> DijkstraMap:
-    """Compute a Dijkstra layer for a set of goals."""
-    dm = DijkstraMap()
-    if not goals:
-        return dm
-    blocked = get_blocked(map_id, origin_y, origin_x)
-    dm.compute(goals=goals, blocked=blocked)
-    return dm
 
 
 def find_players(map_id: EntityId) -> list[tuple[int, int]]:
@@ -105,14 +97,28 @@ def threat_attack_at(map_id: EntityId, y: int, x: int) -> float:
 
 def best_direction(
     loc: Transform,
-    layers: list[tuple[DijkstraMap, float]],
+    layers: MapLayers,
+    aggression: float,
+    fear: float,
+    hunger: float,
+    anchor_hate: float,
 ) -> tuple[int, int] | None:
-    """Get best movement direction based on pre-computed weighted layers."""
-    if not layers:
+    """Get best movement direction based on pre-computed layers and drive weights."""
+    weighted: list[tuple[DijkstraMap, float]] = []
+    if aggression > 0 and layers.player.costs:
+        weighted.append((layers.player, aggression))
+    if fear > 0 and layers.flee.costs:
+        weighted.append((layers.flee, fear))
+    if hunger > 0 and layers.food.costs:
+        weighted.append((layers.food, hunger))
+    if anchor_hate > 0 and layers.anchor_flee.costs:
+        weighted.append((layers.anchor_flee, anchor_hate))
+
+    if not weighted:
         return None
 
     current_score = 0.0
-    for layer, weight in layers:
+    for layer, weight in weighted:
         cost = layer.get_cost(loc.y, loc.x)
         if cost != float("inf"):
             current_score += cost * weight
@@ -126,7 +132,7 @@ def best_direction(
             continue
 
         score = 0.0
-        for layer, weight in layers:
+        for layer, weight in weighted:
             cost = layer.get_cost(ny, nx)
             if cost != float("inf"):
                 score += cost * weight
@@ -165,11 +171,7 @@ def process() -> None:
         return
     _last_tick = now
 
-    # Clear cached layers
-    _player_layer.clear()
-    _flee_layer.clear()
-    _food_layer.clear()
-    _anchor_flee_layer.clear()
+    _map_layers.clear()
 
     # Collect mobs by map to compute layers once per map
     mobs_by_map: dict[
@@ -183,47 +185,27 @@ def process() -> None:
         mobs_by_map[loc.map_id].append((eid, drives, loc, health, skills))
 
     for map_id, mobs in mobs_by_map.items():
-        # Compute layers once per map
+        layers = MapLayers()
+        origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
+        blocked = get_blocked(map_id, origin_y, origin_x)
+
         players = find_players(map_id)
         if players:
-            # Use first mob's position as origin for blocked computation
-            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
-            blocked = get_blocked(map_id, origin_y, origin_x)
-
-            player_dm = DijkstraMap()
-            player_dm.compute(goals=players, blocked=blocked)
-            _player_layer[map_id] = player_dm
-
-            flee_dm = DijkstraMap()
-            flee_dm.compute(goals=players, blocked=blocked)
-            flee_dm.invert()
-            _flee_layer[map_id] = flee_dm
-        else:
-            _player_layer[map_id] = DijkstraMap()
-            _flee_layer[map_id] = DijkstraMap()
+            layers.player.compute(goals=players, blocked=blocked)
+            layers.flee.compute(goals=players, blocked=blocked)
+            layers.flee.invert()
 
         food = find_food(map_id)
         if food:
-            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
-            blocked = get_blocked(map_id, origin_y, origin_x)
-            food_dm = DijkstraMap()
-            food_dm.compute(goals=food, blocked=blocked)
-            _food_layer[map_id] = food_dm
-        else:
-            _food_layer[map_id] = DijkstraMap()
+            layers.food.compute(goals=food, blocked=blocked)
 
         anchors = find_anchors(map_id)
         if anchors:
-            origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
-            blocked = get_blocked(map_id, origin_y, origin_x)
-            anchor_dm = DijkstraMap()
-            anchor_dm.compute(goals=anchors, blocked=blocked)
-            anchor_dm.invert()
-            _anchor_flee_layer[map_id] = anchor_dm
-        else:
-            _anchor_flee_layer[map_id] = DijkstraMap()
+            layers.anchor_flee.compute(goals=anchors, blocked=blocked)
+            layers.anchor_flee.invert()
 
-        # Process each mob
+        _map_layers[map_id] = layers
+
         for eid, drives, loc, health, skills in mobs:
             hp_pct = health.cur / 100.0
 
@@ -238,18 +220,9 @@ def process() -> None:
             if react(eid, loc, eff_aggression, eff_fear):
                 continue
 
-            # Build layers list for this mob
-            layers: list[tuple[DijkstraMap, float]] = []
-            if eff_aggression > 0 and _player_layer[map_id].costs:
-                layers.append((_player_layer[map_id], eff_aggression))
-            if eff_fear > 0 and _flee_layer[map_id].costs:
-                layers.append((_flee_layer[map_id], eff_fear))
-            if drives.hunger > 0 and _food_layer[map_id].costs:
-                layers.append((_food_layer[map_id], drives.hunger))
-            if drives.anchor_hate > 0 and _anchor_flee_layer[map_id].costs:
-                layers.append((_anchor_flee_layer[map_id], drives.anchor_hate))
-
-            move = best_direction(loc, layers)
+            move = best_direction(
+                loc, layers, eff_aggression, eff_fear, drives.hunger, drives.anchor_hate
+            )
 
             if move:
                 dy, dx = move
