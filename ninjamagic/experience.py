@@ -87,9 +87,7 @@ def process():
         )
 
     for sig in bus.iter(bus.GrowAnchor):
-        anchor = esper.try_component(sig.anchor, Anchor)
-        if not anchor:
-            continue
+        anchor = esper.component_for_entity(sig.anchor, Anchor)
         anchor.tnl += sig.amount
         while anchor.tnl >= 1.0:
             anchor.rank += 1
