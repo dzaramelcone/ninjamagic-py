@@ -230,14 +230,18 @@ def build_hub(map_id: EntityId, chips: Chips):
         pronoun=Pronouns.HE,
     )
 
-    bonfire = create_prop(map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65))
+    bonfire = create_prop(
+        map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65)
+    )
     esper.add_component(
         bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
     esper.add_component(bonfire, ProvidesHeat())
     esper.add_component(bonfire, ProvidesLight())
 
-    create_item(map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55))
+    create_item(
+        map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55)
+    )
 
     create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
 
@@ -309,7 +313,9 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
     return grid[y * TILE_STRIDE_W + x] in {1, 3}
 
 
-def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytearray | None]:
+def get_tile(
+    *, map_id: EntityId, top: int, left: int
+) -> tuple[int, int, bytearray | None]:
     """Get a 16x16 tile from a map. Floors (top, left) to factors of TILE_STRIDE."""
 
     chips = esper.component_for_entity(map_id, Chips)

@@ -5,6 +5,7 @@ Movement emerges from combined layer costs.
 """
 
 import heapq
+import logging
 from array import array
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -33,6 +34,8 @@ from ninjamagic.util import (
     get_looptime,
 )
 from ninjamagic.world.state import can_enter
+
+log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # Predicates - functions that check conditions for state transitions
@@ -134,6 +137,9 @@ TEMPLATES: dict[str, Template] = {
 TICK_RATE = 1.0
 _last_tick = 0.0
 
+# Debug: dump n updates starting from 1, set to 0 to disable
+DEBUG_DUMP_COUNT = 3
+_debug_tick = 0
 
 TILE_SIZE = TILE_STRIDE_H * TILE_STRIDE_W
 
@@ -225,6 +231,64 @@ class DijkstraMap:
         tile[local_y * TILE_STRIDE_W + local_x] = cost
 
 
+def _dump_layer(name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> None:
+    """Dump a single layer's costs for a tile as a grid."""
+    tile = layer.tiles.get(tile_key)
+    if not tile:
+        log.info("  %s: (no data for tile)", name)
+        return
+
+    lines = [f"  {name}:"]
+    for row in range(TILE_STRIDE_H):
+        cells = []
+        for col in range(TILE_STRIDE_W):
+            cost = tile[row * TILE_STRIDE_W + col]
+            if cost >= layer.max_cost:
+                cells.append(" -- ")
+            else:
+                cells.append(f"{cost:4.1f}")
+        lines.append("    " + " ".join(cells))
+    log.info("\n".join(lines))
+
+
+def _dump_debug(
+    tick: int,
+    map_id: EntityId,
+    mobs: list[tuple[EntityId, "Behavior", Transform]],
+    player_layer: DijkstraMap,
+    den_layer: DijkstraMap,
+    food_layer: DijkstraMap,
+    anchor_layer: DijkstraMap,
+    dens: list[tuple[int, int]],
+    players: list[tuple[Transform, "Noun"]],
+) -> None:
+    """Dump debug info for drives system."""
+    log.info("=" * 60)
+    log.info("DRIVES DEBUG TICK %d", tick)
+    log.info("=" * 60)
+    log.info("dens found: %s", dens)
+    log.info("players found: %s", [(tf.y, tf.x) for tf, _ in players])
+
+    for eid, behavior, loc in mobs:
+        log.info(
+            "mob %d at (%d, %d) state=%s template=%s",
+            eid,
+            loc.y,
+            loc.x,
+            behavior.state,
+            behavior.template,
+        )
+
+        # Dump layers for the tile containing this mob
+        tile_y = loc.y // TILE_STRIDE_H * TILE_STRIDE_H
+        tile_x = loc.x // TILE_STRIDE_W * TILE_STRIDE_W
+        tile_key = (tile_y, tile_x)
+        log.info("  tile: %s", tile_key)
+
+        _dump_layer("player_layer", player_layer, tile_key)
+        _dump_layer("den_layer", den_layer, tile_key)
+
+
 def process() -> None:
     global _last_tick
     now = get_looptime()
@@ -283,6 +347,22 @@ def process() -> None:
         den_layer.scan(goals=dens, map_id=map_id)
         den_layer = den_layer**1.5
 
+        # Debug dump
+        global _debug_tick
+        if DEBUG_DUMP_COUNT > 0 and _debug_tick < DEBUG_DUMP_COUNT:
+            _debug_tick += 1
+            _dump_debug(
+                tick=_debug_tick,
+                map_id=map_id,
+                mobs=mobs,
+                player_layer=player_layer,
+                den_layer=den_layer,
+                food_layer=food_layer,
+                anchor_layer=anchor_layer,
+                dens=dens,
+                players=players,
+            )
+
         for eid, behavior, loc in mobs:
             if act.is_busy(eid):
                 continue
@@ -317,7 +397,7 @@ def process() -> None:
                 + flee_player_layer.get_cost(y, x) * drives.flee_player
                 + food_layer.get_cost(y, x) * drives.seek_food
                 + den_layer.get_cost(y, x) * drives.seek_den
-                + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
+                # + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
             )
             best_score = current_score
             best_direction: Compass | None = None
@@ -333,7 +413,7 @@ def process() -> None:
                     + flee_player_layer.get_cost(ny, nx) * drives.flee_player
                     + food_layer.get_cost(ny, nx) * drives.seek_food
                     + den_layer.get_cost(ny, nx) * drives.seek_den
-                    + flee_anchor_layer.get_cost(ny, nx) * drives.flee_anchor
+                    # + flee_anchor_layer.get_cost(ny, nx) * drives.flee_anchor
                 )
 
                 if score < best_score:
