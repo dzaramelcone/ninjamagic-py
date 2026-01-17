@@ -441,6 +441,19 @@ class Wearable:
     slot: Slot
 
 
+@component(slots=True, kw_only=True)
+class Drives:
+    """Mob AI drives that weight different goals.
+
+    Higher values = stronger pull toward that goal type.
+    """
+
+    aggression: float = 0.0  # Attack players
+    fear: float = 0.0  # Flee from players
+    hunger: float = 0.0  # Seek food
+    anchor_hate: float = 0.0  # Attack anchors
+
+
 def get_component[T](entity: EntityId, component: type[T]) -> T:
     return esper.component_for_entity(entity, component)
 
