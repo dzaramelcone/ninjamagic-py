@@ -14,10 +14,11 @@ from ninjamagic.component import (
     Food,
     Health,
     Noun,
+    Skills,
     Transform,
 )
 from ninjamagic.dijkstra import DijkstraMap
-from ninjamagic.util import EIGHT_DIRS, get_looptime
+from ninjamagic.util import EIGHT_DIRS, contest, get_looptime
 from ninjamagic.world.state import can_enter
 
 TICK_RATE = 2.0  # Mobs decide twice per second
@@ -94,6 +95,20 @@ def nearest_dist(loc: Transform, targets: list[tuple[int, int]]) -> float:
     if not targets:
         return float("inf")
     return min(abs(y - loc.y) + abs(x - loc.x) for y, x in targets)
+
+
+def nearest_threat_attack(loc: Transform) -> float:
+    """Get the attack rank of the nearest player threat."""
+    best_dist = float("inf")
+    best_attack = 0.0
+    for _, (player_loc, _, skills) in esper.get_components(Transform, Connection, Skills):
+        if player_loc.map_id != loc.map_id:
+            continue
+        dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
+        if dist < best_dist:
+            best_dist = dist
+            best_attack = skills.martial_arts.ranks
+    return best_attack
 
 
 def best_direction(
@@ -192,12 +207,19 @@ def process() -> None:
 
     from ninjamagic.component import Drives
 
-    for eid, (drives, loc, health) in esper.get_components(Drives, Transform, Health):
+    for eid, (drives, loc, health, skills) in esper.get_components(
+        Drives, Transform, Health, Skills
+    ):
         players = find_players(loc.map_id)
         dist = nearest_dist(loc, players) if players else float("inf")
         hp_pct = health.cur / 100.0
+
+        # Contest mob's evasion vs nearest threat's attack
+        threat_attack = nearest_threat_attack(loc)
+        evasion_mult = contest(skills.evasion.ranks, threat_attack) if threat_attack else 1.0
+
         eff_aggression = drives.effective_aggression(dist, hp_pct)
-        eff_fear = drives.effective_fear(dist, hp_pct)
+        eff_fear = drives.effective_fear(dist, hp_pct, evasion_mult)
 
         # Try to react first (attack adjacent targets) - but only if not too scared
         if react(eid, loc, eff_aggression, eff_fear):
