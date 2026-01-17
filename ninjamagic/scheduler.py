@@ -1,7 +1,7 @@
 import heapq
 from collections.abc import Generator
 
-from ninjamagic import bus
+from ninjamagic import bus, reach, story
 from ninjamagic.nightclock import NightClock, NightDelta, NightTime
 from ninjamagic.util import serial
 
@@ -34,6 +34,7 @@ def recurring(
 
 def start() -> None:
     cue(bus.RestCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
+    cue(bus.NightstormWarning(), time=NightTime(hour=1, minute=50), recur=recurring(forever=True))
 
 
 def process() -> None:
@@ -45,3 +46,6 @@ def process() -> None:
             continue
         if eta := next(recur, None):
             heapq.heappush(pq, (due + eta, serial(), sig, recur))
+
+    for _ in bus.iter(bus.NightstormWarning):
+        story.echo("The worst of night approaches.", range=reach.world)
