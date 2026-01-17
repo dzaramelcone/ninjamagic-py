@@ -85,6 +85,7 @@ class State:
             # invoke systems        #
             scheduler.process()
             conn.process()
+            drives.process()
             inbound.process(now=now)
             parser.process()
             regen.process(now=now)
@@ -93,7 +94,6 @@ class State:
             forage.process()
             cook.process()
             survive.process()
-            drives.process()
             combat.process(now=now)
             proc.process(now=now)
             move.process()

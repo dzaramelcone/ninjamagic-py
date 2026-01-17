@@ -13,6 +13,7 @@ from ninjamagic.component import (
     EntityId,
     Food,
     Health,
+    Noun,
     Transform,
 )
 from ninjamagic.dijkstra import DijkstraMap
@@ -158,10 +159,9 @@ def best_direction(
 
 def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
     """React to surroundings after moving. Returns True if action taken."""
-    # Check for adjacent players to attack
     if aggression > 0.3:
-        for player_eid, (player_loc, _, health) in esper.get_components(
-            Transform, Connection, Health
+        for _, (player_loc, _, health, noun) in esper.get_components(
+            Transform, Connection, Health, Noun
         ):
             if player_loc.map_id != loc.map_id:
                 continue
@@ -169,7 +169,7 @@ def react(eid: EntityId, loc: Transform, aggression: float) -> bool:
                 continue
             dist = abs(player_loc.y - loc.y) + abs(player_loc.x - loc.x)
             if dist <= 1:
-                bus.pulse(bus.Melee(source=eid, target=player_eid, verb="punch"))
+                bus.pulse(bus.Inbound(source=eid, text=f"attack {noun.value}"))
                 return True
     return False
 
