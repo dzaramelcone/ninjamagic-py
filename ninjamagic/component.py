@@ -454,16 +454,11 @@ class Drives:
     def effective_aggression(self, hp_pct: float) -> float:
         return self.aggression * hp_pct
 
-    def effective_fear(self, hp_pct: float, evasion_mult: float = 1.0) -> float:
-        """Fear scales up as HP drops below flee_threshold.
-
-        evasion_mult: contest(mob_evasion, threat_attack) - higher means mob
-        is confident it can flee, so fear has more weight.
-        """
+    def effective_fear(self, hp_pct: float) -> float:
         if hp_pct >= self.flee_threshold:
             return 0.0
         fear_pct = (self.flee_threshold - hp_pct) / self.flee_threshold
-        return self.fear * fear_pct * evasion_mult
+        return self.fear * fear_pct
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

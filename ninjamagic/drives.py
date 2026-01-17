@@ -1,9 +1,10 @@
-"""Drives-based mob AI using layered Dijkstra maps.
+"""Mob AI using Dijkstra distance maps.
 
-Mobs have drives (aggression, fear, hunger, greed) that weight different goal layers.
-Movement emerges from combined layer costs. Actions are reactive based on surroundings.
+Mobs have drives (aggression, fear, hunger) that weight different goal layers.
+Movement emerges from combined layer costs.
 """
 
+import heapq
 from dataclasses import dataclass, field
 
 import esper
@@ -17,43 +18,85 @@ from ninjamagic.component import (
     Food,
     Health,
     Noun,
-    Skills,
     Transform,
 )
-from ninjamagic.dijkstra import DijkstraMap
-from ninjamagic.util import EIGHT_DIRS, contest, get_looptime
+from ninjamagic.util import EIGHT_DIRS, TILE_STRIDE_H, TILE_STRIDE_W, get_looptime
 from ninjamagic.world.state import can_enter
 
 TICK_RATE = 2.0  # Mobs decide twice per second
 _last_tick = 0.0
 
+INF = float("inf")
+
 
 @dataclass(slots=True)
-class MapLayers:
-    player: DijkstraMap = field(default_factory=DijkstraMap)
-    flee: DijkstraMap = field(default_factory=DijkstraMap)
-    food: DijkstraMap = field(default_factory=DijkstraMap)
-    anchor_flee: DijkstraMap = field(default_factory=DijkstraMap)
+class DijkstraMap:
+    """Dijkstra flood fill distance map.
 
+    Stores costs in sparse dict of 16x16 tiles. Each tile is a flat list
+    of 256 floats representing costs at each cell.
 
-_map_layers: dict[EntityId, MapLayers] = {}
+    Sentinel design: Internally uses INF for unvisited cells. get_cost()
+    translates this to max_cost (for approach maps) or 0 (for flee maps)
+    so callers never need guards. Pass inverted=True to get_cost() for
+    flee behavior without recomputing.
+    """
 
+    costs: dict[tuple[int, int], list[float]] = field(default_factory=dict)
+    max_cost: float = 256.0
 
-def get_blocked(
-    map_id: EntityId, y: int, x: int, radius: int = 16
-) -> set[tuple[int, int]]:
-    """Get blocked cells around a point."""
-    blocked = set()
-    for dy in range(-radius, radius + 1):
-        for dx in range(-radius, radius + 1):
-            cy, cx = y + dy, x + dx
-            if not can_enter(map_id=map_id, y=cy, x=cx):
-                blocked.add((cy, cx))
-    return blocked
+    def compute(self, goals: list[tuple[int, int]], map_id: EntityId) -> None:
+        self.costs.clear()
+        if not goals:
+            return
+
+        pq: list[tuple[float, int, int]] = []
+        visited: dict[tuple[int, int], float] = {}
+        for y, x in goals:
+            if can_enter(map_id=map_id, y=y, x=x):
+                heapq.heappush(pq, (0.0, y, x))
+                visited[(y, x)] = 0.0
+
+        while pq:
+            cost, y, x = heapq.heappop(pq)
+            if cost > visited.get((y, x), INF) or cost > self.max_cost:
+                continue
+            self._set_cost(y, x, cost)
+            for dy, dx in EIGHT_DIRS:
+                ny, nx = y + dy, x + dx
+                if not can_enter(map_id=map_id, y=ny, x=nx):
+                    continue
+                new_cost = cost + 1.0
+                if new_cost < visited.get((ny, nx), INF):
+                    visited[(ny, nx)] = new_cost
+                    heapq.heappush(pq, (new_cost, ny, nx))
+
+    def get_cost(self, y: int, x: int, *, inverted: bool = False) -> float:
+        tile_y = y // TILE_STRIDE_H * TILE_STRIDE_H
+        tile_x = x // TILE_STRIDE_W * TILE_STRIDE_W
+        tile = self.costs.get((tile_y, tile_x))
+        if tile is None:
+            return 0.0 if inverted else self.max_cost
+        local_y = y - tile_y
+        local_x = x - tile_x
+        raw = tile[local_y * TILE_STRIDE_W + local_x]
+        if raw == INF:
+            return 0.0 if inverted else self.max_cost
+        return (self.max_cost - raw) if inverted else raw
+
+    def _set_cost(self, y: int, x: int, cost: float) -> None:
+        tile_y = y // TILE_STRIDE_H * TILE_STRIDE_H
+        tile_x = x // TILE_STRIDE_W * TILE_STRIDE_W
+        tile = self.costs.get((tile_y, tile_x))
+        if tile is None:
+            tile = [INF] * (TILE_STRIDE_H * TILE_STRIDE_W)
+            self.costs[(tile_y, tile_x)] = tile
+        local_y = y - tile_y
+        local_x = x - tile_x
+        tile[local_y * TILE_STRIDE_W + local_x] = cost
 
 
 def find_players(map_id: EntityId) -> list[tuple[int, int]]:
-    """Find all living player positions on a map."""
     return [
         (tf.y, tf.x)
         for _, (tf, _, health) in esper.get_components(Transform, Connection, Health)
@@ -62,7 +105,6 @@ def find_players(map_id: EntityId) -> list[tuple[int, int]]:
 
 
 def find_anchors(map_id: EntityId) -> list[tuple[int, int]]:
-    """Find all anchor positions on a map."""
     return [
         (tf.y, tf.x)
         for _, (tf, _) in esper.get_components(Transform, Anchor)
@@ -71,7 +113,6 @@ def find_anchors(map_id: EntityId) -> list[tuple[int, int]]:
 
 
 def find_food(map_id: EntityId) -> list[tuple[int, int]]:
-    """Find all food positions on a map."""
     return [
         (tf.y, tf.x)
         for _, (tf, _) in esper.get_components(Transform, Food)
@@ -79,73 +120,55 @@ def find_food(map_id: EntityId) -> list[tuple[int, int]]:
     ]
 
 
-def threat_attack_at(map_id: EntityId, y: int, x: int) -> float:
-    """Get max attack rank of living players at this position."""
-    max_attack = 0.0
-    for _, (player_loc, _, skills, health) in esper.get_components(
-        Transform, Connection, Skills, Health
-    ):
-        if player_loc.map_id != map_id:
-            continue
-        if player_loc.y != y or player_loc.x != x:
-            continue
-        if health.condition == "dead":
-            continue
-        max_attack = max(max_attack, skills.martial_arts.rank)
-    return max_attack
-
-
 def best_direction(
-    loc: Transform,
-    layers: MapLayers,
+    map_id: EntityId,
+    y: int,
+    x: int,
+    player_layer: DijkstraMap,
+    food_layer: DijkstraMap,
+    anchor_layer: DijkstraMap,
     aggression: float,
     fear: float,
     hunger: float,
     anchor_hate: float,
+    *,
+    escape_local_minimum: bool = False,
 ) -> tuple[int, int] | None:
-    """Get best movement direction based on pre-computed layers and drive weights."""
-    weighted: list[tuple[DijkstraMap, float]] = []
-    if aggression > 0 and layers.player.costs:
-        weighted.append((layers.player, aggression))
-    if fear > 0 and layers.flee.costs:
-        weighted.append((layers.flee, fear))
-    if hunger > 0 and layers.food.costs:
-        weighted.append((layers.food, hunger))
-    if anchor_hate > 0 and layers.anchor_flee.costs:
-        weighted.append((layers.anchor_flee, anchor_hate))
-
-    if not weighted:
-        return None
-
-    current_score = 0.0
-    for layer, weight in weighted:
-        cost = layer.get_cost(loc.y, loc.x)
-        if cost != float("inf"):
-            current_score += cost * weight
+    """Get best movement direction from weighted layer costs. Lower score is better."""
+    current_score = (
+        player_layer.get_cost(y, x) * aggression
+        + player_layer.get_cost(y, x, inverted=True) * fear
+        + food_layer.get_cost(y, x) * hunger
+        + anchor_layer.get_cost(y, x, inverted=True) * anchor_hate
+    )
 
     best_score = current_score
     best_move = None
+    fallback = None
 
     for dy, dx in EIGHT_DIRS:
-        ny, nx = loc.y + dy, loc.x + dx
-        if not can_enter(map_id=loc.map_id, y=ny, x=nx):
+        ny, nx = y + dy, x + dx
+        if not can_enter(map_id=map_id, y=ny, x=nx):
             continue
 
-        score = 0.0
-        for layer, weight in weighted:
-            cost = layer.get_cost(ny, nx)
-            if cost != float("inf"):
-                score += cost * weight
+        fallback = (dy, dx)
+
+        score = (
+            player_layer.get_cost(ny, nx) * aggression
+            + player_layer.get_cost(ny, nx, inverted=True) * fear
+            + food_layer.get_cost(ny, nx) * hunger
+            + anchor_layer.get_cost(ny, nx, inverted=True) * anchor_hate
+        )
 
         if score < best_score:
             best_score = score
             best_move = (dy, dx)
 
-    return best_move
+    return (best_move or fallback) if escape_local_minimum else best_move
 
 
 def react(eid: EntityId, loc: Transform, aggression: float, fear: float) -> bool:
-    """React to surroundings after moving. Returns True if action taken."""
+    """React to surroundings. Returns True if action taken."""
     if act.is_busy(eid):
         return True
     if aggression > 0.3 and aggression > fear:
@@ -164,64 +187,56 @@ def react(eid: EntityId, loc: Transform, aggression: float, fear: float) -> bool
 
 
 def process() -> None:
-    """Process all mobs with Drives component."""
     global _last_tick
     now = get_looptime()
     if now - _last_tick < 1.0 / TICK_RATE:
         return
     _last_tick = now
 
-    _map_layers.clear()
-
-    # Collect mobs by map to compute layers once per map
-    mobs_by_map: dict[
-        EntityId, list[tuple[EntityId, Drives, Transform, Health, Skills]]
-    ] = {}
-    for eid, (drives, loc, health, skills) in esper.get_components(
-        Drives, Transform, Health, Skills
-    ):
+    mobs_by_map: dict[EntityId, list[tuple[EntityId, Drives, Transform, Health]]] = {}
+    for eid, (drives, loc, health) in esper.get_components(Drives, Transform, Health):
         if loc.map_id not in mobs_by_map:
             mobs_by_map[loc.map_id] = []
-        mobs_by_map[loc.map_id].append((eid, drives, loc, health, skills))
+        mobs_by_map[loc.map_id].append((eid, drives, loc, health))
 
     for map_id, mobs in mobs_by_map.items():
-        layers = MapLayers()
-        origin_y, origin_x = mobs[0][2].y, mobs[0][2].x
-        blocked = get_blocked(map_id, origin_y, origin_x)
+        player_layer = DijkstraMap()
+        food_layer = DijkstraMap()
+        anchor_layer = DijkstraMap()
 
         players = find_players(map_id)
         if players:
-            layers.player.compute(goals=players, blocked=blocked)
-            layers.flee.compute(goals=players, blocked=blocked)
-            layers.flee.invert()
+            player_layer.compute(goals=players, map_id=map_id)
 
         food = find_food(map_id)
         if food:
-            layers.food.compute(goals=food, blocked=blocked)
+            food_layer.compute(goals=food, map_id=map_id)
 
         anchors = find_anchors(map_id)
         if anchors:
-            layers.anchor_flee.compute(goals=anchors, blocked=blocked)
-            layers.anchor_flee.invert()
+            anchor_layer.compute(goals=anchors, map_id=map_id)
 
-        _map_layers[map_id] = layers
-
-        for eid, drives, loc, health, skills in mobs:
+        for eid, drives, loc, health in mobs:
             hp_pct = health.cur / 100.0
 
-            threat_attack = threat_attack_at(map_id, loc.y, loc.x)
-            evasion_mult = (
-                contest(skills.evasion.rank, threat_attack) if threat_attack else 1.0
-            )
-
             eff_aggression = drives.effective_aggression(hp_pct)
-            eff_fear = drives.effective_fear(hp_pct, evasion_mult)
+            eff_fear = drives.effective_fear(hp_pct)
 
             if react(eid, loc, eff_aggression, eff_fear):
                 continue
 
             move = best_direction(
-                loc, layers, eff_aggression, eff_fear, drives.hunger, drives.anchor_hate
+                loc.map_id,
+                loc.y,
+                loc.x,
+                player_layer,
+                food_layer,
+                anchor_layer,
+                eff_aggression,
+                eff_fear,
+                drives.hunger,
+                drives.anchor_hate,
+                escape_local_minimum=eff_fear > 0,
             )
 
             if move:
