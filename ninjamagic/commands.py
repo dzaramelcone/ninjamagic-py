@@ -833,35 +833,31 @@ class Recall(Command):
         return OK
 
 
-HELP_TEXTS: dict[str, str] = {
-    "look": "Look at something or in a container.\n"
-    "Usage: look at <target>\n       look in <container>",
-    "say": "Say something out loud.\n"
-    "Usage: say <message>\n       '<message> (shortcut)",
-    "emote": "Perform an action/emote.\nUsage: emote <action>",
-    "attack": "Attack a target.\nUsage: attack <target>",
-    "stand": "Stand up.\nUsage: stand [beside <target>]",
-    "sit": "Sit down.\nUsage: sit [beside <target>]",
-    "lie": "Lie down.\nUsage: lie [beside <target>]",
-    "rest": "Rest (lie down).\nUsage: rest [beside <target>]",
-    "kneel": "Kneel down.\nUsage: kneel [beside <target>]",
-    "block": "Block incoming attacks.\nUsage: block",
-    "recall": "Return to your bind point.\nUsage: recall",
-    "inventory": "View your inventory.\nUsage: inventory",
-    "get": "Pick up an item.\n"
-    "Usage: get <item>\n       get <item> from <container>",
-    "put": "Put an item somewhere.\nUsage: put <item> in <container>",
-    "stow": "Stow an item in a container.\nUsage: stow <item> [in <container>]",
-    "drop": "Drop an item.\nUsage: drop <item>",
-    "wear": "Wear an item.\nUsage: wear <item>",
-    "remove": "Remove worn item.\nUsage: remove <item>",
-    "swap": "Swap items between hands.\nUsage: swap",
-    "forage": "Forage for items.\nUsage: forage",
-    "eat": "Eat food.\nUsage: eat <food>",
-    "time": "Check the current time.\nUsage: time",
-    "help": "Get help for a command.\nUsage: help <command>\n\n"
-    "Type 'commands' to see available commands.",
-    "commands": "List available commands.\nUsage: commands",
+HELP_TEXTS: dict[str, tuple[str, str]] = {
+    "look": ("look at <target>\nlook in <container>", "Look at something or in a container."),
+    "say": ("say <message>\n'<message>", "Say something out loud."),
+    "emote": ("emote <action>", "Perform an action/emote."),
+    "attack": ("attack <target>", "Attack a target."),
+    "stand": ("stand [beside <target>]", "Stand up."),
+    "sit": ("sit [beside <target>]", "Sit down."),
+    "lie": ("lie [beside <target>]", "Lie down."),
+    "rest": ("rest [beside <target>]", "Rest (lie down)."),
+    "kneel": ("kneel [beside <target>]", "Kneel down."),
+    "block": ("block", "Block incoming attacks."),
+    "recall": ("recall", "Return to your bind point."),
+    "inventory": ("inventory", "View your inventory."),
+    "get": ("get <item>\nget <item> from <container>", "Pick up an item."),
+    "put": ("put <item> in <container>", "Put an item somewhere."),
+    "stow": ("stow <item> [in <container>]", "Stow an item in a container."),
+    "drop": ("drop <item>", "Drop an item."),
+    "wear": ("wear <item>", "Wear an item."),
+    "remove": ("remove <item>", "Remove worn item."),
+    "swap": ("swap", "Swap items between hands."),
+    "forage": ("forage", "Forage for items."),
+    "eat": ("eat <food>", "Eat food."),
+    "time": ("time", "Check the current time."),
+    "help": ("help <command>", "Get help for a command. Type 'commands' for list."),
+    "commands": ("commands", "List available commands."),
 }
 
 
@@ -901,17 +897,13 @@ class Help(Command):
             )
             return OK
 
-        parts = [f"Command: {cmd_match.text}"]
-        if cmd_match.requires_standing:
-            parts.append("Requires: standing")
-        if cmd_match.requires_healthy:
-            parts.append("Requires: healthy")
+        if help_entry := HELP_TEXTS.get(cmd_match.text):
+            usage, desc = help_entry
+            text = f"{usage}\n\n  {desc}"
+        else:
+            text = f"No help available for '{cmd_match.text}'."
 
-        if help_text := HELP_TEXTS.get(cmd_match.text):
-            parts.append("")
-            parts.append(help_text)
-
-        bus.pulse(bus.Outbound(to=root.source, text="\n".join(parts)))
+        bus.pulse(bus.Outbound(to=root.source, text=text))
         return OK
 
 
