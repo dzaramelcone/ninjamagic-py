@@ -231,14 +231,14 @@ class DijkstraMap:
         tile[local_y * TILE_STRIDE_W + local_x] = cost
 
 
-def _dump_layer(name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> None:
+def _dump_layer(f, name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> None:
     """Dump a single layer's costs for a tile as a grid."""
     tile = layer.tiles.get(tile_key)
     if not tile:
-        log.info("  %s: (no data for tile)", name)
+        f.write(f"  {name}: (no data for tile)\n")
         return
 
-    lines = [f"  {name}:"]
+    f.write(f"  {name}:\n")
     for row in range(TILE_STRIDE_H):
         cells = []
         for col in range(TILE_STRIDE_W):
@@ -247,8 +247,7 @@ def _dump_layer(name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> Non
                 cells.append(" -- ")
             else:
                 cells.append(f"{cost:4.1f}")
-        lines.append("    " + " ".join(cells))
-    log.info("\n".join(lines))
+        f.write("    " + " ".join(cells) + "\n")
 
 
 def _dump_debug(
@@ -262,31 +261,31 @@ def _dump_debug(
     dens: list[tuple[int, int]],
     players: list[tuple[Transform, "Noun"]],
 ) -> None:
-    """Dump debug info for drives system."""
-    log.info("=" * 60)
-    log.info("DRIVES DEBUG TICK %d", tick)
-    log.info("=" * 60)
-    log.info("dens found: %s", dens)
-    log.info("players found: %s", [(tf.y, tf.x) for tf, _ in players])
+    """Dump debug info for drives system to file."""
+    filename = f"drives_debug_{tick}.txt"
+    with open(filename, "w") as f:
+        f.write("=" * 60 + "\n")
+        f.write(f"DRIVES DEBUG TICK {tick}\n")
+        f.write("=" * 60 + "\n")
+        f.write(f"dens found: {dens}\n")
+        f.write(f"players found: {[(tf.y, tf.x) for tf, _ in players]}\n\n")
 
-    for eid, behavior, loc in mobs:
-        log.info(
-            "mob %d at (%d, %d) state=%s template=%s",
-            eid,
-            loc.y,
-            loc.x,
-            behavior.state,
-            behavior.template,
-        )
+        for eid, behavior, loc in mobs:
+            f.write(
+                f"mob {eid} at ({loc.y}, {loc.x}) state={behavior.state} "
+                f"template={behavior.template}\n"
+            )
 
-        # Dump layers for the tile containing this mob
-        tile_y = loc.y // TILE_STRIDE_H * TILE_STRIDE_H
-        tile_x = loc.x // TILE_STRIDE_W * TILE_STRIDE_W
-        tile_key = (tile_y, tile_x)
-        log.info("  tile: %s", tile_key)
+            # Dump layers for the tile containing this mob
+            tile_y = loc.y // TILE_STRIDE_H * TILE_STRIDE_H
+            tile_x = loc.x // TILE_STRIDE_W * TILE_STRIDE_W
+            tile_key = (tile_y, tile_x)
+            f.write(f"  tile: {tile_key}\n")
 
-        _dump_layer("player_layer", player_layer, tile_key)
-        _dump_layer("den_layer", den_layer, tile_key)
+            _dump_layer(f, "player_layer", player_layer, tile_key)
+            _dump_layer(f, "den_layer", den_layer, tile_key)
+
+    log.info("wrote %s", filename)
 
 
 def process() -> None:
