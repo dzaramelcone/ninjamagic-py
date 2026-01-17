@@ -28,41 +28,25 @@ class DijkstraMap:
     def compute(self, goals: list[tuple[int, int]], blocked: set[tuple[int, int]]) -> None:
         """Flood fill from goals. Updates costs dict in place."""
         self.costs.clear()
-
         if not goals:
             return
 
-        # Priority queue: (cost, y, x)
         pq: list[tuple[float, int, int]] = []
         visited: dict[tuple[int, int], float] = {}
-
-        # Initialize goals with cost 0
         for y, x in goals:
             if (y, x) not in blocked:
                 heapq.heappush(pq, (0.0, y, x))
                 visited[(y, x)] = 0.0
 
-        # Dijkstra flood fill
         while pq:
             cost, y, x = heapq.heappop(pq)
-
-            # Skip if we already found a better path
-            if cost > visited.get((y, x), INF):
+            if cost > visited.get((y, x), INF) or cost > self.max_cost:
                 continue
-
-            # Stop if beyond max cost
-            if cost > self.max_cost:
-                continue
-
-            # Store cost in tile
             self._set_cost(y, x, cost)
-
-            # Expand to neighbors
             for dy, dx in EIGHT_DIRS:
                 ny, nx = y + dy, x + dx
                 if (ny, nx) in blocked:
                     continue
-
                 new_cost = cost + 1.0
                 if new_cost < visited.get((ny, nx), INF):
                     visited[(ny, nx)] = new_cost
