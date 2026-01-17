@@ -157,6 +157,8 @@ class Anchor:
 class Den:
     """Mob safe zone."""
 
+    influence_range: int = 2
+
 
 @component(slots=True, kw_only=True)
 class Sheltered:

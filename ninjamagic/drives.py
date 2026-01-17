@@ -6,9 +6,11 @@ Movement emerges from combined layer costs.
 
 import heapq
 import logging
+import math
 from array import array
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Literal
 
 import esper
 
@@ -36,6 +38,16 @@ from ninjamagic.util import (
 from ninjamagic.world.state import can_enter
 
 log = logging.getLogger(__name__)
+
+
+def chebyshev_box(y: int, x: int, radius: int) -> list[tuple[int, int]]:
+    """Return all cells within Chebyshev distance radius of (y, x)."""
+    return [
+        (y + dy, x + dx)
+        for dy in range(-radius, radius + 1)
+        for dx in range(-radius, radius + 1)
+    ]
+
 
 # -----------------------------------------------------------------------------
 # Predicates - functions that check conditions for state transitions
@@ -103,33 +115,32 @@ def fed(threshold: float = 0.3) -> Predicate:
     return check
 
 
-# -----------------------------------------------------------------------------
 # Behavior templates - state machines defining drives and transitions
-# -----------------------------------------------------------------------------
-# Template structure: dict[state_name, (Drives, list[(predicate, next_state)])]
-Template = dict[str, tuple[Drives, list[tuple[Predicate, str]]]]
 
-TEMPLATES: dict[str, Template] = {
+Templates = Literal["goblin"]
+State = Literal["home", "flee", "rest", "return", "eat"]
+Template = dict[Templates, tuple[Drives, list[tuple[Predicate, State]]]]
+TEMPLATES: dict[State, Template] = {
     "goblin": {
-        "territorial": (
-            Drives(seek_player=0.5, seek_den=1.0, flee_anchor=0.5),
-            [(hp_below(15.0), "fleeing"), (hungry(), "foraging")],
+        "home": (
+            Drives(seek_player=1.0, seek_den=1.0),
+            [(hp_below(15.0), "flee"), (hungry(), "eat")],
         ),
-        "fleeing": (
-            Drives(flee_player=1.0, flee_anchor=0.5),
-            [(player_far(12), "recovering")],
+        "flee": (
+            Drives(flee_player=1.0, flee_anchor=1.0),
+            [(player_far(12), "rest")],
         ),
-        "recovering": (
+        "rest": (
             Drives(flee_player=0.5, seek_den=0.5, flee_anchor=0.5),
-            [(hp_above(70.0), "returning")],
+            [(hp_above(70.0), "return")],
         ),
-        "returning": (
+        "return": (
             Drives(seek_player=0.3, seek_den=1.0, flee_anchor=0.5),
-            [(hp_below(30.0), "fleeing"), (near_den(3), "territorial")],
+            [(hp_below(30.0), "flee"), (near_den(3), "home")],
         ),
-        "foraging": (
+        "eat": (
             Drives(seek_food=1.0, seek_den=0.3, flee_anchor=0.5),
-            [(hp_below(30.0), "fleeing"), (fed(), "territorial")],
+            [(hp_below(30.0), "flee"), (fed(), "home")],
         ),
     },
 }
@@ -137,17 +148,19 @@ TEMPLATES: dict[str, Template] = {
 TICK_RATE = 1.0
 _last_tick = 0.0
 
-# Debug: dump n updates starting from 1, set to 0 to disable
-DEBUG_DUMP_COUNT = 3
-_debug_tick = 0
-
 TILE_SIZE = TILE_STRIDE_H * TILE_STRIDE_W
 
 
 @dataclass(slots=True)
 class DijkstraMap:
     tiles: dict[tuple[int, int], array] = field(default_factory=dict)
-    max_cost: float = 16.0
+    max_cost: float = 32.0
+
+    def transform(self, fn: Callable[[float], float]) -> None:
+        """Apply fn to every cost."""
+        for arr in self.tiles.values:
+            for i, v in enumerate(arr):
+                arr[i] = fn(v)
 
     def __mul__(self, rhs: float) -> "DijkstraMap":
         return DijkstraMap(
@@ -223,135 +236,19 @@ class DijkstraMap:
         tile[local_y * TILE_STRIDE_W + local_x] = cost
 
 
-def _dump_layer(f, name: str, layer: DijkstraMap, tile_key: tuple[int, int]) -> None:
-    """Dump a single layer's costs for a tile as a grid."""
-    tile = layer.tiles.get(tile_key)
-    if not tile:
-        f.write(f"  {name}: (no data for tile)\n")
-        return
-
-    f.write(f"  {name}:\n")
-    for row in range(TILE_STRIDE_H):
-        cells = []
-        for col in range(TILE_STRIDE_W):
-            cost = tile[row * TILE_STRIDE_W + col]
-            if cost >= layer.max_cost:
-                cells.append(" -- ")
-            else:
-                cells.append(f"{cost:4.1f}")
-        f.write("    " + " ".join(cells) + "\n")
-
-
-def _dump_combined_cost(
-    f,
-    tile_key: tuple[int, int],
-    drives: Drives,
-    player_layer: DijkstraMap,
-    flee_player_layer: DijkstraMap,
-    food_layer: DijkstraMap,
-    den_layer: DijkstraMap,
-    flee_anchor_layer: DijkstraMap,
-) -> None:
-    """Dump the combined cost for each cell in a tile."""
-    f.write("  combined_cost:\n")
-    for row in range(TILE_STRIDE_H):
-        cells = []
-        for col in range(TILE_STRIDE_W):
-            y = tile_key[0] + row
-            x = tile_key[1] + col
-            cost = (
-                player_layer.get_cost(y, x) * drives.seek_player
-                + flee_player_layer.get_cost(y, x) * drives.flee_player
-                + food_layer.get_cost(y, x) * drives.seek_food
-                + den_layer.get_cost(y, x) * drives.seek_den
-                + flee_anchor_layer.get_cost(y, x) * drives.flee_anchor
-            )
-            if cost >= 100:
-                cells.append(" -- ")
-            else:
-                cells.append(f"{cost:4.1f}")
-        f.write("    " + " ".join(cells) + "\n")
-
-
-def _dump_debug(
-    tick: int,
-    map_id: EntityId,
-    mobs: list[tuple[EntityId, "Behavior", Transform]],
-    player_layer: DijkstraMap,
-    flee_player_layer: DijkstraMap,
-    food_layer: DijkstraMap,
-    den_layer: DijkstraMap,
-    anchor_layer: DijkstraMap,
-    flee_anchor_layer: DijkstraMap,
-    dens: list[tuple[int, int]],
-    players: list[tuple[Transform, "Noun"]],
-    anchors: list[tuple[int, int]],
-    food: list[tuple[int, int]],
-) -> None:
-    """Dump debug info for drives system to file."""
-    filename = f"drives_debug_{tick}.txt"
-    with open(filename, "w") as f:
-        f.write("=" * 60 + "\n")
-        f.write(f"DRIVES DEBUG TICK {tick}\n")
-        f.write("=" * 60 + "\n")
-        f.write(f"players: {[(tf.y, tf.x) for tf, _ in players]}\n")
-        f.write(f"dens: {dens}\n")
-        f.write(f"anchors: {anchors}\n")
-        f.write(f"food: {food}\n\n")
-
-        for eid, behavior, loc in mobs:
-            template = TEMPLATES.get(behavior.template)
-            state_data = template.get(behavior.state) if template else None
-            drives = state_data[0] if state_data else Drives()
-
-            f.write(
-                f"mob {eid} at ({loc.y}, {loc.x}) state={behavior.state} "
-                f"template={behavior.template}\n"
-            )
-            f.write(
-                f"  drives: seek_player={drives.seek_player} flee_player={drives.flee_player} "
-                f"seek_food={drives.seek_food} seek_den={drives.seek_den} "
-                f"flee_anchor={drives.flee_anchor}\n"
-            )
-
-            # Dump layers for the tile containing this mob
-            tile_y = loc.y // TILE_STRIDE_H * TILE_STRIDE_H
-            tile_x = loc.x // TILE_STRIDE_W * TILE_STRIDE_W
-            tile_key = (tile_y, tile_x)
-            f.write(f"  tile: {tile_key}\n")
-
-            _dump_layer(f, "player_layer", player_layer, tile_key)
-            _dump_layer(f, "flee_player_layer", flee_player_layer, tile_key)
-            _dump_layer(f, "food_layer", food_layer, tile_key)
-            _dump_layer(f, "den_layer", den_layer, tile_key)
-            _dump_layer(f, "anchor_layer", anchor_layer, tile_key)
-            _dump_layer(f, "flee_anchor_layer", flee_anchor_layer, tile_key)
-            _dump_combined_cost(
-                f,
-                tile_key,
-                drives,
-                player_layer,
-                flee_player_layer,
-                food_layer,
-                den_layer,
-                flee_anchor_layer,
-            )
-
-    log.info("wrote %s", filename)
-
-
 def process() -> None:
     global _last_tick
     now = get_looptime()
     if now - _last_tick < 1.0 / TICK_RATE:
         return
     _last_tick = now
-
-    mobs_by_map: dict[EntityId, list[tuple[EntityId, Behavior, Transform]]] = {}
-    for eid, (behavior, loc) in esper.get_components(Behavior, Transform):
+    mobs_by_map: dict[EntityId, list[tuple[EntityId, Behavior, Transform, Health]]] = {}
+    for eid, (behavior, loc, health) in esper.get_components(
+        Behavior, Transform, Health
+    ):
         if loc.map_id not in mobs_by_map:
             mobs_by_map[loc.map_id] = []
-        mobs_by_map[loc.map_id].append((eid, behavior, loc))
+        mobs_by_map[loc.map_id].append((eid, behavior, loc, health))
 
     for map_id, mobs in mobs_by_map.items():
         player_layer = DijkstraMap()
@@ -379,14 +276,13 @@ def process() -> None:
             if tf.map_id == map_id
         ]
 
-        dens = [
-            (tf.y, tf.x)
-            for _, (tf, _) in esper.get_components(Transform, Den)
-            if tf.map_id == map_id
-        ]
-
+        dens: list[tuple[int, int]] = []
+        for _, (tf, den) in esper.get_components(Transform, Den):
+            if tf.map_id == map_id:
+                dens.extend(chebyshev_box(tf.y, tf.x, den.influence_range))
         player_layer.scan(goals=[(tf.y, tf.x) for tf, _ in players], map_id=map_id)
         flee_player_layer = player_layer * -1.2
+        player_layer.transform(expo_decay)
         flee_player_layer.relax(map_id)
 
         food_layer.scan(goals=food, map_id=map_id)
@@ -396,28 +292,8 @@ def process() -> None:
         flee_anchor_layer.relax(map_id)
 
         den_layer.scan(goals=dens, map_id=map_id)
-
-        # Debug dump
-        global _debug_tick
-        if DEBUG_DUMP_COUNT > 0 and _debug_tick < DEBUG_DUMP_COUNT:
-            _debug_tick += 1
-            _dump_debug(
-                tick=_debug_tick,
-                map_id=map_id,
-                mobs=mobs,
-                player_layer=player_layer,
-                flee_player_layer=flee_player_layer,
-                food_layer=food_layer,
-                den_layer=den_layer,
-                anchor_layer=anchor_layer,
-                flee_anchor_layer=flee_anchor_layer,
-                dens=dens,
-                players=players,
-                anchors=anchors,
-                food=food,
-            )
-
-        for eid, behavior, loc in mobs:
+        den_layer.transform(quadratic_growth)
+        for eid, behavior, loc, health in mobs:
             if act.is_busy(eid):
                 continue
 
@@ -440,10 +316,14 @@ def process() -> None:
 
             # React: attack player if aggressive
             if drives.seek_player > 0.3:
+                attacked = False
                 for player_tf, name in players:
                     if reach.adjacent(loc, player_tf):
                         bus.pulse(bus.Inbound(source=eid, text=f"attack {name}"))
+                        attacked = True
                         break
+                if attacked:
+                    continue
 
             # Movement: find minimum-cost neighbor (stay put if already at minimum)
             current_score = (
@@ -476,3 +356,51 @@ def process() -> None:
 
             if best_direction:
                 bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+                continue
+            # else at local minimum
+
+            if health.cur < 100.0:
+                bus.pulse(bus.Inbound(source=eid, text="rest"))
+                continue
+
+
+def expo_decay(v: float) -> float:
+    """Exponential decay of gradient: max * (1 - e^(-v/scale))"""
+    # ┌──────────┬────────────────────────┬──────────┐
+    # │ Distance │ Cost (max=16, scale=8) │ Gradient │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 0        │ 0.0                    │ —        │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 1        │ 1.9                    │ 1.9      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 4        │ 6.3                    │ 1.1      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 8        │ 10.1                   │ 0.5      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 16       │ 13.9                   │ 0.15     │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 24       │ 15.2                   │ 0.04     │
+    # └──────────┴────────────────────────┴──────────┘
+    # Gradient itself decays exponentially.
+    return 16 * (1 - math.exp(-v / 1.4))
+
+
+def quadratic_growth(v: float) -> float:
+    """Quadratic: v² / scale"""
+    # ┌──────────┬──────┬──────────┐
+    # │ Distance │ Cost │ Gradient │
+    # ├──────────┼──────┼──────────┤
+    # │ 0        │ 0.0  │ —        │
+    # ├──────────┼──────┼──────────┤
+    # │ 1        │ 0.25 │ 0.5      │
+    # ├──────────┼──────┼──────────┤
+    # │ 2        │ 1.0  │ 1.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 4        │ 4.0  │ 2.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 6        │ 9.0  │ 3.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 8        │ 16.0 │ 4.0      │
+    # └──────────┴──────┴──────────┘
+    # Weak pull when close, increasingly urgent the further you stray.
+    return 1 / 4 * v**2
