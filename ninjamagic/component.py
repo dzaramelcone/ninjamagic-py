@@ -446,13 +446,13 @@ class Drives:
     """Mob AI drives that weight different goals.
 
     Higher values = stronger pull toward that goal type.
+    Aggression/fear scale with distance - closer players have more pull.
     """
 
     aggression: float = 0.0  # Attack players
     fear: float = 0.0  # Flee from players
     hunger: float = 0.0  # Seek food
     anchor_hate: float = 0.0  # Attack anchors
-    detection_range: int = 6  # Range to detect players for aggression/fear
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:
