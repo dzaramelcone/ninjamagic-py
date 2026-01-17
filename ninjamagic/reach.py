@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator
-from typing import Any
+from typing import Any, TypeVar
 
 import esper
 
@@ -7,6 +7,15 @@ from ninjamagic.component import EntityId, Noun, Transform, transform
 from ninjamagic.util import VIEW_STRIDE_H, VIEW_STRIDE_W
 
 Selector = Callable[[Transform, Transform], bool]
+T = TypeVar("T")
+
+
+def find_at(position: Transform, component: type[T]) -> tuple[EntityId, T] | None:
+    """Find first entity at position with given component."""
+    for eid, (tf, cmp) in esper.get_components(Transform, component):
+        if tf == position:
+            return eid, cmp
+    return None
 
 
 def adjacent(this: Transform, that: Transform) -> bool:

@@ -6,6 +6,7 @@ import esper
 
 from ninjamagic import bus, reach, story, util
 from ninjamagic.component import (
+    Anchor,
     ContainedBy,
     Container,
     Cookware,
@@ -18,6 +19,7 @@ from ninjamagic.component import (
     Noun,
     Prompt,
     ProvidesHeat,
+    ProvidesLight,
     Skills,
     Slot,
     Stance,
@@ -333,7 +335,48 @@ class Eat(Command):
             return OK
         if not in_hands:
             return False, "You're not holding that."
-        bus.pulse(bus.Eat(source=root.source, food=food))
+
+        # Auto-sit at anchor if one is in the same cell
+        src_tf = transform(root.source)
+        stance = esper.component_for_entity(root.source, Stance)
+        auto_sat = False
+        if found := reach.find_at(src_tf, Anchor):
+            anchor, _ = found
+            if stance.prop != anchor:
+                bus.pulse(
+                    bus.StanceChanged(
+                        source=root.source, stance="sitting", prop=anchor, echo=False
+                    )
+                )
+                auto_sat = True
+
+        # Check eating conditions for feedback (use anchor if we auto-sat)
+        prop = anchor if auto_sat else (stance.prop if esper.entity_exists(stance.prop) else 0)
+        is_warm = prop and esper.has_component(prop, ProvidesHeat)
+        is_lit = prop and esper.has_component(prop, ProvidesLight)
+        is_lit = is_lit or NightClock().brightness_index >= 6
+        is_safe = prop and esper.has_component(prop, Anchor)
+
+        if auto_sat:
+            story.echo("{0} {0:settles} by {1:def} to eat...", root.source, anchor)
+        elif is_warm and is_lit and is_safe:
+            story.echo("{0} {0:begins} to eat, content...", root.source)
+        elif not is_lit:
+            story.echo("{0} {0:eats} in the dark...", root.source)
+        elif not is_warm:
+            story.echo("{0} {0:shivers}, eating in the cold...", root.source)
+        elif not is_safe:
+            story.echo("{0} {0:eats} warily, eyes on the shadows...", root.source)
+        else:
+            story.echo("{0} {0:begins} to eat...", root.source)
+
+        bus.pulse(
+            bus.Act(
+                source=root.source,
+                delay=get_melee_delay(),
+                then=(bus.Eat(source=root.source, food=food),),
+            )
+        )
         return OK
 
 
