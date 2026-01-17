@@ -856,8 +856,7 @@ HELP_TEXTS: dict[str, tuple[str, str]] = {
     "forage": ("forage", "Forage for items."),
     "eat": ("eat <food>", "Eat food."),
     "time": ("time", "Check the current time."),
-    "help": ("help <command>", "Get help for a command. Type 'commands' for list."),
-    "commands": ("commands", "List available commands."),
+    "help": ("help [command]", "Get help for a command, or list all commands."),
 }
 
 
@@ -872,16 +871,33 @@ class Help(Command):
         rest = rest.strip().lower()
 
         if not rest:
-            usage, desc = HELP_TEXTS["help"]
-            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
+            hidden = {*[d.value for d in Compass], "ne", "nw", "se", "sw"}
+            cmd_names = sorted({cmd.text for cmd in commands} - hidden)
+            width = max(len(name) for name in cmd_names) + 2
+            rows = []
+            for i in range(0, len(cmd_names), 5):
+                row = [name.ljust(width) for name in cmd_names[i : i + 5]]
+                rows.append("".join(row).rstrip())
+            grid = "\n".join(rows)
             bus.pulse(
-                bus.Outbound(to=root.source, text=f"Usage:\n{usage_lines}\n\n  {desc}")
+                bus.Outbound(
+                    to=root.source,
+                    text=f"Commands:\n{grid}\n\nType 'help <command>' for details.",
+                )
+            )
+            return OK
+
+        if rest == "help help":
+            bus.pulse(
+                bus.Outbound(to=root.source, text="You need somebody.")
             )
             return OK
 
         if rest == "help":
+            usage, desc = HELP_TEXTS["help"]
+            usage_lines = "\n".join(f"  {line}" for line in usage.split("\n"))
             bus.pulse(
-                bus.Outbound(to=root.source, text="You need somebody.")
+                bus.Outbound(to=root.source, text=f"Usage:\n{usage_lines}\n\n  {desc}")
             )
             return OK
 
@@ -894,7 +910,7 @@ class Help(Command):
         if not cmd_match:
             bus.pulse(
                 bus.Outbound(
-                    to=root.source, text=f"No command '{rest}'. Type 'commands' for list."
+                    to=root.source, text=f"No command '{rest}'. Type 'help' for list."
                 )
             )
             return OK
@@ -907,30 +923,6 @@ class Help(Command):
             text = f"No help available for '{cmd_match.text}'."
 
         bus.pulse(bus.Outbound(to=root.source, text=text))
-        return OK
-
-
-class Commands(Command):
-    text: str = "commands"
-    requires_healthy: bool = False
-    requires_not_busy: bool = False
-    requires_standing: bool = False
-
-    def trigger(self, root: bus.Inbound) -> Out:
-        hidden = {"commands", *[d.value for d in Compass], "ne", "nw", "se", "sw"}
-        cmd_names = sorted({cmd.text for cmd in commands} - hidden)
-        width = max(len(name) for name in cmd_names) + 2
-        rows = []
-        for i in range(0, len(cmd_names), 5):
-            row = [name.ljust(width) for name in cmd_names[i : i + 5]]
-            rows.append("".join(row).rstrip())
-        grid = "\n".join(rows)
-        bus.pulse(
-            bus.Outbound(
-                to=root.source,
-                text=f"Commands:\n{grid}\n\nType 'help <command>' for details.",
-            )
-        )
         return OK
 
 
@@ -962,5 +954,4 @@ commands: list[Command] = [
     Eat(),
     Time(),
     Help(),
-    Commands(),
 ]
