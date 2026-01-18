@@ -264,6 +264,7 @@ class Act(Signal):
     "An entity act that will pulse `then` at `end`."
 
     source: EntityId
+    target: EntityId = 0
     delay: float
     then: tuple[Signal, ...]
     start: Looptime = field(default_factory=get_looptime)

@@ -4,7 +4,7 @@ from typing import Protocol
 
 import esper
 
-from ninjamagic import bus, reach, story, util
+from ninjamagic import act, bus, reach, story, util
 from ninjamagic.component import (
     Anchor,
     ContainedBy,
@@ -160,14 +160,14 @@ class Attack(Command):
         if target_health and target_health.condition != "normal":
             return False, f"They're {target_health.condition}!"
 
-        ok, err = assert_target_available(target, root.source)
-        if not ok:
-            return False, err
+        if act.attacked_by_other(root.source, target):
+            return False, "They're being attacked!"
 
         story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
         bus.pulse(
             bus.Act(
                 source=root.source,
+                target=target,
                 delay=get_melee_delay(),
                 then=(bus.Melee(source=root.source, target=target, verb="punch"),),
             ),
