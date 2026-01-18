@@ -181,7 +181,7 @@ class FightTimer:
     last_atk_proc: Looptime
     last_def_proc: Looptime
     last_refresh: Looptime
-    attacker: EntityId = 0
+    target: EntityId = 0
 
     def is_active(self) -> bool:
         return get_looptime() - self.last_refresh < settings.fight_timer_len
@@ -189,9 +189,9 @@ class FightTimer:
     def get_default_target(self) -> EntityId:
         if not self.is_active():
             return 0
-        if not esper.entity_exists(self.attacker):
+        if not esper.entity_exists(self.target):
             return 0
-        return self.attacker
+        return self.target
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])

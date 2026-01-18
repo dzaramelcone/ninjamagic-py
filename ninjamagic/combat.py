@@ -102,8 +102,8 @@ def process(now: Looptime):
         )
 
         source_fight_timer = touch_fight_timer(source, now)
+        source_fight_timer.target = target
         target_fight_timer = touch_fight_timer(target, now)
-        target_fight_timer.attacker = source
 
         if defense := esper.try_component(target, Defending):
             esper.remove_component(target, Defending)
