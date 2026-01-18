@@ -1,12 +1,9 @@
-import pytest
-
 from ninjamagic.util import TILE_STRIDE_H, TILE_STRIDE_W
 from ninjamagic.world.goblin_den import (
-    generate_den_prefab,
-    pick_adjacent_tile,
-    stamp_den_prefab,
-    find_open_spots,
     DEN_SIZE,
+    find_open_spots,
+    generate_den_prefab,
+    stamp_den_prefab,
 )
 
 
@@ -32,42 +29,6 @@ def test_generate_den_prefab_has_walkable_cells():
 
     walkable_count = sum(1 for cell in prefab if cell == 0)
     assert walkable_count >= 8, "Den should have at least 8 walkable cells"
-
-
-def test_pick_adjacent_tile_returns_existing_adjacent():
-    """Should return a tile key that exists in chips and is adjacent to origin."""
-    h, w = TILE_STRIDE_H, TILE_STRIDE_W
-    chips = {
-        (0, 0): bytearray(256),
-        (h, 0): bytearray(256),
-        (0, w): bytearray(256),
-    }
-    origin = (0, 0)
-
-    result = pick_adjacent_tile(chips, origin)
-
-    # Result should be one of the adjacent tiles that exist
-    assert result in [(h, 0), (0, w)]
-
-
-def test_pick_adjacent_tile_with_multiple_options():
-    """Should pick randomly among available adjacent tiles."""
-    h, w = TILE_STRIDE_H, TILE_STRIDE_W
-    chips = {
-        (0, 0): bytearray(256),
-        (h, 0): bytearray(256),
-        (-h, 0): bytearray(256),
-        (0, w): bytearray(256),
-        (0, -w): bytearray(256),
-    }
-    origin = (0, 0)
-
-    results = {pick_adjacent_tile(chips, origin) for _ in range(50)}
-
-    # Should pick from the 4 adjacent tiles
-    expected = {(h, 0), (-h, 0), (0, w), (0, -w)}
-    assert results.issubset(expected)
-    assert len(results) > 1, "Should pick different tiles across runs"
 
 
 def test_stamp_den_prefab_only_copies_walkable_cells():

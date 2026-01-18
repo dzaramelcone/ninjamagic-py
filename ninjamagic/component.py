@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass as component, field, fields
+from dataclasses import dataclass, dataclass as component, field, fields
 from enum import StrEnum, auto
 from typing import Literal, NewType, TypeVar
 
@@ -155,11 +155,44 @@ class Anchor:
     rankup_echo: str
 
 
+@dataclass
+class SpawnSlot:
+    """A spawn point within a den."""
+
+    map_id: EntityId
+    y: int
+    x: int
+    mob_eid: EntityId = 0
+    kill_time: Looptime = 0
+    spawn_time: Looptime = 0
+
+    def is_ready(self, respawn_delay: float) -> bool:
+        """Check if this slot is ready for (re)spawning."""
+        if not self.mob_eid:
+            return True  # never spawned
+        if not esper.entity_exists(self.mob_eid):
+            # Entity cleaned up - check cooldown
+            return get_looptime() - self.kill_time > respawn_delay
+        health = esper.component_for_entity(self.mob_eid, Health)
+        if health.condition != "dead":
+            return False  # mob alive
+        return get_looptime() - self.kill_time > respawn_delay
+
+
 @component(slots=True)
 class Den:
-    """Mob safe zone."""
+    """Mob spawn point with respawn logic."""
 
-    influence_range: int = 2
+    slots: list[SpawnSlot] = field(default_factory=list)
+    respawn_delay: float = 60.0  # 1 minute
+    wake_distance: int = 16  # Chebyshev distance
+
+
+@component(slots=True)
+class FromDen:
+    """This mob was spawned by a den."""
+
+    slot: SpawnSlot
 
 
 @component(slots=True, kw_only=True)

@@ -1,5 +1,4 @@
-from ninjamagic.component import Chips
-from ninjamagic.util import EIGHT_DIRS, FOUR_DIRS, RNG, TILE_STRIDE_H, TILE_STRIDE_W
+from ninjamagic.util import EIGHT_DIRS, RNG, TILE_STRIDE_H, TILE_STRIDE_W
 
 DEN_SIZE = 8
 BIRTH = {5, 6, 7}
@@ -46,17 +45,6 @@ def generate_den_prefab() -> bytearray:
         grid = _game_of_life(grid)
 
     return bytearray(grid.cast("B"))
-
-
-def pick_adjacent_tile(chips: Chips, origin: tuple[int, int]) -> tuple[int, int]:
-    """Pick a random tile that exists in chips and is adjacent to origin."""
-    oy, ox = origin
-    adjacent = [
-        (oy + dy * TILE_STRIDE_H, ox + dx * TILE_STRIDE_W)
-        for dy, dx in FOUR_DIRS
-        if (oy + dy * TILE_STRIDE_H, ox + dx * TILE_STRIDE_W) in chips
-    ]
-    return RNG.choice(adjacent)
 
 
 def stamp_den_prefab(
