@@ -28,6 +28,17 @@ uv run ty check
 # Frontend (in fe/ directory)
 npm run dev      # dev server with HMR
 npm run build    # production build to ninjamagic/static/gen/
+
+
+uv run memray run -o mem_profile.bin -m uvicorn ninjamagic.main:app
+uv run memray flamegraph mem_profile.bin -o mem_profile.html
+open mem_profile.html
+
+
+uv run python -m cProfile -o profile.pstats -m uvicorn ninjamagic.main:app
+# play, ctrl-c, then:
+uv add --dev snakeviz
+uv run snakeviz profile.pstats
 ```
 
 ## Who You're Working With
