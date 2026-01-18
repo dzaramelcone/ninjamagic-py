@@ -7,6 +7,7 @@ import esper
 from ninjamagic import act, bus, reach, story, util
 from ninjamagic.component import (
     Anchor,
+    Connection,
     ContainedBy,
     Container,
     Cookware,
@@ -131,6 +132,12 @@ class Move(Command):
         self.dir = Compass(self.text)
 
     def trigger(self, root: bus.Inbound) -> Out:
+        if act.being_attacked(root.source):
+            now = get_looptime()
+            if esper.has_component(root.source, Connection):
+                esper.add_component(root.source, now + settings.stun_len, Lag)
+            return False, "You're being attacked!"
+
         bus.pulse(bus.MoveCompass(source=root.source, dir=self.dir))
         return OK
 
@@ -228,6 +235,10 @@ class Say(Command):
         _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "You open your mouth, as if to speak."
+        if act.being_attacked(root.source):
+            now = get_looptime()
+            if esper.has_component(root.source, Connection):
+                esper.add_component(root.source, now + settings.stun_len, Lag)
         story.echo("{0} {0:says}, '{speech}'", root.source, speech=rest)
         return OK
 
@@ -240,7 +251,7 @@ class Shout(Command):
         if not rest:
             return False, "Shout what?"
         story.echo(
-            "{0} {0:shouts}, '{speech}'", root.source, speech=rest, range=reach.world
+            "{0} {0:shouts}, '{rest}!'", root.source, rest=rest, range=reach.world
         )
         return OK
 

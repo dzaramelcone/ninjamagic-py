@@ -4,15 +4,10 @@ from ninjamagic import bus
 from ninjamagic.component import (
     Connection,
     ContainedBy,
-    FightTimer,
-    Health,
-    Lag,
     Slot,
     Transform,
     transform,
 )
-from ninjamagic.config import settings
-from ninjamagic.util import get_looptime
 from ninjamagic.world.state import can_enter
 
 
@@ -37,19 +32,6 @@ def process():
             esper.add_component(sig.source, Slot.ANY)
 
     for sig in bus.iter(bus.MoveCompass):
-        # Can't move while being attacked
-        if ft := esper.try_component(sig.source, FightTimer):
-            if ft.is_active() and ft.attacker:
-                attacker_health = esper.try_component(ft.attacker, Health)
-                if attacker_health and attacker_health.condition != "dead":
-                    now = get_looptime()
-                    esper.add_component(sig.source, now + settings.flee_lag, Lag)
-                    if esper.has_component(sig.source, Connection):
-                        bus.pulse(
-                            bus.Outbound(to=sig.source, text="You can't escape!")
-                        )
-                    continue
-
         loc = transform(sig.source)
 
         delta_y, delta_x = sig.dir.to_vector()

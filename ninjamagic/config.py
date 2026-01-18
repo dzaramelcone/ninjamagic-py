@@ -29,7 +29,6 @@ class Settings(BaseSettings):
 
     base_proc_odds: float = 0.10
     fight_timer_len: float = 10.0
-    flee_lag: float = 1.5
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__", env_file="ninjamagic.env"
