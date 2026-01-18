@@ -1,0 +1,5 @@
+-- Bootstrap migration tracking table
+CREATE TABLE IF NOT EXISTS _migrations (
+  name TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ DEFAULT now()
+);
