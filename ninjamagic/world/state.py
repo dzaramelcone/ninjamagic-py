@@ -4,7 +4,6 @@ import esper
 
 from ninjamagic.component import (
     Anchor,
-    Behavior,
     Chips,
     ChipSet,
     ContainedBy,
@@ -23,6 +22,7 @@ from ninjamagic.component import (
     ProvidesShelter,
     Skills,
     Slot,
+    SpawnSlot,
     Stance,
     Stats,
     Transform,
@@ -42,7 +42,6 @@ from ninjamagic.world import simple
 from ninjamagic.world.goblin_den import (
     find_open_spots,
     generate_den_prefab,
-    pick_adjacent_tile,
     stamp_den_prefab,
 )
 
@@ -57,7 +56,7 @@ def create_mob(
     name: str,
     glyph: tuple[str, float, float, float],
     pronoun: Pronoun = Pronouns.IT,
-    behavior: Behavior | None = None,
+    components: tuple = (),
 ) -> EntityId:
     eid = esper.create_entity(
         Transform(map_id=map_id, y=y, x=x),
@@ -66,10 +65,9 @@ def create_mob(
         Stance(),
         Skills(),
         Stats(),
+        *components,
     )
     esper.add_component(eid, glyph, Glyph)
-    if behavior:
-        esper.add_component(eid, behavior)
     return eid
 
 
@@ -118,105 +116,69 @@ def create_item(
     return eid
 
 
-def build_goblin_den(map_id: EntityId, chips: Chips):
-    """Build a goblin den in a tile adjacent to (0,0)."""
-    tile_key = pick_adjacent_tile(chips, origin=(0, 0))
-    tile = chips[tile_key]
-    log.info("goblin den placed in tile %s", tile_key)
+def place_dens(map_id: EntityId, chips: Chips) -> None:
+    """Place goblin dens with terrain modifications in each tile (except hub).
 
-    prefab = generate_den_prefab()
+    Each den gets:
+    - Terrain modification via cellular automata cave generation
+    - A goblin hovel prop
+    - Decoration props (bones, skull, totem)
+    - SpawnSlots for dormant mob spawning when players approach
+    """
     lut = [1, 2]  # 0 (walkable) -> 1 (floor), 1 (wall) -> 2 (wall)
-    offset_y, offset_x = stamp_den_prefab(tile, prefab, lut)
-
-    tile_y, tile_x = tile_key
-
-    # Find open spots for placing objects
-    spots = find_open_spots(tile, offset_y, offset_x, walkable_id=1, n=5)
-
-    # Place the goblin hut (with Den component)
-    hut_y, hut_x = spots[0]
-    hut = create_prop(
-        map_id=map_id,
-        y=tile_y + hut_y,
-        x=tile_x + hut_x,
-        name="hut",
-        adjective="goblin",
-        glyph=("Π", 0.08, 0.35, 0.45),
-    )
-    esper.add_component(hut, Den())
-
-    # Place some goblin props
     prop_defs = [
         ("bones", "⸸", 0.08, 0.15, 0.75),
         ("skull", "☠", 0.08, 0.10, 0.85),
         ("totem", "ᚲ", 0.08, 0.40, 0.50),
     ]
-    for i, (name, glyph, h, s, v) in enumerate(prop_defs):
-        if i + 1 >= len(spots):
-            break
-        py, px = spots[i + 1]
-        create_prop(
-            map_id=map_id,
-            y=tile_y + py,
-            x=tile_x + px,
-            name=name,
-            glyph=(glyph, h, s, v),
-        )
 
-    # Place the goblin near the hut
-    goblin_y, goblin_x = spots[0] if len(spots) == 1 else spots[1]
-    create_mob(
-        map_id=map_id,
-        y=tile_y + goblin_y,
-        x=tile_x + goblin_x,
-        name="goblin",
-        glyph=("g", 0.25, 0.7, 0.6),
-        behavior=Behavior(),
-    )
-
-
-def spawn_goblin_swarms(map_id: EntityId, chips: Chips):
-    """Spawn a den and 1-3 goblins in each tile (except hub at 0,0)."""
     for (tile_y, tile_x), tile in chips.items():
         if (tile_y, tile_x) == (0, 0):
             continue
 
-        # Find walkable spots in this tile
-        walkable = []
-        for offset in range(TILE_STRIDE_H * TILE_STRIDE_W):
-            if tile[offset] == 1:  # walkable floor
-                y = tile_y + offset // TILE_STRIDE_W
-                x = tile_x + offset % TILE_STRIDE_W
-                walkable.append((y, x))
+        # Generate and stamp cave terrain
+        prefab = generate_den_prefab()
+        offset_y, offset_x = stamp_den_prefab(tile, prefab, lut)
 
-        if not walkable:
+        # Find open spots for placing objects
+        spots = find_open_spots(tile, offset_y, offset_x, walkable_id=1, n=5)
+        if not spots:
             continue
 
-        # Place a den
-        den_y, den_x = RNG.choice(walkable)
-        den = create_prop(
+        # Place hovel at first spot
+        hut_y, hut_x = spots[0]
+        den_eid = create_prop(
             map_id=map_id,
-            y=den_y,
-            x=den_x,
+            y=tile_y + hut_y,
+            x=tile_x + hut_x,
             name="hovel",
             adjective="goblin",
             glyph=("π", 0.08, 0.30, 0.40),
         )
-        esper.add_component(den, Den())
 
-        # Spawn 1-3 goblins
-        count = RNG.randint(1, 3)
-        spots = RNG.sample(walkable, min(count, len(walkable)))
-
-        for gy, gx in spots:
-            create_mob(
+        # Place decoration props at spots 1-3
+        for i, (name, glyph, h, s, v) in enumerate(prop_defs):
+            if i + 1 >= len(spots):
+                break
+            py, px = spots[i + 1]
+            create_prop(
                 map_id=map_id,
-                y=gy,
-                x=gx,
-                name="goblin",
-                glyph=("g", 0.25, 0.7, 0.6),
-                behavior=Behavior(),
+                y=tile_y + py,
+                x=tile_x + px,
+                name=name,
+                glyph=(glyph, h, s, v),
             )
+
+        # Create spawn slots for mob spawning (use spots 0 and 4 if available)
+        spawn_spots = [spots[0]]
+        if len(spots) > 4:
+            spawn_spots.append(spots[4])
+        elif len(spots) > 1:
+            spawn_spots.append(spots[-1])
+        slots = [
+            SpawnSlot(map_id=map_id, y=tile_y + y, x=tile_x + x) for y, x in spawn_spots
+        ]
+        esper.add_component(den_eid, Den(slots=slots))
 
 
 def build_nowhere() -> EntityId:
@@ -323,8 +285,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
     esper.add_component(bedroll, 10, Level)
 
-    build_goblin_den(map_id, chips)
-    spawn_goblin_swarms(map_id, chips)
+    place_dens(map_id, chips)
 
     # fmt: off
     chips[(0,0)] = bytearray([
