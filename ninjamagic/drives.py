@@ -13,7 +13,7 @@ from typing import Literal
 
 import esper
 
-from ninjamagic import act, bus, reach, util
+from ninjamagic import act, bus, util
 from ninjamagic.component import (
     Anchor,
     Behavior,
@@ -410,10 +410,15 @@ def process() -> None:
                 if stance.cur != "standing":
                     bus.pulse(bus.Inbound(source=eid, text="stand"))
                     continue
-                if hit := reach.find_at(loc, Connection):
-                    player, _ = hit
-                    name = esper.component_for_entity(player, Noun).value
-                    bus.pulse(bus.Inbound(source=eid, text=f"attack {name}"))
+                if target := next(
+                    (
+                        noun
+                        for _, (_, noun, health) in esper.get_components(Connection, Noun, Health)
+                        if health.condition == "normal"
+                    ),
+                    None,
+                ):
+                    bus.pulse(bus.Inbound(source=eid, text=f"attack {target}"))
                     continue
 
             # Movement: find minimum-cost neighbor (stay put if already at minimum)
