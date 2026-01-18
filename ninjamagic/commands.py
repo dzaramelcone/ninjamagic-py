@@ -4,14 +4,16 @@ from typing import Protocol
 
 import esper
 
-from ninjamagic import bus, reach, story, util
+from ninjamagic import act, bus, reach, story, util
 from ninjamagic.component import (
     Anchor,
+    Connection,
     ContainedBy,
     Container,
     Cookware,
     Defending,
     EntityId,
+    FightTimer,
     Food,
     Health,
     Ingredient,
@@ -130,6 +132,12 @@ class Move(Command):
         self.dir = Compass(self.text)
 
     def trigger(self, root: bus.Inbound) -> Out:
+        if act.being_attacked(root.source):
+            now = get_looptime()
+            if esper.has_component(root.source, Connection):
+                esper.add_component(root.source, now + settings.stun_len, Lag)
+            return False, "You're being attacked!"
+
         bus.pulse(bus.MoveCompass(source=root.source, dir=self.dir))
         return OK
 
@@ -140,28 +148,33 @@ class Attack(Command):
     requires_not_busy: bool = False
 
     def trigger(self, root: bus.Inbound) -> Out:
+        target = 0
         _, _, rest = root.text.partition(" ")
-        if not rest:
-            return False, "Attack whom?"
-        match = reach.find_one(
+        if match := reach.find_one(
             root.source,
             rest,
             reach.adjacent,
             with_components=(Health, Stance, Skills),
-        )
-        if not match:
+        ):
+            target, _, _ = match
+        elif ft := esper.try_component(root.source, FightTimer):
+            target = ft.get_default_target()
+
+        if not target:
             return False, "Attack whom?"
 
-        target, _, _ = match
+        target_health = esper.try_component(target, Health)
+        if target_health and target_health.condition != "normal":
+            return False, f"They're {target_health.condition}!"
 
-        health = esper.try_component(target, Health)
-        if health and health.condition != "normal":
-            return False, f"They're {health.condition}!"
+        if act.attacked_by_other(root.source, target):
+            return False, "They're being attacked!"
 
         story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
         bus.pulse(
             bus.Act(
                 source=root.source,
+                target=target,
                 delay=get_melee_delay(),
                 then=(bus.Melee(source=root.source, target=target, verb="punch"),),
             ),
@@ -222,6 +235,10 @@ class Say(Command):
         _, _, rest = root.text.partition(" ")
         if not rest:
             return False, "You open your mouth, as if to speak."
+        if act.being_attacked(root.source):
+            now = get_looptime()
+            if esper.has_component(root.source, Connection):
+                esper.add_component(root.source, now + settings.stun_len, Lag)
         story.echo("{0} {0:says}, '{speech}'", root.source, speech=rest)
         return OK
 
@@ -234,7 +251,7 @@ class Shout(Command):
         if not rest:
             return False, "Shout what?"
         story.echo(
-            "{0} {0:shouts}, '{speech}'", root.source, speech=rest, range=reach.world
+            "{0} {0:shouts}, '{rest}!'", root.source, rest=rest, range=reach.world
         )
         return OK
 
