@@ -37,17 +37,9 @@ open mem_profile.html
 
 uv run python -m cProfile -o profile.pstats -m uvicorn ninjamagic.main:app
 # play, ctrl-c, then:
-uv add --dev snakeviz
+# uv add --dev snakeviz
 uv run snakeviz profile.pstats
 ```
-
-## Who You're Working With
-
-Dzara. Game designer, SWE. Building a MUD-style survival game focused on emergent player dynamics.
-
-Don't ask what she wants—propose something and be wrong. She'll push back hard and you'll both learn.
-
-She likes dark humor. Catch her wordplay.
 
 ## Code Philosophy
 
