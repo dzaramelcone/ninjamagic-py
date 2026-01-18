@@ -23,9 +23,7 @@ from ninjamagic.util import (
 Biomes = Literal["cave", "forest"]
 Conditions = Literal["normal", "unconscious", "in shock", "dead"]
 Stances = Literal["standing", "kneeling", "sitting", "lying prone"]
-ProcVerb = Literal[
-    "slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"
-]
+ProcVerb = Literal["slash", "slice", "stab", "thrust", "punch", "dodge", "block", "shield", "parry"]
 T = TypeVar("T")
 EntityId = int
 MAX_HEALTH = 100.0
@@ -185,7 +183,7 @@ class Den:
 
     slots: list[SpawnSlot] = field(default_factory=list)
     respawn_delay: float = 60.0  # 1 minute
-    wake_distance: int = 16  # Chebyshev distance
+    wake_distance: int = int(settings.pathing_distance)  # Chebyshev distance
 
 
 @component(slots=True)
@@ -498,20 +496,15 @@ class Drives:
 
     seek_player: float = 0.0
     flee_player: float = 0.0
-    seek_food: float = 0.0
     seek_den: float = 0.0
     flee_anchor: float = 0.0
-
-
-@component(slots=True, kw_only=True)
-class Needs:
-    hunger: float = 0.0  # 0 = full, 1 = starving
 
 
 @component(slots=True, kw_only=True)
 class Behavior:
     template: str = "goblin"
     state: str = "home"
+    decision_interval: float = 0.33
 
 
 def get_component[T](entity: EntityId, component: type[T]) -> T:

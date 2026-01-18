@@ -259,6 +259,7 @@ class Compass(StrEnum):
             case _:
                 raise ValueError(f"Unknown compass {self!r}")
 
+
 SERIAL = itertools.count(1)
 
 
@@ -377,9 +378,7 @@ class Trial(Enum):
         return cls.SOMEWHAT_HARD.value <= mult <= cls.VERY_HARD.value
 
     @classmethod
-    def get_award(
-        cls, *, mult: float, base_award: float = 0.025, danger: float = 1
-    ) -> float:
+    def get_award(cls, *, mult: float, base_award: float = 0.025, danger: float = 1) -> float:
         """Calculate the award for a trial."""
 
         award = 0
@@ -427,3 +426,45 @@ class Feat(Enum):
         """Assess the outcome of a contest as a feat."""
 
         return next((d for d in cls if d.value <= mult), cls.CRITICAL_FAILURE)
+
+
+def expo_decay(v: float) -> float:
+    """Exponential decay of gradient: max * (1 - e^(-v/scale))"""
+    # ┌──────────┬────────────────────────┬──────────┐
+    # │ Distance │ Cost (max=16, scale=8) │ Gradient │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 0        │ 0.0                    │ —        │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 1        │ 1.9                    │ 1.9      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 4        │ 6.3                    │ 1.1      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 8        │ 10.1                   │ 0.5      │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 16       │ 13.9                   │ 0.15     │
+    # ├──────────┼────────────────────────┼──────────┤
+    # │ 24       │ 15.2                   │ 0.04     │
+    # └──────────┴────────────────────────┴──────────┘
+    # Gradient itself decays exponentially.
+    return 16 * (1 - math.exp(-v / 0.8))
+
+
+def quadratic_growth(v: float) -> float:
+    """Quadratic: v² / scale"""
+    # ┌──────────┬──────┬──────────┐
+    # │ Distance │ Cost │ Gradient │
+    # ├──────────┼──────┼──────────┤
+    # │ 0        │ 0.0  │ —        │
+    # ├──────────┼──────┼──────────┤
+    # │ 1        │ 0.25 │ 0.5      │
+    # ├──────────┼──────┼──────────┤
+    # │ 2        │ 1.0  │ 1.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 4        │ 4.0  │ 2.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 6        │ 9.0  │ 3.0      │
+    # ├──────────┼──────┼──────────┤
+    # │ 8        │ 16.0 │ 4.0      │
+    # └──────────┴──────┴──────────┘
+    # Weak pull when close, increasingly urgent the further you stray.
+    return 1 / 8 * v**2
