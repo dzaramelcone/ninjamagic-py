@@ -176,6 +176,11 @@ class SpawnSlot:
             return False  # mob alive
         return get_looptime() - self.kill_time > respawn_delay
 
+    def clear(self) -> None:
+        self.mob_eid = 0
+        self.kill_time = 0
+        self.spawn_time = 0
+
 
 @component(slots=True)
 class Den:
@@ -184,6 +189,10 @@ class Den:
     slots: list[SpawnSlot] = field(default_factory=list)
     respawn_delay: float = 60.0  # 1 minute
     wake_distance: int = int(settings.pathing_distance)  # Chebyshev distance
+
+    def clear(self) -> None:
+        for slot in self.slots:
+            slot.clear()
 
 
 @component(slots=True)

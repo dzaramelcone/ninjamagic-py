@@ -142,6 +142,10 @@ class RestCheck(Signal): ...
 class NightstormWarning(Signal): ...
 
 
+class DespawnMobs(Signal):
+    """Nightly signal to remove all spawned mobs."""
+
+
 @signal(frozen=True, slots=True, kw_only=True)
 class MoveEntity(Signal):
     "`source` moved into `container` in `slot`."

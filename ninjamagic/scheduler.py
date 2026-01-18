@@ -1,7 +1,10 @@
 import heapq
 from collections.abc import Generator
 
+import esper
+
 from ninjamagic import bus, reach, story
+from ninjamagic.component import Den, FromDen
 from ninjamagic.nightclock import NightClock, NightDelta, NightTime
 from ninjamagic.util import serial
 
@@ -15,9 +18,7 @@ def cue_at(sig: bus.Signal, at: NightClock, recur: Rule | None = None) -> None:
     heapq.heappush(pq, (at, serial(), sig, recur))
 
 
-def cue(
-    sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None
-) -> None:
+def cue(sig: bus.Signal, time: NightTime | None = None, recur: Rule | None = None) -> None:
     eta = clock + clock.next(time or NightTime())
     cue_at(sig, eta, recur)
 
@@ -33,8 +34,9 @@ def recurring(
 
 
 def start() -> None:
-    cue(bus.RestCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
     cue(bus.NightstormWarning(), time=NightTime(hour=1, minute=50), recur=recurring(forever=True))
+    cue(bus.RestCheck(), time=NightTime(hour=2), recur=recurring(forever=True))
+    cue(bus.DespawnMobs(), time=NightTime(hour=2), recur=recurring(forever=True))
 
 
 def process() -> None:
@@ -49,3 +51,8 @@ def process() -> None:
     # todo regional
     for _ in bus.iter(bus.NightstormWarning):
         story.echo("The worst of night approaches! Take cover!", range=reach.world)
+    if not bus.is_empty(bus.DespawnMobs):
+        for eid, _ in esper.get_component(FromDen):
+            esper.delete_entity(eid)
+        for _, den in esper.get_component(Den):
+            den.clear()

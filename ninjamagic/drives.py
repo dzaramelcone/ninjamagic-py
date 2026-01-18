@@ -23,7 +23,6 @@ from ninjamagic.component import (
     Drives,
     EntityId,
     Food,
-    FromDen,
     Health,
     Noun,
     Stance,
@@ -134,7 +133,6 @@ TEMPLATES: dict[TemplateName, Template] = {
 }
 
 TICK_RATE = 1.0
-DESPAWN_TIMEOUT = 120.0  # 2 minutes
 
 _last_tick = 0.0
 _seen: set[EntityId] = set()
@@ -456,22 +454,3 @@ def process() -> None:
             if health.cur < 100.0:
                 bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue
-
-    """Despawn mobs that have been idle too long with no players nearby."""
-    for eid, (loc, from_den) in esper.get_components(Transform, FromDen):
-        if now - from_den.slot.spawn_time < DESPAWN_TIMEOUT:
-            continue
-
-        # Check if any player is within wake_distance
-        player_nearby = False
-        for _, (tf, _, health) in esper.get_components(Transform, Connection, Health):
-            if health.condition == "dead" or tf.map_id != loc.map_id:
-                continue
-            if reach.chebyshev(24, 24, loc.map_id, loc.y, loc.x, tf.map_id, tf.y, tf.x):
-                player_nearby = True
-                break
-        if player_nearby:
-            continue
-        # Despawn: clear slot and delete entity
-        from_den.slot.mob_eid = 0
-        esper.delete_entity(eid)
