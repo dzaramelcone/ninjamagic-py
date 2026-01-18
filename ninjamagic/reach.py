@@ -62,4 +62,6 @@ def find_one(
     with_components: tuple[type[Any], ...] = (),
 ) -> tuple[EntityId, Noun, Transform] | None:
     """Find first matching entity or None."""
+    if not prefix:
+        return None
     return next(find(source, prefix, in_range, with_components=with_components), None)

@@ -186,6 +186,13 @@ class FightTimer:
     def is_active(self) -> bool:
         return get_looptime() - self.last_refresh < settings.fight_timer_len
 
+    def get_default_target(self) -> EntityId:
+        if not self.is_active():
+            return 0
+        if not esper.entity_exists(self.attacker):
+            return 0
+        return self.attacker
+
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
 Glyph = NewType("Glyph", tuple[str, float, float, float])

@@ -64,21 +64,6 @@ def assert_standing(source: EntityId) -> Out:
     return OK
 
 
-def assert_target_available(target: EntityId, attacker: EntityId) -> Out:
-    """Check target isn't already engaged with another attacker."""
-    ft = esper.try_component(target, FightTimer)
-    if not ft or not ft.is_active() or not ft.attacker:
-        return OK
-    if ft.attacker == attacker:
-        return OK
-    if not esper.entity_exists(ft.attacker):
-        return OK
-    attacker_health = esper.try_component(ft.attacker, Health)
-    if not attacker_health or attacker_health.condition == "dead":
-        return OK
-    return False, "They're already engaged!"
-
-
 class Command(Protocol):
     text: str
     requires_healthy: bool = True
@@ -156,26 +141,20 @@ class Attack(Command):
     requires_not_busy: bool = False
 
     def trigger(self, root: bus.Inbound) -> Out:
-        _, _, rest = root.text.partition(" ")
-
         target = 0
-        if not rest:
-            # Default to current attacker if in combat
-            ft = esper.try_component(root.source, FightTimer)
-            if ft and ft.is_active() and ft.attacker and esper.entity_exists(ft.attacker):
-                target = ft.attacker
-            else:
-                return False, "Attack whom?"
-        else:
-            match = reach.find_one(
-                root.source,
-                rest,
-                reach.adjacent,
-                with_components=(Health, Stance, Skills),
-            )
-            if not match:
-                return False, "Attack whom?"
+        _, _, rest = root.text.partition(" ")
+        if match := reach.find_one(
+            root.source,
+            rest,
+            reach.adjacent,
+            with_components=(Health, Stance, Skills),
+        ):
             target, _, _ = match
+        elif ft := esper.try_component(root.source, FightTimer):
+            target = ft.get_default_target()
+
+        if not target:
+            return False, "Attack whom?"
 
         target_health = esper.try_component(target, Health)
         if target_health and target_health.condition != "normal":
