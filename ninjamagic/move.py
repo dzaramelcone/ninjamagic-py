@@ -27,7 +27,20 @@ def process():
                 bus.pulse(bus.Outbound(to=sig.source, text="You can't go there."))
             continue
 
+        bus.pulse(
+            bus.PositionChanged(
+                source=sig.source,
+                from_map_id=loc.map_id,
+                from_x=loc.x,
+                from_y=loc.y,
+                to_map_id=loc.map_id,
+                to_x=to_x,
+                to_y=to_y,
+            )
+        )
         # Wake nearby dens before position change so mobs exist for visibility
+        if not esper.has_component(sig.source, Connection):
+            continue
         for _, (den, tf) in esper.get_components(Den, Transform):
             if not reach.chebyshev(
                 den.wake_distance,
@@ -54,19 +67,6 @@ def process():
                         ),
                     )
                     slot.spawn_time = get_looptime()
-
-        bus.pulse(
-            bus.PositionChanged(
-                source=sig.source,
-                from_map_id=loc.map_id,
-                from_x=loc.x,
-                from_y=loc.y,
-                to_map_id=loc.map_id,
-                to_x=to_x,
-                to_y=to_y,
-            )
-        )
-
     for sig in bus.iter(bus.MovePosition):
         loc = transform(sig.source)
         bus.pulse(
