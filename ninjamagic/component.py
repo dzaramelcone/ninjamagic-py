@@ -64,7 +64,6 @@ ActId = NewType("ActId", int)
 @dataclass(frozen=True)
 class Armor:
     skill_key: str
-    item_rank: int  # armor's rank
     physical_immunity: float  # 0..1 (cap on how much it could block vs physical)
     magical_immunity: float  # 0..1 (cap vs magical)
 

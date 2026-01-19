@@ -14,6 +14,7 @@ from ninjamagic.component import (
     FightTimer,
     FromDen,
     Lag,
+    Level,
     get_wielded_weapon,
     get_worn_armor,
     health,
@@ -101,10 +102,12 @@ def process(now: Looptime):
         mitigation_factor = 1.0
         if has_worn_armor := get_worn_armor(target):
             aid, armor = has_worn_armor
+            level = esper.try_component(aid, Level) or Level(0)
             mitigation_factor = mitigate(
                 defend_ranks=target_skills[armor.skill_key].rank,
                 attack_ranks=attack.rank,
                 armor=armor,
+                item_level=level,
             )
 
         skill_mult = contest(attack.rank, defend.rank)
