@@ -118,15 +118,15 @@ TEMPLATES: dict[TemplateName, Template] = {
             [(hp_below(15.0), "flee")],
         ),
         "flee": (
-            Drives(flee_player=1.0, flee_anchor=1.0),
+            Drives(flee_player=1.0),
             [(player_far(20), "rest")],
         ),
         "rest": (
-            Drives(flee_player=1.0, seek_den=0.1, flee_anchor=0.1),
+            Drives(seek_den=0.1, flee_anchor=1.0),
             [(player_near(6), "flee"), (hp_above(70.0), "return")],
         ),
         "return": (
-            Drives(seek_player=0.5, seek_den=1.0, flee_anchor=0.5),
+            Drives(seek_player=0.5, seek_den=2.0, flee_anchor=0.5),
             [(hp_below(30.0), "flee"), (near_den(3), "home")],
         ),
     },
@@ -452,15 +452,14 @@ def process() -> None:
                     best_score = score
                     best_direction = direction
 
-            if best_direction:
-                if stance.cur != "standing":
-                    bus.pulse(bus.Inbound(source=eid, text="stand"))
-                    continue
-                if not act.being_attacked(eid):
-                    bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+            if not best_direction:
+                # at local minimum
+                if health.cur < 100.0:
+                    bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue
 
-            # else at local minimum
-            if not act.being_attacked(eid) and health.cur < 100.0:
-                bus.pulse(bus.Inbound(source=eid, text="rest"))
+            if stance.cur != "standing":
+                bus.pulse(bus.Inbound(source=eid, text="stand"))
                 continue
+            bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+            continue
