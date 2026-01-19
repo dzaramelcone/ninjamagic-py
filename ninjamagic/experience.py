@@ -4,7 +4,7 @@ from functools import partial
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Anchor, AwardCap, EntityId, Skills, skills
+from ninjamagic.component import Anchor, AwardCap, EntityId, Skill, Skills, skills
 from ninjamagic.config import settings
 from ninjamagic.util import Trial
 
@@ -25,6 +25,13 @@ def send_skills(entity: EntityId):
 def process_with_skills_for_test(source: int, skills: Skills):
     esper.add_component(source, skills)
     process()
+
+
+def apply_death_payout(*, skill: Skill, remaining: float) -> None:
+    if remaining <= 0:
+        return
+    skill.tnl += remaining
+    skill.pending += remaining
 
 
 def process():

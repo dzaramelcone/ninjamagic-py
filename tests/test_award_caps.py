@@ -6,6 +6,15 @@ from ninjamagic.component import AwardCap, Skill
 from ninjamagic.config import settings
 
 
+def test_death_payout_awards_instant_and_pending():
+    skill = Skill(name="Martial Arts", tnl=0.0, pending=0.0)
+
+    experience.apply_death_payout(skill=skill, remaining=0.3)
+
+    assert skill.tnl == 0.3
+    assert skill.pending == 0.3
+
+
 def test_award_caps_clamp_pending(monkeypatch):
     try:
         source = esper.create_entity()

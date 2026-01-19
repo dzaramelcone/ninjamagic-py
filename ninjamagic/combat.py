@@ -7,6 +7,7 @@ import esper
 from ninjamagic import bus, reach, story, util
 from ninjamagic.armor import mitigate
 from ninjamagic.component import (
+    AwardCap,
     Connection,
     Defending,
     DoubleDamage,
@@ -14,6 +15,7 @@ from ninjamagic.component import (
     FightTimer,
     FromDen,
     Lag,
+    Skills,
     get_wielded_weapon,
     get_worn_armor,
     health,
@@ -22,6 +24,8 @@ from ninjamagic.component import (
     stance,
     transform,
 )
+from ninjamagic.experience import apply_death_payout
+from ninjamagic.config import settings
 from ninjamagic.util import (
     RNG,
     Looptime,
@@ -225,6 +229,24 @@ def process(now: Looptime):
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
         bus.pulse(bus.ConditionChanged(source=sig.source, condition="dead"))
+        if award_cap := esper.try_component(sig.source, AwardCap):
+            for learner_id, skill_map in award_cap.learners.items():
+                if not esper.entity_exists(learner_id):
+                    continue
+                learner_skills = esper.try_component(learner_id, Skills)
+                if not learner_skills:
+                    continue
+                for skill_name, (total, last) in skill_map.items():
+                    if now - last > settings.award_cap_ttl:
+                        continue
+                    remaining = settings.award_cap - total
+                    if remaining <= 0:
+                        continue
+                    try:
+                        learner_skill = learner_skills[skill_name]
+                    except KeyError:
+                        continue
+                    apply_death_payout(skill=learner_skill, remaining=remaining)
         # PC
         if esper.has_component(sig.source, Connection):
             schedule_respawn(sig.source)
