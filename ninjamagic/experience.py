@@ -29,6 +29,7 @@ def process():
         skill = sig.skill
         award = Trial.get_award(mult=sig.mult)
         skill.tnl += award
+        skill.pending += award
         if award:
             rest = esper.try_component(sig.source, RestExp)
             if not rest:
