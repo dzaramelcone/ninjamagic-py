@@ -456,10 +456,11 @@ def process() -> None:
                 if stance.cur != "standing":
                     bus.pulse(bus.Inbound(source=eid, text="stand"))
                     continue
-                bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+                if not act.being_attacked(eid):
+                    bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
                 continue
 
             # else at local minimum
-            if health.cur < 100.0:
+            if not act.being_attacked(eid) and health.cur < 100.0:
                 bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue
