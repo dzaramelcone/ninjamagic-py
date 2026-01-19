@@ -145,7 +145,6 @@ def process(now: Looptime):
 
             continue
 
-        # Weapon damage
         damage = skill_mult * source_pain_mult * base_damage
         damage *= mitigation_factor
 
@@ -155,7 +154,7 @@ def process(now: Looptime):
 
         dmg_story = "{0} {0:hits} {1} for {damage:.1f}% damage!"
         if dmg_story_key:
-            dmg_story = story.get_damage_story(dmg_story_key, damage)
+            dmg_story = story.get_damage_story(dmg_story_key, damage / health(target).cur)
 
         story.echo(
             dmg_story,

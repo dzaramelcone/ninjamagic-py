@@ -32,8 +32,7 @@ def get_damage_story(
 
     def map_damage_to_key(damage: float, levels: int) -> int:
         """Map damage percentage to severity index (0 to levels-1)."""
-        normalized = max(0.0, min(100.0, damage)) / 100.0
-        index = int(normalized * levels)
+        index = int(damage * levels)
         return min(index, levels - 1)
 
     # bodypart = RNG.choice(bodyparts) <- comes from anatomy
