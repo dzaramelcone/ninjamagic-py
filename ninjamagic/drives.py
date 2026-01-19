@@ -387,7 +387,6 @@ def process() -> None:
         )
         anchor_layer, flee_anchor_layer = _get_layer(map_id, _goals_anchor, with_flee=True)
         den_layer, _ = _get_layer(map_id, _goals_den, transform_fn=util.quadratic_growth)
-
         for eid, behavior, loc, health, stance in mobs:
             heapq.heappush(_pq, (now + behavior.decision_interval, eid))
 
@@ -413,8 +412,13 @@ def process() -> None:
                 if target := next(
                     (
                         noun
-                        for _, (_, noun, health) in esper.get_components(Connection, Noun, Health)
+                        for _, (_, tf, noun, health) in esper.get_components(
+                            Connection, Transform, Noun, Health
+                        )
                         if health.condition == "normal"
+                        and tf.map_id == loc.map_id
+                        and tf.y == y
+                        and tf.x == x
                     ),
                     None,
                 ):
