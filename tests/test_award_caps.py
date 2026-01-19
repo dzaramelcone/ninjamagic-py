@@ -2,17 +2,31 @@ import esper
 
 import ninjamagic.bus as bus
 import ninjamagic.experience as experience
-from ninjamagic.component import AwardCap, Skill
+from ninjamagic.component import AwardCap, Skill, Skills
 from ninjamagic.config import settings
 
 
-def test_death_payout_awards_instant_and_pending():
-    skill = Skill(name="Martial Arts", tnl=0.0, pending=0.0)
+def test_death_payout_awards_instant_and_pending(monkeypatch):
+    try:
+        learner = esper.create_entity()
+        mob = esper.create_entity()
+        skills = Skills(martial_arts=Skill(name="Martial Arts", tnl=0.0, pending=0.0))
+        esper.add_component(learner, skills)
+        esper.add_component(
+            mob,
+            AwardCap(learners={learner: {"Martial Arts": (0.2, 100.0)}}),
+        )
 
-    experience.apply_death_payout(skill=skill, remaining=0.3)
+        monkeypatch.setattr(experience.util, "get_looptime", lambda: 100.0)
 
-    assert skill.tnl == 0.3
-    assert skill.pending == 0.3
+        bus.pulse(bus.Die(source=mob))
+        experience.process()
+
+        assert skills.martial_arts.tnl == settings.award_cap - 0.2
+        assert skills.martial_arts.pending == settings.award_cap - 0.2
+    finally:
+        esper.clear_database()
+        bus.clear()
 
 
 def test_award_caps_clamp_pending(monkeypatch):

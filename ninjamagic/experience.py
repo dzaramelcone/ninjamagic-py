@@ -11,7 +11,7 @@ from ninjamagic.util import Trial
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
-NEWBIE_MAX = 2.0
+NEWBIE_MAX = 100.0
 
 
 def send_skills(entity: EntityId):
@@ -30,20 +30,39 @@ def process_with_skills_for_test(source: int, skills: Skills):
     process()
 
 
-def apply_death_payout(*, skill: Skill, remaining: float) -> None:
-    if remaining <= 0:
-        return
-    skill.tnl += remaining
-    skill.pending += remaining
-
-
 def newbie_multiplier(rank: int) -> float:
     if rank >= 50:
         return 1.0
-    return 1.0 + (NEWBIE_MAX - 1.0) * (1.0 - (rank / 50.0))
+    t = util.clamp01(rank / 50.0)
+    progress = util.ease_out_expo(1.0 - t)
+    return 1.0 + (NEWBIE_MAX - 1.0) * progress
 
 
 def process():
+    for sig in bus.iter(bus.Die):
+        award_cap = esper.try_component(sig.source, AwardCap)
+        if not award_cap:
+            continue
+        now = util.get_looptime()
+        for learner_id, skill_map in award_cap.learners.items():
+            if not esper.entity_exists(learner_id):
+                continue
+            learner_skills = esper.try_component(learner_id, Skills)
+            if not learner_skills:
+                continue
+            for skill_name, (total, last) in skill_map.items():
+                if now - last > settings.award_cap_ttl:
+                    continue
+                remaining = settings.award_cap - total
+                if remaining <= 0:
+                    continue
+                try:
+                    learner_skill = learner_skills[skill_name]
+                except KeyError:
+                    continue
+                learner_skill.tnl += remaining
+                learner_skill.pending += remaining
+
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
         award_cap = None
