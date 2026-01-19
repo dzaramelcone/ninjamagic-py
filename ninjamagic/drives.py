@@ -67,9 +67,9 @@ def player_far(distance: float) -> Predicate:
     def check(eid: EntityId) -> bool:
         loc = esper.component_for_entity(eid, Transform)
         for _, (tf, _, health) in esper.get_components(Transform, Connection, Health):
-            if tf.map_id != loc.map_id or health.condition == "dead":
+            if tf.map_id != loc.map_id or health.condition != "normal":
                 continue
-            d = abs(tf.y - loc.y) + abs(tf.x - loc.x)
+            d = max(abs(tf.y - loc.y), abs(tf.x - loc.x))
             if d < distance:
                 return False
         return True
@@ -81,9 +81,9 @@ def player_near(distance: float) -> Predicate:
     def check(eid: EntityId) -> bool:
         loc = esper.component_for_entity(eid, Transform)
         for _, (tf, _, health) in esper.get_components(Transform, Connection, Health):
-            if tf.map_id != loc.map_id or health.condition == "dead":
+            if tf.map_id != loc.map_id or health.condition != "normal":
                 continue
-            d = abs(tf.y - loc.y) + abs(tf.x - loc.x)
+            d = max(abs(tf.y - loc.y), abs(tf.x - loc.x))
             if d <= distance:
                 return True
         return False
@@ -115,19 +115,19 @@ TEMPLATES: dict[TemplateName, Template] = {
     "goblin": {
         "home": (
             Drives(seek_player=1.0, seek_den=1.0),
-            [(hp_below(15.0), "flee")],
+            [(hp_below(25.0), "flee")],
         ),
         "flee": (
-            Drives(flee_player=1.0, flee_anchor=1.0),
-            [(player_far(20), "rest")],
+            Drives(flee_player=1.0, flee_anchor=0.1),
+            [(player_far(12), "rest")],
         ),
         "rest": (
-            Drives(flee_player=0.5, seek_den=0.5, flee_anchor=0.5),
+            Drives(seek_den=0.1, flee_anchor=1.0),
             [(player_near(4), "flee"), (hp_above(70.0), "return")],
         ),
         "return": (
-            Drives(seek_player=0.3, seek_den=1.0, flee_anchor=0.5),
-            [(hp_below(30.0), "flee"), (near_den(3), "home")],
+            Drives(seek_den=2.0, flee_anchor=0.2),
+            [(hp_below(25.0), "flee"), (near_den(3), "home")],
         ),
     },
 }
@@ -261,7 +261,7 @@ class EmptyDijkstraMap(DijkstraMap):
     """Layer with no goals. Returns 0 so it contributes nothing to scores."""
 
     def get_cost(self, y: int, x: int) -> float:
-        return 0.0
+        return self.max_cost
 
     def __bool__(self) -> bool:
         return False
@@ -400,6 +400,7 @@ def process() -> None:
                 if predicate(eid):
                     behavior.state = next_state
                     drives, _ = template[next_state]
+                    log.debug("%s entered state %s", eid, next_state)
                     break
 
             y, x = loc.y, loc.x
@@ -452,14 +453,14 @@ def process() -> None:
                     best_score = score
                     best_direction = direction
 
-            if best_direction:
-                if stance.cur != "standing":
-                    bus.pulse(bus.Inbound(source=eid, text="stand"))
-                    continue
-                bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+            if not best_direction:
+                # at local minimum
+                if health.cur < 100.0:
+                    bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue
 
-            # else at local minimum
-            if health.cur < 100.0:
-                bus.pulse(bus.Inbound(source=eid, text="rest"))
+            if stance.cur != "standing":
+                bus.pulse(bus.Inbound(source=eid, text="stand"))
                 continue
+            bus.pulse(bus.Inbound(source=eid, text=best_direction.value))
+            continue

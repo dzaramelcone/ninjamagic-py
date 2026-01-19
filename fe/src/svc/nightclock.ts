@@ -8,7 +8,7 @@ export const HOURS_PER_NIGHT = 20;
 export const BASE_NIGHTYEAR = 200;
 export const SECONDS_PER_DAY = 86400;
 
-export const EPOCH = new Date(Date.UTC(2025, 11, 1, 5, 0, 0));
+export const EPOCH = new Date(Date.UTC(2025, 11, 1, 0, 0, 0));
 
 const _cycles = SECONDS_PER_DAY / SECONDS_PER_NIGHT;
 if (Math.abs(_cycles - Math.round(_cycles)) > 1e-9) {
@@ -25,18 +25,7 @@ export const SECONDS_PER_NIGHT_HOUR =
 export const SECONDS_PER_NIGHTSTORM_HOUR =
   SECONDS_PER_NIGHTSTORM / (24 - HOURS_PER_NIGHT);
 
-const EST_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  hour: "numeric",
-  minute: "numeric",
-  second: "numeric",
-  hour12: false,
-});
-
-type ESTParts = {
+type UTCParts = {
   year: number; // e.g. 2025
   month: number; // 1-12
   day: number; // 1-31
@@ -45,39 +34,15 @@ type ESTParts = {
   second: number; // 0-59
 };
 
-function getESTParts(date: Date): ESTParts {
-  const parts = EST_PARTS_FORMATTER.formatToParts(date);
-  let year = 0,
-    month = 0,
-    day = 0,
-    hour = 0,
-    minute = 0,
-    second = 0;
-
-  for (const p of parts) {
-    const v = Number(p.value);
-    switch (p.type) {
-      case "year":
-        year = v;
-        break;
-      case "month":
-        month = v;
-        break;
-      case "day":
-        day = v;
-        break;
-      case "hour":
-        hour = v;
-        break;
-      case "minute":
-        minute = v;
-        break;
-      case "second":
-        second = v;
-        break;
-    }
-  }
-  return { year, month, day, hour, minute, second };
+function getUTCParts(date: Date): UTCParts {
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    second: date.getUTCSeconds(),
+  };
 }
 
 function daysInMonth(year: number, month1Based: number): number {
@@ -97,7 +62,7 @@ export class NightClock {
   }
 
   private get _secondsSinceDtMidnight(): number {
-    const { hour, minute, second } = getESTParts(this.dt);
+    const { hour, minute, second } = getUTCParts(this.dt);
     return hour * 3600 + minute * 60 + second;
   }
 
@@ -130,18 +95,18 @@ export class NightClock {
   // Nightyear / calendar
 
   get nightyears(): number {
-    const { year, month } = getESTParts(this.dt);
+    const { year, month } = getUTCParts(this.dt);
     const monthsSinceEpoch = (year - 2025) * 12 + (month - 12);
     return BASE_NIGHTYEAR + monthsSinceEpoch;
   }
 
   get moons(): number {
-    const { day } = getESTParts(this.dt);
+    const { day } = getUTCParts(this.dt);
     return day;
   }
 
   get nightyearElapsedPct(): number {
-    const { year, month, day, hour, minute, second } = getESTParts(this.dt);
+    const { year, month, day, hour, minute, second } = getUTCParts(this.dt);
     const dim = daysInMonth(year, month); // month is 1..12
 
     const secondsSinceMonthStart =
@@ -258,24 +223,10 @@ export class NightClock {
   }
 
   get nightsThisNightyear(): number {
-    const { year, month } = getESTParts(this.dt);
-    const startYear = year;
-    const startMonth = month; // 1..12
-
-    const startParts = {
-      year: startYear,
-      month: startMonth,
-      day: 1,
-      hour: 0,
-      minute: 0,
-      second: 0,
-    };
-
-    const monthsSinceEpoch =
-      (startParts.year - 2025) * 12 + (startParts.month - 12);
+    const { year, month } = getUTCParts(this.dt);
+    const startUtc = Date.UTC(year, month - 1, 1, 0, 0, 0);
     const secondsSinceEpochAtStartMonth =
-      monthsSinceEpoch * 30 * SECONDS_PER_DAY; // approximate; structure only
-
+      (startUtc - EPOCH.getTime()) / 1000;
     const moonsSinceStart = Math.floor(
       secondsSinceEpochAtStartMonth / SECONDS_PER_DAY
     );
