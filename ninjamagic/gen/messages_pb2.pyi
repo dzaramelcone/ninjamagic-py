@@ -247,17 +247,20 @@ class Skill(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     RANK_FIELD_NUMBER: builtins.int
     TNL_FIELD_NUMBER: builtins.int
+    PENDING_FIELD_NUMBER: builtins.int
     name: builtins.str
     rank: builtins.int
     tnl: builtins.float
+    pending: builtins.float
     def __init__(
         self,
         *,
         name: builtins.str = ...,
         rank: builtins.int = ...,
         tnl: builtins.float = ...,
+        pending: builtins.float = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["name", b"name", "rank", b"rank", "tnl", b"tnl"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "pending", b"pending", "rank", b"rank", "tnl", b"tnl"]) -> None: ...
 
 global___Skill = Skill
 

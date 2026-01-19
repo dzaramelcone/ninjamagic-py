@@ -170,5 +170,6 @@ def try_insert(
             skill.name = sig.name
             skill.rank = sig.rank
             skill.tnl = sig.tnl
+            skill.pending = sig.pending
             return True
     return False

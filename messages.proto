@@ -73,6 +73,7 @@ message Skill {
   string name = 1;
   uint32 rank = 2;
   float tnl = 3;
+  float pending = 4;
 }
 
 message Datetime {

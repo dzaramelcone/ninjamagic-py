@@ -424,6 +424,7 @@ class OutboundSkill(Signal):
     name: str
     rank: int
     tnl: float
+    pending: float
 
 
 def is_empty[T: Signal](cls: type[T]) -> bool:
