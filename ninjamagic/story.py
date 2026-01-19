@@ -7,27 +7,52 @@ from ninjamagic.util import RNG, auto_cap
 FMT = Formatter()
 
 
-def render(data: dict, start: str, *args, seed: int | None = None) -> str:
-    RNG.seed(seed)
+def render(data: dict, start: str, *args, seed: int = 0) -> str:
+    if seed:
+        RNG.seed(seed)
 
     def dfs(key: str, choices: dict) -> str:
         val = RNG.choice(data[key])
         for _, next_key, _, _ in FMT.parse(val):
             if next_key and next_key in data:
                 choices[next_key] = dfs(next_key, choices)
-        return FMT.vformat(val, args, choices)
 
-    return auto_cap(dfs(start, {}))
+        for k, v in choices.items():
+            val = val.replace("{" + k + "}", v)
+        return val
+
+    return dfs(start, {})
+
+
+def get_damage_story(
+    story_key: str,
+    damage: float,
+) -> str:
+    """Generate a damage description based on weapon type and damage amount."""
+
+    def map_damage_to_key(damage: float) -> int:
+        """Map damage percentage to severity index (0 to levels-1)."""
+        return sum(damage >= t for t in (0.175, 0.35, 0.70, 1))
+
+    # bodypart = RNG.choice(bodyparts) <- comes from anatomy
+    bodypart = "neck"  # placeholder
+    severity = DAMAGE[story_key][bodypart]
+    severity_key = map_damage_to_key(damage)
+    return render(STORIES, severity[severity_key])
 
 
 def vrender(
-    story: str, args: tuple[EntityId, ...], kwargs=None, first_person: EntityId = 0
+    story: str,
+    args: tuple[EntityId, ...],
+    kwargs,
+    *,
+    first_person: EntityId = 0,
 ) -> str:
     return auto_cap(
         FMT.vformat(
             story,
             [YOU if v == first_person else noun(v) for v in args if v],
-            kwargs or {},
+            kwargs,
         )
     )
 
@@ -567,62 +592,75 @@ STORIES: dict[str, tuple[str]] = {
     ],
     "a_single_blow_parts_the_head_from_trunk": [
         "A single blow {parts} head from trunk! {gushing} arterial {spray}s stain the {dust} as the corpse {drops}, {a_final_stillness}.",
-        "{0:s} {0.weapon} {cleaves} clean through {1:s} neck! A {spray} of {hot} {blood} {bursts_open} from the stump as life {leaves} the frame!",
-        "{0:s} {0.weapon:hyp} {parts} {1:s} head and body! A {blood} {spray} {blooms} before {1:their} empty husk {buckles}!",
+        "{0:s} {2} {cleaves} clean through {1:s} neck! A {spray} of {hot} {blood} {bursts_open} from the stump as life {leaves} the frame!",
+        "{0:s} {2:hyp} {parts} {1:s} head and body! A {blood} {spray} {blooms} before {1:their} empty husk {buckles}!",
         "{1:s} head {tumbles} free! A thick {fountain} of {blood} marks the spot as the body {drops}!",
         "Head falls one way, body another! a {spray} of {blood} {fans} the space between them! {the_body_fails}.",
-        "{0.weapon} cleaves clean through bone! {1:s} head is sent {flying}! {1:their} corpse {drops}.",
+        "{2:def} cleaves clean through bone! {1:s} head is sent {flying}! {1:their} corpse {drops}.",
     ],
     "the_weapon": (
-        "{0.weapon}",
-        "{0.weapon} in {0:s} hand",
+        "{2}",
+        "{2} in {0:s} hand",
         "{0:their} {swing}",
     ),
     "thigh_bite": (
         "{the_weapon} {bites} {deeply} into {1:s} {thigh}.",
         "{1:s} {thigh} is {bitten} open by {the_weapon}.",
-        "with a {clean} {swing}, {0:their} {0.weapon} {bites} into {1:s} {thigh}, spilling {blood}.",
-        "{the_weapon} lands {0.weapon:their} {edge}. the {bite} opens {muscle}.",
+        "with a {clean} {swing}, {0:their} {2} {bites} into {1:s} {thigh}, spilling {blood}.",
+        "{the_weapon} lands {2:their} {edge}. the {bite} opens {muscle}.",
         "{bone} rattles as {the_weapon} {bites} {1:s} {thigh}.",
         "the {bite} runs long; {blood} leaps from {1:s} {thigh}.",
     ),
     "foot_slash": (
-        "the {0.weapon} skates along the {poss_target} {foot_top}, and {blood} {leap}.",
-        "{0.weapon} {0.weapon:kisses} the {poss_target} {foot_top}; the {target_goblin} {stagger}.",
+        "the {2} skates along the {poss_target} {foot_top}, and {blood} {leap}.",
+        "{2} {2:kisses} the {poss_target} {foot_top}; the {target_goblin} {stagger}.",
         "a mean {swing} rakes the {poss_target} {foot_top}.",
     ),
 }
 
 
-DAMAGE = [
-    # neck
-    "a_silver_whisper_brushes_the_throat",
-    "a_shallow_cut_blooms_a_blood_collar_marks_the_strike",
-    "steel_drives_deep_a_fountain_of_blood_leaps_through_air",
-    "half_severed_the_neck_pours_shoulders_sink_beneath_the_loss",
-    "a_single_blow_parts_the_head_from_trunk",
-    # head
-    "a_skimming_cut_marks_the_scalp",
-    "bone_kissed_the_brow_splits_blood_blinds_one_eye",
-    "steel_bites_through_skull_teeth_clack_a_red_mist",
-    "the_face_halved_jaw_hangs_brain_shows_in_the_cut",
-    "the_head_takes_wing_from_shoulders",
-    # torso
-    "a_line_of_red_on_pale_skin",
-    "a_deep_gash_opens_the_chest_spilling_blood",
-    "steel_sinks_deep_a_killing_thrust_steals_the_breath",
-    "the_belly_is_torn_open_guts_spill_like_rope",
-    "a_single_blow_cleaves_the_body_in_two_a_ruin_of_flesh_and_bone",
-    # arm
-    "a_silver_line_on_the_flesh",
-    "steel_bites_a_red_wound_blooms_wide",
-    "the_blade_drives_deep_parting_muscle_and_the_arm_goes_dead",
-    "a_heavy_blow_shatters_bone_the_limb_hangs_by_shreds",
-    "a_single_arc_of_steel_the_arm_falls_away_leaving_a_gushing_stump",
-    # leg
-    "steel_scores_leather_a_red_line_answers",
-    "the_blade_bites_deep_a_raw_gash_weeps_crimson",
-    "a_heavy_blow_cripples_the_thigh_the_knee_buckles_under_dead_weight",
-    "the_leg_is_hewn_to_the_bone_it_hangs_by_a_ribbon_of_shredded_flesh",
-    "one_clean_stroke_severs_the_limb_it_tumbles_to_the_ground_in_a_spray_of_gore",
-]
+ATTACK: dict[str, str] = {
+    "fist": "{0} {0:draws} back {0:their} fist...",
+    "broadsword": "{0} {0:draws} back {2}...",
+}
+
+
+DAMAGE = {
+    "broadsword": {
+        "neck": [
+            "a_silver_whisper_brushes_the_throat",
+            "a_shallow_cut_blooms_a_blood_collar_marks_the_strike",
+            "steel_drives_deep_a_fountain_of_blood_leaps_through_air",
+            "half_severed_the_neck_pours_shoulders_sink_beneath_the_loss",
+            "a_single_blow_parts_the_head_from_trunk",
+        ],
+        "head": [
+            "a_skimming_cut_marks_the_scalp",
+            "bone_kissed_the_brow_splits_blood_blinds_one_eye",
+            "steel_bites_through_skull_teeth_clack_a_red_mist",
+            "the_face_halved_jaw_hangs_brain_shows_in_the_cut",
+            "the_head_takes_wing_from_shoulders",
+        ],
+        "torso": [
+            "a_line_of_red_on_pale_skin",
+            "a_deep_gash_opens_the_chest_spilling_blood",
+            "steel_sinks_deep_a_killing_thrust_steals_the_breath",
+            "the_belly_is_torn_open_guts_spill_like_rope",
+            "a_single_blow_cleaves_the_body_in_two_a_ruin_of_flesh_and_bone",
+        ],
+        "arm": [
+            "a_silver_line_on_the_flesh",
+            "steel_bites_a_red_wound_blooms_wide",
+            "the_blade_drives_deep_parting_muscle_and_the_arm_goes_dead",
+            "a_heavy_blow_shatters_bone_the_limb_hangs_by_shreds",
+            "a_single_arc_of_steel_the_arm_falls_away_leaving_a_gushing_stump",
+        ],
+        "leg": [
+            "steel_scores_leather_a_red_line_answers",
+            "the_blade_bites_deep_a_raw_gash_weeps_crimson",
+            "a_heavy_blow_cripples_the_thigh_the_knee_buckles_under_dead_weight",
+            "the_leg_is_hewn_to_the_bone_it_hangs_by_a_ribbon_of_shredded_flesh",
+            "one_clean_stroke_severs_the_limb_it_tumbles_to_the_ground_in_a_spray_of_gore",
+        ],
+    }
+}

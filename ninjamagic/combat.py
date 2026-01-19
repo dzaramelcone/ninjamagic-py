@@ -5,6 +5,7 @@ from functools import partial
 import esper
 
 from ninjamagic import bus, reach, story, util
+from ninjamagic.armor import mitigate
 from ninjamagic.component import (
     Connection,
     Defending,
@@ -13,6 +14,8 @@ from ninjamagic.component import (
     FightTimer,
     FromDen,
     Lag,
+    get_wielded_weapon,
+    get_worn_armor,
     health,
     pain_mult,
     skills,
@@ -78,12 +81,32 @@ def process(now: Looptime):
             )
             continue
 
+        source_pain_mult = pain_mult(source)
+        target_pain_mult = pain_mult(target)
+
         source_skills = skills(source)
         target_skills = skills(target)
         attack = source_skills.martial_arts
         defend = target_skills.evasion
-        source_pain_mult = pain_mult(source)
-        target_pain_mult = pain_mult(target)
+        base_damage = 10.0
+        wid = 0
+        dmg_story_key = ""
+        if has_wielded_weapon := get_wielded_weapon(source):
+            wid, weapon = has_wielded_weapon
+            base_damage = weapon.damage
+            attack = source_skills[weapon.skill_key]
+            dmg_story_key = weapon.story_key
+
+        # Armor mitigation
+        mitigation_factor = 1.0
+        if has_worn_armor := get_worn_armor(target):
+            aid, armor = has_worn_armor
+            mitigation_factor = mitigate(
+                defend_ranks=target_skills[armor.skill_key].rank,
+                attack_ranks=attack.rank,
+                armor=armor,
+            )
+
         skill_mult = contest(attack.rank, defend.rank)
 
         bus.pulse(
@@ -122,10 +145,24 @@ def process(now: Looptime):
 
             continue
 
-        damage = skill_mult * source_pain_mult * 10.0
+        damage = skill_mult * source_pain_mult * base_damage
+        damage *= mitigation_factor
+
         if esper.has_component(source, DoubleDamage):
             esper.remove_component(source, DoubleDamage)
             damage *= 2
+
+        dmg_story = "{0} {0:hits} {1} for {damage:.1f}% damage!"
+        if dmg_story_key:
+            dmg_story = story.get_damage_story(dmg_story_key, damage / health(target).cur)
+
+        story.echo(
+            dmg_story,
+            source,
+            target,
+            wid,
+            damage=damage,
+        )
 
         bus.pulse(
             bus.HealthChanged(
@@ -134,13 +171,6 @@ def process(now: Looptime):
                 stress_change=RNG.choice([3.0, 4.0]),
                 aggravated_stress_change=RNG.choice([0.25, 0.5, 0.75]),
             )
-        )
-
-        story.echo(
-            "{0} {0:hits} {1} for {damage:.1f}% damage!",
-            source,
-            target,
-            damage=damage,
         )
 
         if proc(prev=source_fight_timer.last_atk_proc, cur=now):
