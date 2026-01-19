@@ -1,10 +1,11 @@
 import asyncio
+import bisect
 import itertools
 import logging
 import math
 import random
 from collections.abc import MutableSequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, StrEnum
 from typing import Literal, NewType, Self
 
@@ -26,6 +27,89 @@ SINGULAR = 1
 Num = Literal[1, 2]
 LOOP: asyncio.AbstractEventLoop | None = None
 log = logging.getLogger(__name__)
+
+DEFAULT_TICK_BUCKET_EDGES_MS = (4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 24.0, 40.0)
+ANSI_RESET = "\x1b[0m"
+ANSI_GREEN = "\x1b[32m"
+ANSI_YELLOW = "\x1b[33m"
+ANSI_RED = "\x1b[31m"
+
+
+@dataclass
+class TickStats:
+    step: float
+    alpha: float
+    frame_budget_ms: float = 8.0
+    bucket_edges_ms: tuple[float, ...] = DEFAULT_TICK_BUCKET_EDGES_MS
+    jitter_ema: float = 0.0
+    late_ticks: int = 0
+    total_ticks: int = 0
+    bucket_counts: list[int] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.bucket_counts:
+            self.bucket_counts = [0] * (len(self.bucket_edges_ms) + 1)
+
+    def record(self, tick_duration: float, jitter: float) -> None:
+        self.jitter_ema = (1 - self.alpha) * self.jitter_ema + self.alpha * jitter
+        self.total_ticks += 1
+        if tick_duration * 1000.0 > self.frame_budget_ms * 2:
+            self.late_ticks += 1
+        tick_duration_ms = tick_duration * 1000.0
+        index = bisect.bisect_left(self.bucket_edges_ms, tick_duration_ms)
+        self.bucket_counts[index] += 1
+
+    def snapshot_and_reset(self) -> "TickStats":
+        snapshot = TickStats(
+            step=self.step,
+            alpha=self.alpha,
+            bucket_edges_ms=self.bucket_edges_ms,
+            jitter_ema=self.jitter_ema,
+            late_ticks=self.late_ticks,
+            total_ticks=self.total_ticks,
+            bucket_counts=self.bucket_counts.copy(),
+        )
+        self.late_ticks = 0
+        self.total_ticks = 0
+        self.bucket_counts = [0] * (len(self.bucket_edges_ms) + 1)
+        return snapshot
+
+    def __str__(self) -> str:
+        total = self.total_ticks
+        header = (
+            f"tick_rate jitter_ema={self.jitter_ema:.6f}s "
+            f"late={self.late_ticks} total={self.total_ticks}"
+        )
+        labels = []
+        prev = 0.0
+        for edge in self.bucket_edges_ms:
+            labels.append(f"{prev:g}-{edge:g}ms")
+            prev = edge
+        labels.append(f"{self.bucket_edges_ms[-1]:g}ms+")
+        label_width = max(len(label) for label in labels)
+        bar_width = 24
+        lines = [header, "tick_duration_ms:"]
+        step_ms = self.frame_budget_ms
+        for label, count, upper_ms in zip(
+            labels,
+            self.bucket_counts,
+            list(self.bucket_edges_ms) + [self.bucket_edges_ms[-1] + 1.0],
+        ):
+            pct = (count / total * 100.0) if total else 0.0
+            fill = int(round((count / total) * bar_width)) if total else 0
+            bar = "#" * fill + "." * (bar_width - fill)
+            if step_ms <= 0:
+                color = ANSI_GREEN
+            elif upper_ms <= step_ms:
+                color = ANSI_GREEN
+            elif upper_ms <= step_ms * 1.25:
+                color = ANSI_YELLOW
+            else:
+                color = ANSI_RED
+            lines.append(
+                f"{color}{label:>{label_width}} |{bar}| {count:>5} {pct:>5.1f}%{ANSI_RESET}"
+            )
+        return "\n".join(lines)
 
 
 def pop_random[T](q: MutableSequence[T]) -> T:
