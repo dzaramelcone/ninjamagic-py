@@ -125,8 +125,8 @@ async def test_combat_and_exp(golden_ws, client_factory):
             email="alice@x.test",
             health=Health(cur=4.0),  # she's very hurt
             skills=Skills(
-                martial_arts=Skill(name="Martial Arts", tnl=4.0),
-                evasion=Skill(name="Evasion", tnl=4.0),
+                martial_arts=Skill(name="Martial Arts", tnl=4.0, pending=0.2),
+                evasion=Skill(name="Evasion", tnl=4.0, pending=0.1),
             ),
             noun=Noun(value="Alice", pronoun=Pronouns.SHE),
         ),
@@ -138,8 +138,8 @@ async def test_combat_and_exp(golden_ws, client_factory):
             email="bob@x.test",
             noun=Noun(value="Bob", pronoun=Pronouns.HE),
             skills=Skills(
-                martial_arts=Skill(name="Martial Arts", tnl=4.0),
-                evasion=Skill(name="Evasion", tnl=4.0),
+                martial_arts=Skill(name="Martial Arts", tnl=4.0, pending=0.2),
+                evasion=Skill(name="Evasion", tnl=4.0, pending=0.1),
             ),
         ),
     )

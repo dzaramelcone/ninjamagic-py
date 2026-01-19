@@ -1,11 +1,11 @@
 {
   "client": "alice",
-  "len": "174 B",
+  "len": "175 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "Bob hits you for 9.7% damage!"
+          "text": "Bob hits you for 10.1% damage!"
         }
       },
       {
@@ -20,7 +20,7 @@
       },
       {
         "health": {
-          "pct": -0.05661025,
+          "pct": -0.06054473,
           "stress_pct": 0.025
         }
       },
