@@ -24,6 +24,11 @@ def send_skills(entity: EntityId):
     )
 
 
+def process_with_skills_for_test(source: int, skills: Skills):
+    esper.add_component(source, skills)
+    process()
+
+
 def process():
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
@@ -39,26 +44,14 @@ def process():
             log.info("rest gained %s", rest.gained)
 
     for sig in bus.iter(bus.AbsorbRestExp):
-        rest = esper.try_component(sig.source, RestExp)
-        if not rest:
+        skills = esper.try_component(sig.source, Skills)
+        if not skills:
             continue
-        skills = esper.component_for_entity(sig.source, Skills)
-
-        for name, inner in rest.gained.items():
-            skill = skills[name]
-            for eid, award in inner.items():
-                if eid:
-                    award = min(award, MAX_EXP_PER_ENTITY)
-                if ate := esper.try_component(sig.source, Ate):
-                    award *= ate.pips
-                award *= rest.modifiers.get(name, 1)
-                skill.tnl += award
-
-        new_rest = RestExp()
         for skill in skills:
-            if skill.name not in rest.gained:
-                new_rest.modifiers[skill.name] = 1.8
-        esper.add_component(sig.source, new_rest)
+            if skill.pending:
+                skill.tnl += skill.pending * skill.rest_bonus
+                skill.pending = 0.0
+            skill.rest_bonus = 1.0
 
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
