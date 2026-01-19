@@ -421,6 +421,8 @@ class Skill:
     name: str
     rank: int = 0
     tnl: float = 0
+    pending: float = 0.0
+    rest_bonus: float = 1.0
 
 
 @component(slots=True, kw_only=True)
