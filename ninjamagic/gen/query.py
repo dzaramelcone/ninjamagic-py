@@ -3,7 +3,7 @@
 #   sqlc v1.30.0
 # source: query.sql
 import pydantic
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -36,6 +36,12 @@ class GetCharacterBriefRow(pydantic.BaseModel):
     id: int
     owner_id: int
     name: str
+
+
+GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
+
+SELECT id, char_id, name, rank, tnl FROM skills WHERE char_id = :p1
+"""
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -98,6 +104,15 @@ ON CONFLICT (provider, subject) DO UPDATE
   SET email = EXCLUDED.email,
       last_login_at = EXCLUDED.last_login_at
 RETURNING owner_id
+"""
+
+
+UPSERT_SKILL = """-- name: upsert_skill \\:exec
+INSERT INTO skills (char_id, name, rank, tnl)
+VALUES (:p1, :p2, :p3, :p4)
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl
 """
 
 
@@ -182,6 +197,17 @@ class AsyncQuerier:
             name=row[2],
         )
 
+    async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
+        result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_FOR_CHARACTER), {"p1": char_id})
+        async for row in result:
+            yield models.Skill(
+                id=row[0],
+                char_id=row[1],
+                name=row[2],
+                rank=row[3],
+                tnl=row[4],
+            )
+
     async def update_character(self, arg: UpdateCharacterParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPDATE_CHARACTER), {
             "p1": arg.id,
@@ -212,3 +238,11 @@ class AsyncQuerier:
         if row is None:
             return None
         return row[0]
+
+    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float) -> None:
+        await self._conn.execute(sqlalchemy.text(UPSERT_SKILL), {
+            "p1": char_id,
+            "p2": name,
+            "p3": rank,
+            "p4": tnl,
+        })

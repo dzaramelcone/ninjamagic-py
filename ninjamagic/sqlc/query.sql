@@ -47,3 +47,15 @@ SET
   tnl_evasion = coalesce(sqlc.narg('tnl_evasion'), tnl_evasion),
   updated_at = now()
 WHERE id = $1;
+
+-- Skills
+
+-- name: GetSkillsForCharacter :many
+SELECT * FROM skills WHERE char_id = $1;
+
+-- name: UpsertSkill :exec
+INSERT INTO skills (char_id, name, rank, tnl)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl;
