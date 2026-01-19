@@ -96,7 +96,9 @@ def process():
             if skill.pending:
                 skill.tnl += skill.pending * skill.rest_bonus
                 skill.pending = 0.0
-            skill.rest_bonus = 1.0
+                skill.rest_bonus = 1.0
+            else:
+                skill.rest_bonus = 1.8
 
     for sig in bus.iter(bus.Learn):
         skill = sig.skill

@@ -42,6 +42,24 @@ def test_absorb_rest_exp_consolidates_pending():
         bus.clear()
 
 
+def test_absorb_rest_exp_applies_idle_bonus():
+    try:
+        source = esper.create_entity()
+        skills = Skills(
+            martial_arts=Skill(name="Martial Arts", tnl=0.1, pending=0.0, rest_bonus=1.0)
+        )
+
+        bus.pulse(bus.AbsorbRestExp(source=source))
+
+        experience.process_with_skills_for_test(source=source, skills=skills)
+
+        assert skills.martial_arts.rest_bonus == 1.8
+        assert skills.martial_arts.pending == 0.0
+    finally:
+        esper.clear_database()
+        bus.clear()
+
+
 def test_restexp_removed():
     import ninjamagic.component as component
 
