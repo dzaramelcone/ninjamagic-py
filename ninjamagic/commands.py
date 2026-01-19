@@ -28,11 +28,13 @@ from ninjamagic.component import (
     Stances,
     Stowed,
     Stunned,
+    Weapon,
     Wearable,
     get_contents,
     get_hands,
     get_stored,
     get_worn,
+    noun,
     stance_is,
     transform,
 )
@@ -170,7 +172,17 @@ class Attack(Command):
         if act.attacked_by_other(root.source, target):
             return False, "They're being attacked!"
 
-        story.echo("{0} {0:draws} back {0:their} fist...", root.source, target)
+        _, right_hand = get_hands(root.source)
+        story_key = "fist"
+        i_eid = 0
+        if right_hand:
+            i_eid, _, _ = right_hand
+            weapon = esper.try_component(i_eid, Weapon)
+            if not weapon:
+                return False, f"You can't attack with {noun(i_eid)}!"
+            story_key = weapon.story_key
+
+        story.echo(story.ATTACK[story_key], root.source, target, i_eid)
         bus.pulse(
             bus.Act(
                 source=root.source,

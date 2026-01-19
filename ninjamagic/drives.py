@@ -258,7 +258,7 @@ class DijkstraMap:
 
 
 class EmptyDijkstraMap(DijkstraMap):
-    """Layer with no goals. Returns 0 so it contributes nothing to scores."""
+    """Dummy layer with no goals."""
 
     def get_cost(self, y: int, x: int) -> float:
         return self.max_cost
@@ -453,8 +453,7 @@ def process() -> None:
                     best_score = score
                     best_direction = direction
 
-            if not best_direction:
-                # at local minimum
+            if not best_direction:  # at local minimum
                 if health.cur < 100.0:
                     bus.pulse(bus.Inbound(source=eid, text="rest"))
                 continue

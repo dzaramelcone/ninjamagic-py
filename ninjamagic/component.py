@@ -60,6 +60,16 @@ class AABB:
 
 
 ActId = NewType("ActId", int)
+
+
+@dataclass(frozen=True)
+class Armor:
+    skill_key: str
+    item_rank: int  # armor's rank
+    physical_immunity: float  # 0..1 (cap on how much it could block vs physical)
+    magical_immunity: float  # 0..1 (cap vs magical)
+
+
 CharacterId = NewType("CharacterId", int)
 Chip = tuple[int, int, int, float, float, float]
 Chips = dict[tuple[int, int], bytearray]
@@ -426,6 +436,12 @@ class Skills:
                 yield v
 
     def __getitem__(self, key: str) -> Skill:
+        # First try field name lookup (e.g., "martial_arts")
+        if hasattr(self, key):
+            attr = getattr(self, key)
+            if isinstance(attr, Skill):
+                return attr
+        # Fall back to display name matching (e.g., "Martial Arts")
         for s in self:
             if s.name == key:
                 return s
@@ -497,6 +513,14 @@ class Transform:
 @component(slots=True, kw_only=True)
 class Wearable:
     slot: Slot
+
+
+@component(slots=True, kw_only=True)
+class Weapon:
+    damage: float = 10.0
+    token_key: str = "slash"
+    story_key: str = "blade"
+    skill_key: str = "martial_arts"
 
 
 @component(slots=True, kw_only=True)
@@ -591,3 +615,28 @@ def get_worn(
         for eid, (noun, loc, slot) in esper.get_components(Noun, ContainedBy, Slot)
         if loc == source and slot not in (Slot.LEFT_HAND, Slot.RIGHT_HAND)
     ]
+
+
+def get_wielded_weapon(source: EntityId) -> tuple[EntityId, Weapon] | None:
+    """Get the entity ID of the weapon in source's hands, or 0 if unarmed."""
+    for eid, (loc, slot) in esper.get_components(ContainedBy, Slot):
+        if loc != source:
+            continue
+        if slot not in Slot.RIGHT_HAND:
+            continue
+        if weapon := esper.try_component(eid, Weapon):
+            return eid, weapon
+    return None
+
+
+def get_worn_armor(source: EntityId) -> tuple[EntityId, Armor] | None:
+    """Get the Armor component from source's worn armor slot, or None if unarmored."""
+
+    for eid, (loc, slot) in esper.get_components(ContainedBy, Slot):
+        if loc != source:
+            continue
+        if slot != Slot.ARMOR:
+            continue
+        if armor := esper.try_component(eid, Armor):
+            return eid, armor
+    return None

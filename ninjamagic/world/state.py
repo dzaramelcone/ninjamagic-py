@@ -26,6 +26,7 @@ from ninjamagic.component import (
     Stance,
     Stats,
     Transform,
+    Weapon,
     Wearable,
 )
 from ninjamagic.util import (
@@ -175,9 +176,7 @@ def place_dens(map_id: EntityId, chips: Chips) -> None:
             spawn_spots.append(spots[4])
         elif len(spots) > 1:
             spawn_spots.append(spots[-1])
-        slots = [
-            SpawnSlot(map_id=map_id, y=tile_y + y, x=tile_x + x) for y, x in spawn_spots
-        ]
+        slots = [SpawnSlot(map_id=map_id, y=tile_y + y, x=tile_x + x) for y, x in spawn_spots]
         esper.add_component(den_eid, Den(slots=slots))
 
 
@@ -236,18 +235,14 @@ def build_hub(map_id: EntityId, chips: Chips):
         pronoun=Pronouns.HE,
     )
 
-    bonfire = create_prop(
-        map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65)
-    )
+    bonfire = create_prop(map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65))
     esper.add_component(
         bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
     esper.add_component(bonfire, ProvidesHeat())
     esper.add_component(bonfire, ProvidesLight())
 
-    create_item(
-        map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55)
-    )
+    create_item(map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55))
 
     create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
 
@@ -285,6 +280,18 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
     esper.add_component(bedroll, 10, Level)
 
+    broadsword = create_item(
+        map_id=map_id,
+        y=4,
+        x=9,
+        name="broadsword",
+        glyph=("/", 0.0, 0.0, 0.8),
+        wearable_slot=Slot.RIGHT_HAND,
+    )
+    esper.add_component(
+        broadsword, Weapon(damage=15.0, skill_key="martial_arts", story_key="broadsword")
+    )
+
     place_dens(map_id, chips)
 
     # fmt: off
@@ -319,9 +326,7 @@ def can_enter(*, map_id: int, y: int, x: int) -> bool:
     return grid[y * TILE_STRIDE_W + x] in {1, 3}
 
 
-def get_tile(
-    *, map_id: EntityId, top: int, left: int
-) -> tuple[int, int, bytearray | None]:
+def get_tile(*, map_id: EntityId, top: int, left: int) -> tuple[int, int, bytearray | None]:
     """Get a 16x16 tile from a map. Floors (top, left) to factors of TILE_STRIDE."""
 
     chips = esper.component_for_entity(map_id, Chips)
