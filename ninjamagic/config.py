@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     base_proc_odds: float = 0.10
     fight_timer_len: float = 10.0
 
-    model_config = SettingsConfigDict(
-        env_nested_delimiter="__", env_file="ninjamagic.env"
-    )
+    pathing_distance: float = 24.0
+
+    model_config = SettingsConfigDict(env_nested_delimiter="__", env_file="ninjamagic.env")
 
 
 settings = Settings()

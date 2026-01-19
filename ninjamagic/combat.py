@@ -11,6 +11,7 @@ from ninjamagic.component import (
     DoubleDamage,
     EntityId,
     FightTimer,
+    FromDen,
     Lag,
     health,
     pain_mult,
@@ -23,10 +24,11 @@ from ninjamagic.util import (
     Looptime,
     contest,
     delta_for_odds,
+    get_looptime,
     get_melee_delay,
     proc,
 )
-from ninjamagic.world.state import get_recall
+from ninjamagic.world.state import create_prop, get_recall
 
 log = logging.getLogger(__name__)
 
@@ -195,9 +197,28 @@ def process(now: Looptime):
     for sig in bus.iter(bus.Die):
         story.echo("{0} {0:dies}!", sig.source)
         bus.pulse(bus.ConditionChanged(source=sig.source, condition="dead"))
-        if not esper.has_component(sig.source, Connection):
+        # PC
+        if esper.has_component(sig.source, Connection):
+            schedule_respawn(sig.source)
             continue
-        schedule_respawn(sig.source)
+
+        # NPC
+        # Update den spawn slot kill_time for respawn tracking
+        # This is a kind of cacheing, querying all dens
+        # for all slots where slot_eid = sig.source instead may be correct
+        if from_den := esper.try_component(sig.source, FromDen):
+            from_den.slot.kill_time = get_looptime()
+
+        # Non-player: spawn corpse, delete entity
+        loc = transform(sig.source)
+        create_prop(
+            map_id=loc.map_id,
+            y=loc.y,
+            x=loc.x,
+            name="corpse",
+            glyph=("%", 0.0, 0.0, 0.4),
+        )
+        esper.delete_entity(sig.source)
 
     for sig in bus.iter(bus.ConditionChanged):
         health(sig.source).condition = sig.condition

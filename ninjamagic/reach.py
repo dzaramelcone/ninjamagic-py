@@ -22,13 +22,25 @@ def adjacent(this: Transform, that: Transform) -> bool:
     return this == that
 
 
-def visible(this: Transform, that: Transform) -> bool:
-    # symmetric, intransitive, reflexive
-    return (
-        this.map_id == that.map_id
-        and abs(this.x - that.x) <= VIEW_STRIDE_W
-        and abs(this.y - that.y) <= VIEW_STRIDE_H
-    )
+def chebyshev(
+    h: int, w: int, m1: int, y1: int, x1: int, m2: int, y2: int, x2: int
+) -> bool:
+    """Chebyshev distance check with raw coordinates."""
+    return m1 == m2 and abs(y1 - y2) <= h and abs(x1 - x2) <= w
+
+
+def chebyshev_tf(h: int, w: int) -> Selector:
+    """DEPRECATED: Transform-based selector. Use chebyshev() with raw coords instead."""
+
+    def check(this: Transform, that: Transform) -> bool:
+        return chebyshev(
+            h, w, this.map_id, this.y, this.x, that.map_id, that.y, that.x
+        )
+
+    return check
+
+
+visible = chebyshev_tf(VIEW_STRIDE_H, VIEW_STRIDE_W)
 
 
 def world(this: Transform, that: Transform) -> bool:
