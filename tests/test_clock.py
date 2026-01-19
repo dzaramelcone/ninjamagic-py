@@ -7,7 +7,7 @@ import pytest
 from ninjamagic.nightclock import (
     BASE_NIGHTYEAR,
     EPOCH,
-    EST,
+    UTC,
     NIGHTS_PER_DAY,
     SECONDS_PER_NIGHT,
     SECONDS_PER_NIGHT_ACTIVE,
@@ -20,11 +20,11 @@ from ninjamagic.nightclock import (
 )
 
 
-def est(dt: datetime) -> datetime:
-    """Ensure a datetime is in EST with tzinfo set."""
+def utc(dt: datetime) -> datetime:
+    """Ensure a datetime is in UTC with tzinfo set."""
     if dt.tzinfo:
-        return dt.astimezone(EST)
-    return dt.replace(tzinfo=EST)
+        return dt.astimezone(UTC)
+    return dt.replace(tzinfo=UTC)
 
 
 def test_epoch_baseline():
@@ -41,7 +41,7 @@ def test_epoch_baseline():
 
 def test_nights_per_day_consistency():
     # Move forward exactly one real day
-    next_day = est(EPOCH + timedelta(days=1))
+    next_day = utc(EPOCH + timedelta(days=1))
     nc = NightClock(next_day)
 
     assert nc.moons_since_epoch == 1
@@ -54,9 +54,9 @@ def test_nights_per_day_consistency():
 
 def test_nightyears_increment_with_month():
     # Dec 1 2025 -> BASE_NIGHTYEAR
-    nc_dec = NightClock(est(datetime(2025, 12, 1, 0, 0, 0)))
+    nc_dec = NightClock(utc(datetime(2025, 12, 1, 0, 0, 0)))
     # Jan 1 2026 -> BASE_NIGHTYEAR + 1
-    nc_jan = NightClock(est(datetime(2026, 1, 1, 0, 0, 0)))
+    nc_jan = NightClock(utc(datetime(2026, 1, 1, 0, 0, 0)))
 
     assert nc_dec.nightyears == BASE_NIGHTYEAR
     assert nc_jan.nightyears == BASE_NIGHTYEAR + 1
@@ -71,19 +71,19 @@ def test_nightyears_increment_with_month():
 
 def test_hours_at_start_mid_end_of_night():
     # Start of night (midnight) -> 06:00
-    start = est(datetime(2025, 12, 1, 0, 0, 0))
+    start = utc(datetime(2025, 12, 1, 0, 0, 0))
     nc_start = NightClock(start)
     assert nc_start.seconds == 0
     assert nc_start.hour == 6
 
     # Middle of night -> around 16:00
-    mid = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE / 2))
+    mid = utc(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE / 2))
     nc_mid = NightClock(mid)
     assert math.isclose(nc_mid.elapsed_pct, 0.5, rel_tol=1e-6)
     assert 15 <= nc_mid.hour <= 17  # allow a 1h band due to flooring
 
     # Very end of night (just before wrap) -> between 01:00 and 02:00
-    end = est(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE - 1))
+    end = utc(EPOCH + timedelta(seconds=SECONDS_PER_NIGHT_ACTIVE - 1))
     nc_end = NightClock(end)
     assert 1 <= nc_end.hour <= 2
 
@@ -91,7 +91,7 @@ def test_hours_at_start_mid_end_of_night():
 def test_minutes_and_next_hour_eta_consistency():
     # Pick 3 in-game hours into the active night:
     # 3 * SECONDS_PER_NIGHT_HOUR after midnight
-    dt = est(EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
+    dt = utc(EPOCH + timedelta(seconds=3 * SECONDS_PER_NIGHT_HOUR))
     nc = NightClock(dt)
 
     assert nc.hour == 9  # 06 + 3
@@ -107,14 +107,14 @@ def test_minutes_and_next_hour_eta_consistency():
 def test_nightstorm_flags_and_eta_before_and_during():
     # Just before nightstorm starts
     storm_start_real_offset = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
-    before_storm = est(EPOCH + timedelta(seconds=storm_start_real_offset - 1))
+    before_storm = utc(EPOCH + timedelta(seconds=storm_start_real_offset - 1))
     nc_before = NightClock(before_storm)
 
     assert not nc_before.in_nightstorm
     assert 0 < nc_before.nightstorm_eta <= 2  # within a couple of seconds
 
     # Inside nightstorm window
-    during_storm = est(EPOCH + timedelta(seconds=storm_start_real_offset + 1))
+    during_storm = utc(EPOCH + timedelta(seconds=storm_start_real_offset + 1))
     nc_during = NightClock(during_storm)
 
     assert nc_during.in_nightstorm
@@ -129,17 +129,17 @@ def test_nightstorm_flags_and_eta_before_and_during():
 
 def test_year_elapsed_pct_bounds():
     # At exact start of month -> 0
-    start_month = est(datetime(2025, 12, 1, 0, 0, 0))
+    start_month = utc(datetime(2025, 12, 1, 0, 0, 0))
     nc_start = NightClock(start_month)
     assert math.isclose(nc_start.nightyear_elapsed_pct, 0.0, rel_tol=1e-6)
 
     # Half way through month (approx) -> ~0.5
-    mid_month = est(datetime(2025, 12, 16, 12, 0, 0))
+    mid_month = utc(datetime(2025, 12, 16, 12, 0, 0))
     nc_mid = NightClock(mid_month)
     assert 0.3 < nc_mid.nightyear_elapsed_pct < 0.7  # loose band
 
     # End of month (just before next month) -> close to 1
-    end_month = est(datetime(2025, 12, 31, 23, 59, 59))
+    end_month = utc(datetime(2025, 12, 31, 23, 59, 59))
     nc_end = NightClock(end_month)
     assert 0.8 < nc_end.nightyear_elapsed_pct <= 1.0
 
@@ -176,7 +176,7 @@ def test_brightness_index_golden(golden_json):
                 d = 1 + int((days_in_month - 1) * season_frac)
 
                 # Sample at night-fraction progression
-                base_midnight = datetime(y, m, d, 0, 0, 0, tzinfo=EST)
+                base_midnight = datetime(y, m, d, 0, 0, 0, tzinfo=UTC)
                 dt = base_midnight + timedelta(
                     seconds=night_frac * SECONDS_PER_NIGHT,
                 )
@@ -218,7 +218,7 @@ def test_nightstorm_always_zero(year, month, frac):
     For time in any (year, month) in the nightstorm window,
     brightness_index must be 0.
     """
-    base_midnight = datetime(year, month, 15, 0, 0, 0, tzinfo=EST)
+    base_midnight = datetime(year, month, 15, 0, 0, 0, tzinfo=UTC)
     dt = base_midnight + timedelta(seconds=frac * SECONDS_PER_NIGHT)
 
     nc = NightClock(dt)

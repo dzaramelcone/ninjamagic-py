@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from functools import total_ordering
 from typing import Literal, overload
 
-EST = timezone(timedelta(hours=-5), name="EST")
+UTC = timezone.utc
 
 
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00
@@ -15,7 +15,7 @@ SECONDS_PER_NIGHT_ACTIVE: float = SECONDS_PER_NIGHT - SECONDS_PER_NIGHTSTORM
 SECONDS_PER_NIGHT_HOUR: float = SECONDS_PER_NIGHT_ACTIVE / HOURS_PER_NIGHT
 
 BASE_NIGHTYEAR: int = 200
-EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=EST)
+EPOCH = datetime(2025, 12, 1, 0, 0, 0, tzinfo=UTC)
 
 SECONDS_PER_DAY = 86400.0
 NIGHTS_PER_DAY = int(SECONDS_PER_DAY // SECONDS_PER_NIGHT)
@@ -23,7 +23,7 @@ Seasons = Literal["summer", "winter", "spring", "autumn"]
 
 
 def now():
-    return datetime.now(tz=EST)
+    return datetime.now(tz=UTC)
 
 
 @total_ordering
@@ -94,11 +94,11 @@ class NightDelta:
 
 @total_ordering
 class NightClock:
-    """Stateless, injective mapping from real-world EST timestamp to game time."""
+    """Stateless, injective mapping from real-world UTC timestamp to game time."""
 
     def __init__(self, dt: datetime | None = None):
-        dt = dt or datetime.now(EST)
-        dt = dt.astimezone(EST) if dt.tzinfo else dt.replace(tzinfo=EST)
+        dt = dt or datetime.now(UTC)
+        dt = dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         self.dt = dt
 
     def __eq__(self, other: "NightClock") -> bool:
@@ -130,7 +130,7 @@ class NightClock:
                 return NotImplemented
 
     def to_now(self) -> None:
-        self.dt = datetime.now(EST)
+        self.dt = datetime.now(UTC)
 
     def next(self, time: NightTime) -> NightDelta:
         target_seconds = time.total_seconds()
@@ -146,19 +146,19 @@ class NightClock:
 
     @property
     def _real_month_start(self) -> datetime:
-        return datetime(self.dt.year, self.dt.month, 1, 0, 0, 0, tzinfo=EST)
+        return datetime(self.dt.year, self.dt.month, 1, 0, 0, 0, tzinfo=UTC)
 
     @property
     def _next_real_month_start(self) -> datetime:
         if self.dt.month == 12:
-            return datetime(self.dt.year + 1, 1, 1, 0, 0, 0, tzinfo=EST)
+            return datetime(self.dt.year + 1, 1, 1, 0, 0, 0, tzinfo=UTC)
         else:
-            return datetime(self.dt.year, self.dt.month + 1, 1, 0, 0, 0, tzinfo=EST)
+            return datetime(self.dt.year, self.dt.month + 1, 1, 0, 0, 0, tzinfo=UTC)
 
     @property
     def _seconds_since_dt_midnight(self) -> float:
         """Seconds since dt midnight."""
-        today = datetime(self.dt.year, self.dt.month, self.dt.day, 0, 0, 0, tzinfo=EST)
+        today = datetime(self.dt.year, self.dt.month, self.dt.day, 0, 0, 0, tzinfo=UTC)
         return (self.dt - today).total_seconds()
 
     @property
