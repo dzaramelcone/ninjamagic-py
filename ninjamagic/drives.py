@@ -115,19 +115,19 @@ TEMPLATES: dict[TemplateName, Template] = {
     "goblin": {
         "home": (
             Drives(seek_player=1.0, seek_den=1.0),
-            [(hp_below(15.0), "flee")],
+            [(hp_below(25.0), "flee")],
         ),
         "flee": (
-            Drives(flee_player=1.0),
-            [(player_far(20), "rest")],
+            Drives(flee_player=1.0, flee_anchor=0.1),
+            [(player_far(12), "rest")],
         ),
         "rest": (
             Drives(seek_den=0.1, flee_anchor=1.0),
-            [(player_near(6), "flee"), (hp_above(70.0), "return")],
+            [(player_near(4), "flee"), (hp_above(70.0), "return")],
         ),
         "return": (
-            Drives(seek_player=0.5, seek_den=2.0, flee_anchor=0.5),
-            [(hp_below(30.0), "flee"), (near_den(3), "home")],
+            Drives(seek_den=2.0, flee_anchor=0.2),
+            [(hp_below(25.0), "flee"), (near_den(3), "home")],
         ),
     },
 }
@@ -261,7 +261,7 @@ class EmptyDijkstraMap(DijkstraMap):
     """Layer with no goals. Returns 0 so it contributes nothing to scores."""
 
     def get_cost(self, y: int, x: int) -> float:
-        return 0.0
+        return self.max_cost
 
     def __bool__(self) -> bool:
         return False
@@ -400,6 +400,7 @@ def process() -> None:
                 if predicate(eid):
                     behavior.state = next_state
                     drives, _ = template[next_state]
+                    log.debug("%s entered state %s", eid, next_state)
                     break
 
             y, x = loc.y, loc.x
