@@ -10,12 +10,15 @@ def test_award_caps_clamp_pending(monkeypatch):
     try:
         source = esper.create_entity()
         teacher = esper.create_entity()
+        # Award caps live on teachers and are keyed per learner + skill.
         esper.add_component(teacher, AwardCap(learners={}))
         skill = Skill(name="Martial Arts")
 
         monkeypatch.setattr(experience.Trial, "get_award", lambda mult: 1.0)
+        # Avoid async loop dependency for time by pinning looptime.
         monkeypatch.setattr(experience.util, "get_looptime", lambda: 100.0)
 
+        # Two learn events should clamp at the configured award cap.
         bus.pulse(bus.Learn(source=source, teacher=teacher, skill=skill, mult=1.0))
         bus.pulse(bus.Learn(source=source, teacher=teacher, skill=skill, mult=1.0))
         experience.process()
@@ -30,11 +33,13 @@ def test_award_caps_reset_after_ttl(monkeypatch):
     try:
         source = esper.create_entity()
         teacher = esper.create_entity()
+        # Seed the cap ledger on the teacher to simulate learning from that teacher.
         esper.add_component(teacher, AwardCap(learners={}))
         skill = Skill(name="Martial Arts")
 
         monkeypatch.setattr(experience.Trial, "get_award", lambda mult: 0.3)
 
+        # First learn happens at time=100s.
         now = 100.0
         monkeypatch.setattr(experience.util, "get_looptime", lambda: now)
 
@@ -42,6 +47,7 @@ def test_award_caps_reset_after_ttl(monkeypatch):
         experience.process()
         bus.clear()
 
+        # After TTL passes, the cap ledger should reset and allow another grant.
         now += settings.award_cap_ttl + 1.0
         bus.pulse(bus.Learn(source=source, teacher=teacher, skill=skill, mult=1.0))
         experience.process()
