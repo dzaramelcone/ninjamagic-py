@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, dataclass as component, field, fields
 from enum import StrEnum, auto
@@ -448,6 +447,11 @@ class Skills:
             if s.name == key:
                 return s
         raise KeyError
+
+
+@component(slots=True, kw_only=True)
+class AwardCap:
+    learners: dict[int, dict[str, tuple[float, float]]] = field(default_factory=dict)
 
 
 @component(slots=True, kw_only=True)

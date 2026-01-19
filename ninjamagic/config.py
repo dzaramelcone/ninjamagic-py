@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     fight_timer_len: float = 10.0
 
     pathing_distance: float = 24.0
+    award_cap: float = 0.45
+    award_cap_ttl: float = 120.0
 
     model_config = SettingsConfigDict(env_nested_delimiter="__", env_file="ninjamagic.env")
 
