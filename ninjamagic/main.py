@@ -63,6 +63,7 @@ async def ws_main(ws: WebSocket) -> None:
                 log.info(f"Login failed for {owner_id}, no character.")
                 await ws.close(code=4401, reason="No character")
                 return
+            skills = [row async for row in q.get_skills_for_character(char_id=char.id)]
         await ws.accept()
 
         active[owner_id] = ws
@@ -84,7 +85,7 @@ async def ws_main(ws: WebSocket) -> None:
             char.name,
         )
 
-        bus.pulse(bus.Connected(source=entity_id, client=ws, char=char))
+        bus.pulse(bus.Connected(source=entity_id, client=ws, char=char, skills=skills))
         asyncio.create_task(save_loop(owner_id, entity_id, save_gen))
 
         try:
@@ -134,10 +135,17 @@ async def ws_main(ws: WebSocket) -> None:
 
 
 async def save(entity_id: EntityId):
-    save_dump = factory.dump(entity_id)
+    save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
     async with get_repository_factory() as q:
         await q.update_character(save_dump)
+        for skill in skills_dump:
+            await q.upsert_skill(
+                char_id=save_dump.id,
+                name=skill.name,
+                rank=skill.rank,
+                tnl=skill.tnl,
+            )
         log.info("%s saved.", entity_id)
 
 

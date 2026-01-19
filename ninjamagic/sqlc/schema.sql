@@ -50,12 +50,6 @@ CREATE TABLE IF NOT EXISTS characters (
     grit        INTEGER     NOT NULL DEFAULT 0,
     wit         INTEGER     NOT NULL DEFAULT 0,
 
-    -- Skills Component
-    rank_evasion      INTEGER    NOT NULL DEFAULT 0,
-    tnl_evasion       REAL       NOT NULL DEFAULT 0,
-    rank_martial_arts INTEGER    NOT NULL DEFAULT 0,
-    tnl_martial_arts  REAL       NOT NULL DEFAULT 0,
-
     -- Auditing
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),

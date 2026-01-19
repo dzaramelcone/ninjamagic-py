@@ -113,6 +113,8 @@ async def post_chargen(
         new.name,
         pronoun,
     )
+    for name in ("Martial Arts", "Evasion", "Survival"):
+        await q.upsert_skill(char_id=new.id, name=name, rank=0, tnl=0.0)
 
     return RedirectResponse(url="/", status_code=303)
 
@@ -249,12 +251,15 @@ if settings.allow_local_auth:
                 grace=body.stats.grace,
                 grit=body.stats.grit,
                 wit=body.stats.wit,
-                rank_martial_arts=body.skills.martial_arts.rank,
-                tnl_martial_arts=body.skills.martial_arts.tnl,
-                rank_evasion=body.skills.evasion.rank,
-                tnl_evasion=body.skills.evasion.tnl,
             )
         )
+        for skill in body.skills:
+            await q.upsert_skill(
+                char_id=char.id,
+                name=skill.name,
+                rank=skill.rank,
+                tnl=skill.tnl,
+            )
         req.session[OWNER_SESSION_KEY] = owner_id
 
         return RedirectResponse(url="/", status_code=303)

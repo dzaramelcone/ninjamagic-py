@@ -12,7 +12,7 @@ from ninjamagic.gen import models
 
 
 CREATE_CHARACTER = """-- name: create_character \\:one
-INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at
+INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, created_at, updated_at
 """
 
 
@@ -22,7 +22,7 @@ DELETE FROM characters WHERE id = :p1
 
 
 GET_CHARACTER = """-- name: get_character \\:one
-SELECT id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
+SELECT id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
 """
 
 
@@ -63,10 +63,6 @@ SET
   grace = coalesce(:p15, grace),
   grit = coalesce(:p16, grit),
   wit = coalesce(:p17, wit),
-  rank_martial_arts = coalesce(:p18, rank_martial_arts),
-  tnl_martial_arts = coalesce(:p19, tnl_martial_arts),
-  rank_evasion = coalesce(:p20, rank_evasion),
-  tnl_evasion = coalesce(:p21, tnl_evasion),
   updated_at = now()
 WHERE id = :p1
 """
@@ -90,10 +86,6 @@ class UpdateCharacterParams(pydantic.BaseModel):
     grace: Optional[int]
     grit: Optional[int]
     wit: Optional[int]
-    rank_martial_arts: Optional[int]
-    tnl_martial_arts: Optional[float]
-    rank_evasion: Optional[int]
-    tnl_evasion: Optional[float]
 
 
 UPSERT_IDENTITY = """-- name: upsert_identity \\:one
@@ -144,12 +136,8 @@ class AsyncQuerier:
             grace=row[16],
             grit=row[17],
             wit=row[18],
-            rank_evasion=row[19],
-            tnl_evasion=row[20],
-            rank_martial_arts=row[21],
-            tnl_martial_arts=row[22],
-            created_at=row[23],
-            updated_at=row[24],
+            created_at=row[19],
+            updated_at=row[20],
         )
 
     async def delete_character(self, *, id: int) -> None:
@@ -179,12 +167,8 @@ class AsyncQuerier:
             grace=row[16],
             grit=row[17],
             wit=row[18],
-            rank_evasion=row[19],
-            tnl_evasion=row[20],
-            rank_martial_arts=row[21],
-            tnl_martial_arts=row[22],
-            created_at=row[23],
-            updated_at=row[24],
+            created_at=row[19],
+            updated_at=row[20],
         )
 
     async def get_character_brief(self, *, owner_id: int) -> Optional[GetCharacterBriefRow]:
@@ -227,10 +211,6 @@ class AsyncQuerier:
             "p15": arg.grace,
             "p16": arg.grit,
             "p17": arg.wit,
-            "p18": arg.rank_martial_arts,
-            "p19": arg.tnl_martial_arts,
-            "p20": arg.rank_evasion,
-            "p21": arg.tnl_evasion,
         })
 
     async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:

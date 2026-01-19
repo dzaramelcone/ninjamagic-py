@@ -41,10 +41,6 @@ SET
   grace = coalesce(sqlc.narg('grace'), grace),
   grit = coalesce(sqlc.narg('grit'), grit),
   wit = coalesce(sqlc.narg('wit'), wit),
-  rank_martial_arts = coalesce(sqlc.narg('rank_martial_arts'), rank_martial_arts),
-  tnl_martial_arts = coalesce(sqlc.narg('tnl_martial_arts'), tnl_martial_arts),
-  rank_evasion = coalesce(sqlc.narg('rank_evasion'), rank_evasion),
-  tnl_evasion = coalesce(sqlc.narg('tnl_evasion'), tnl_evasion),
   updated_at = now()
 WHERE id = $1;
 
