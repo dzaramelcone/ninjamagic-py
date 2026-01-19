@@ -243,7 +243,7 @@ const handlerMap = {
   },
 
   skill: (body: Skill) => {
-    setSkill(body.name, body.rank, body.tnl);
+    setSkill(body.name, body.rank, body.tnl, body.pending);
   },
 
   datetime: (body: Datetime) => {

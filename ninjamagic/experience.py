@@ -18,7 +18,11 @@ def send_skills(entity: EntityId):
     bus.pulse(
         *[
             bus.OutboundSkill(
-                to=entity, name=skill.name, rank=skill.rank, tnl=skill.tnl
+                to=entity,
+                name=skill.name,
+                rank=skill.rank,
+                tnl=skill.tnl,
+                pending=skill.pending,
             )
             for skill in skills(entity)
         ]
@@ -47,19 +51,12 @@ def process():
         for learner_id, skill_map in award_cap.learners.items():
             if not esper.entity_exists(learner_id):
                 continue
-            learner_skills = esper.try_component(learner_id, Skills)
-            if not learner_skills:
-                continue
+            learner_skills = esper.component_for_entity(learner_id, Skills)
             for skill_name, (total, last) in skill_map.items():
                 if now - last > settings.award_cap_ttl:
                     continue
-                remaining = settings.award_cap - total
-                if remaining <= 0:
-                    continue
-                try:
-                    learner_skill = learner_skills[skill_name]
-                except KeyError:
-                    continue
+                remaining = max(0, settings.award_cap - total)
+                learner_skill = learner_skills[skill_name]
                 learner_skill.tnl += remaining
                 learner_skill.pending += remaining
 
@@ -124,7 +121,11 @@ def process():
 
         bus.pulse(
             bus.OutboundSkill(
-                to=sig.source, name=skill.name, rank=skill.rank, tnl=skill.tnl
+                to=sig.source,
+                name=skill.name,
+                rank=skill.rank,
+                tnl=skill.tnl,
+                pending=skill.pending,
             )
         )
 
