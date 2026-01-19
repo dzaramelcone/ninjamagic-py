@@ -94,13 +94,12 @@ class TickStats:
             labels,
             self.bucket_counts,
             list(self.bucket_edges_ms) + [self.bucket_edges_ms[-1] + 1.0],
+            strict=False,
         ):
             pct = (count / total * 100.0) if total else 0.0
             fill = int(round((count / total) * bar_width)) if total else 0
             bar = "#" * fill + "." * (bar_width - fill)
-            if step_ms <= 0:
-                color = ANSI_GREEN
-            elif upper_ms <= step_ms:
+            if step_ms <= 0 or upper_ms <= step_ms:
                 color = ANSI_GREEN
             elif upper_ms <= step_ms * 1.25:
                 color = ANSI_YELLOW
@@ -148,10 +147,29 @@ def tally(count: int, word: str) -> str:
 
 
 def auto_cap(text: str) -> str:
+    def is_word_apostrophe(index: int) -> bool:
+        prev = text[index - 1] if index > 0 else ""
+        next_ch = text[index + 1] if index + 1 < len(text) else ""
+        return prev.isalnum() and next_ch.isalnum()
+
+    quote_mask = [False] * len(text)
+    quote_candidates = [
+        idx for idx, ch in enumerate(text) if ch == "'" and not is_word_apostrophe(idx)
+    ]
+    for start, end in zip(quote_candidates[0::2], quote_candidates[1::2], strict=False):
+        quote_mask[start] = True
+        quote_mask[end] = True
+
     out = []
-    cap = can_cap = True
-    for ch in text:
-        if can_cap and cap and ch.isalnum():
+    cap = True
+    in_quote = False
+    for idx, ch in enumerate(text):
+        if ch == "'" and quote_mask[idx]:
+            in_quote = not in_quote
+            out.append(ch)
+            cap = False
+            continue
+        if not in_quote and cap and ch.isalnum():
             if ch.isalpha():
                 out.append(ch.upper())
             else:
@@ -159,11 +177,8 @@ def auto_cap(text: str) -> str:
             cap = False
         else:
             out.append(ch)
-        if can_cap and ch in ".!?":
+        if not in_quote and ch in ".!?":
             cap = True
-        if ch == "'":
-            can_cap = not can_cap
-            cap = False
     return "".join(out)
 
 
