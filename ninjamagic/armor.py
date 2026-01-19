@@ -1,15 +1,7 @@
 import random
-from dataclasses import dataclass
 
+from ninjamagic.component import Armor
 from ninjamagic.util import RNG, clamp01, contest, remap
-
-
-@dataclass(frozen=True)
-class Armor:
-    required_skill: str
-    item_rank: int  # armor's rank
-    physical_immunity: float  # 0..1 (cap on how much it could block vs physical)
-    magical_immunity: float  # 0..1 (cap vs magical)
 
 
 def mitigate(
