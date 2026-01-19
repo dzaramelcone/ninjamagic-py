@@ -451,16 +451,6 @@ class Skills:
 
 
 @component(slots=True, kw_only=True)
-class RestExp:
-    """Exp earned throughout the day that is awarded when camping."""
-
-    gained: dict[str, dict[int, float]] = field(
-        default_factory=lambda: defaultdict(lambda: defaultdict(float))
-    )
-    modifiers: dict[str, float] = field(default_factory=dict)
-
-
-@component(slots=True, kw_only=True)
 class Stowed:
     container: EntityId
 

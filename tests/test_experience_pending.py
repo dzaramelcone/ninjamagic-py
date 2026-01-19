@@ -39,3 +39,9 @@ def test_absorb_rest_exp_consolidates_pending():
     finally:
         esper.clear_database()
         bus.clear()
+
+
+def test_restexp_removed():
+    import ninjamagic.component as component
+
+    assert not hasattr(component, "RestExp")

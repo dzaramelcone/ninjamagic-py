@@ -4,15 +4,12 @@ from functools import partial
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Anchor, Ate, EntityId, RestExp, Skills, skills
+from ninjamagic.component import Anchor, EntityId, Skills, skills
 from ninjamagic.util import Trial
 
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
-MAX_EXP_PER_ENTITY = 0.45
-
-
 def send_skills(entity: EntityId):
     bus.pulse(
         *[
@@ -36,12 +33,7 @@ def process():
         skill.tnl += award
         skill.pending += award
         if award:
-            rest = esper.try_component(sig.source, RestExp)
-            if not rest:
-                rest = RestExp()
-                esper.add_component(sig.source, rest)
-            rest.gained[skill.name][sig.teacher] += award
-            log.info("rest gained %s", rest.gained)
+            log.info("pending gained %s", award)
 
     for sig in bus.iter(bus.AbsorbRestExp):
         skills = esper.try_component(sig.source, Skills)
