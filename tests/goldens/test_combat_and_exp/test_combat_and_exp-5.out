@@ -1,11 +1,11 @@
 {
   "client": "bob",
-  "len": "198 B",
+  "len": "194 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "You hit Alice for 10.1% damage!"
+          "text": "You hit Alice for 9.7% damage!"
         }
       },
       {
@@ -20,20 +20,20 @@
       },
       {
         "health": {
-          "id": 184,
-          "pct": -0.06054473,
+          "id": 25,
+          "pct": -0.05661025,
           "stress_pct": 0.025
         }
       },
       {
         "stance": {
-          "id": 184,
+          "id": 25,
           "text": "lying prone"
         }
       },
       {
         "condition": {
-          "id": 184,
+          "id": 25,
           "text": "in shock"
         }
       },

@@ -1,6 +1,6 @@
 {
   "client": "alice",
-  "len": "49 B",
+  "len": "48 B",
   "parsed": {
     "envelope": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "health": {
-          "id": 185,
+          "id": 26,
           "pct": 1.0,
           "stress_pct": 0.005
         }

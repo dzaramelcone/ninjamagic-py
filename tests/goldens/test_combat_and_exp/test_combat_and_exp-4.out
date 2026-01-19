@@ -1,6 +1,6 @@
 {
   "client": "bob",
-  "len": "51 B",
+  "len": "50 B",
   "parsed": {
     "envelope": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "health": {
-          "id": 184,
+          "id": 25,
           "pct": 0.04,
           "stress_pct": 0.005
         }
