@@ -1,5 +1,4 @@
 import logging
-import time
 from functools import partial
 
 import esper
@@ -28,31 +27,6 @@ def process_with_skills_for_test(source: int, skills: Skills):
     process()
 
 
-def get_now() -> float:
-    return time.monotonic()
-
-
-def apply_award_with_caps(
-    *, source: int, teacher: int, skill, award_cap: AwardCap, mult: float = 1.0
-) -> float:
-    award = Trial.get_award(mult=mult)
-    if not award:
-        return 0.0
-    now = get_now()
-    ledger = award_cap.learners.setdefault(source, {})
-    total, last = ledger.get(skill.name, (0.0, 0.0))
-    if now - last > settings.award_cap_ttl:
-        total = 0.0
-    remaining = max(0.0, settings.award_cap - total)
-    granted = min(award, remaining)
-    if granted:
-        skill.tnl += granted
-        skill.pending += granted
-        total += granted
-    ledger[skill.name] = (total, now)
-    return granted
-
-
 def process():
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
@@ -60,13 +34,21 @@ def process():
         if esper.entity_exists(sig.teacher):
             award_cap = esper.try_component(sig.teacher, AwardCap)
         if award_cap:
-            award = apply_award_with_caps(
-                source=sig.source,
-                teacher=sig.teacher,
-                skill=skill,
-                award_cap=award_cap,
-                mult=sig.mult,
-            )
+            award = Trial.get_award(mult=sig.mult)
+            if award:
+                now = util.get_looptime()
+                ledger = award_cap.learners.setdefault(sig.source, {})
+                total, last = ledger.get(skill.name, (0.0, 0.0))
+                if now - last > settings.award_cap_ttl:
+                    total = 0.0
+                remaining = max(0.0, settings.award_cap - total)
+                granted = min(award, remaining)
+                if granted:
+                    skill.tnl += granted
+                    skill.pending += granted
+                    total += granted
+                ledger[skill.name] = (total, now)
+                award = granted
         else:
             award = Trial.get_award(mult=sig.mult)
             skill.tnl += award
