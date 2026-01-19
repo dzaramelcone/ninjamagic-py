@@ -10,6 +10,6 @@ droplet.ninjamagic.env
 
 etc/systemd
 # Allow versioned plans
+!docs/
 !docs/plans/
 !docs/plans/**
-!docs/
