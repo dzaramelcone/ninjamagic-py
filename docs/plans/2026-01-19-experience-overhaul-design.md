@@ -25,3 +25,6 @@
 - Unit: pending accumulation, 06:00 consolidation, rest_bonus refresh, award-cap clamping, death payout TTL behavior.
 - Integration: WS skill payload includes pending; client updates store + bars.
 - Migration smoke: backfill skills rows and verify logins load correct skills.
+
+## Implementation Notes
+See `docs/plans/2026-01-19-experience-overhaul-implementation-notes.md` for deviations and open questions.
