@@ -264,6 +264,20 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
+ItemTemplateId = NewType("ItemTemplateId", int)
+InventoryId = NewType("InventoryId", int)
+
+
+class InventoryDirty:
+    """Inventory row needs persistence."""
+
+
+class ItemDirty:
+    """Item template needs persistence."""
+
+
+class Junk:
+    """Item should be cleaned up at rest check."""
 ContainedBy = NewType("ContainedBy", EntityId)
 
 
