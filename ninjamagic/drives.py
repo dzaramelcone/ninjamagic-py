@@ -212,11 +212,11 @@ class DijkstraMap:
             cell = chip[(y - tile_y) * stride_w + (x - tile_x)]
             if cell == 1 or cell == 3:
                 heappush(pq, (cost, y, x))
-                visited[(y << 16) | x] = cost
+                visited[((y & 0xFFFFFFFF) << 32) | (x & 0xFFFFFFFF)] = cost
 
         while pq:
             cost, y, x = heappop(pq)
-            key = (y << 16) | x
+            key = ((y & 0xFFFFFFFF) << 32) | (x & 0xFFFFFFFF)
             if cost > visited_get(key, max_cost):
                 continue
 
@@ -241,7 +241,7 @@ class DijkstraMap:
                 if cell != 1 and cell != 3:  # not walkable
                     continue
                 new_cost = cost + 1.0
-                nkey = (ny << 16) | nx
+                nkey = ((ny & 0xFFFFFFFF) << 32) | (nx & 0xFFFFFFFF)
                 if new_cost < visited_get(nkey, max_cost):
                     visited[nkey] = new_cost
                     heappush(pq, (new_cost, ny, nx))
