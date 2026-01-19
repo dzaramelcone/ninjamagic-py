@@ -11,6 +11,9 @@ from ninjamagic.util import Trial
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
+NEWBIE_MAX = 2.0
+
+
 def send_skills(entity: EntityId):
     bus.pulse(
         *[
@@ -34,6 +37,12 @@ def apply_death_payout(*, skill: Skill, remaining: float) -> None:
     skill.pending += remaining
 
 
+def newbie_multiplier(rank: int) -> float:
+    if rank >= 50:
+        return 1.0
+    return 1.0 + (NEWBIE_MAX - 1.0) * (1.0 - (rank / 50.0))
+
+
 def process():
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
@@ -41,7 +50,7 @@ def process():
         if esper.entity_exists(sig.teacher):
             award_cap = esper.try_component(sig.teacher, AwardCap)
         if award_cap:
-            award = Trial.get_award(mult=sig.mult)
+            award = Trial.get_award(mult=sig.mult) * newbie_multiplier(skill.rank)
             if award:
                 now = util.get_looptime()
                 ledger = award_cap.learners.setdefault(sig.source, {})
@@ -57,7 +66,7 @@ def process():
                 ledger[skill.name] = (total, now)
                 award = granted
         else:
-            award = Trial.get_award(mult=sig.mult)
+            award = Trial.get_award(mult=sig.mult) * newbie_multiplier(skill.rank)
             skill.tnl += award
             skill.pending += award
         if award:

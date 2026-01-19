@@ -45,3 +45,8 @@ def test_restexp_removed():
     import ninjamagic.component as component
 
     assert not hasattr(component, "RestExp")
+
+
+def test_newbie_bonus_falls_to_one():
+    assert experience.newbie_multiplier(0) > 1.0
+    assert experience.newbie_multiplier(50) == 1.0
