@@ -39,7 +39,7 @@ STANCE_STORIES: dict[tuple[bool, str], str] = {
     (True, "sitting"): "{0} {0:sits} beside {1}.",
     (False, "kneeling"): "{0} {0:kneels}.",
     (False, "lying prone"): "{0} {0:lies} down.",
-    (False, "standing"): "{0} {0:stands}.",
+    (False, "standing"): "{0} {0:gets} to {0:their} feet.",
     (False, "sitting"): "{0} {0:sits}.",
 }
 
@@ -115,9 +115,7 @@ def process(now: Looptime):
                 source,
                 target,
             )
-            bus.pulse(
-                bus.HealthChanged(source=source, stress_change=RNG.choice([1.0, 2.0]))
-            )
+            bus.pulse(bus.HealthChanged(source=source, stress_change=RNG.choice([1.0, 2.0])))
             if proc(prev=target_fight_timer.last_def_proc, cur=now):
                 target_fight_timer.last_def_proc = now
                 bus.pulse(bus.Proc(source=target, target=source, verb=defense.verb))
@@ -226,9 +224,7 @@ def process(now: Looptime):
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_sig=partial(
-                    bus.OutboundCondition, source=sig.source, condition=sig.condition
-                ),
+                make_sig=partial(bus.OutboundCondition, source=sig.source, condition=sig.condition),
             )
         )
 
@@ -240,9 +236,7 @@ def process(now: Looptime):
             bus.Echo(
                 source=sig.source,
                 reach=reach.visible,
-                make_sig=partial(
-                    bus.OutboundStance, source=sig.source, stance=sig.stance
-                ),
+                make_sig=partial(bus.OutboundStance, source=sig.source, stance=sig.stance),
             )
         )
         if sig.echo:
@@ -263,9 +257,7 @@ def schedule_respawn(entity: EntityId):
     )
     bus.pulse_in(
         10.0,
-        bus.Outbound(
-            to=entity, text="The horizon of a vast, dark world yawns below you."
-        ),
+        bus.Outbound(to=entity, text="The horizon of a vast, dark world yawns below you."),
     )
     bus.pulse_in(
         30.0,

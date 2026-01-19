@@ -297,6 +297,10 @@ class Stand(Command):
 
         if not rest or rest in ("here", "up"):
             if stance.cur == "standing":
+                if stance.prop:
+                    bus.pulse(bus.StanceChanged(source=root.source, stance="standing", echo=False))
+                    story.echo("{0} {0:moves} away from {1}.", root.source, stance.prop)
+                    return OK
                 return False, "You're already standing."
             story.echo(Stand.story, root.source)
             bus.pulse(
@@ -311,9 +315,14 @@ class Stand(Command):
         match = reach.find_one(source=root.source, prefix=rest, in_range=reach.adjacent)
         if match:
             prop, _, _ = match
-            if stance.cur == "standing" and prop == stance.prop:
-                noun = esper.component_for_entity(prop, Noun)
-                return False, f"You're already standing beside {noun:def}."
+            if stance.cur == "standing":
+                if prop == stance.prop:
+                    noun = esper.component_for_entity(prop, Noun)
+                    return False, f"You're already standing beside {noun:def}."
+                bus.pulse(
+                    bus.StanceChanged(source=root.source, stance="standing", prop=prop, echo=True)
+                )
+                return OK
             story.echo(Stand.story, root.source)
             then = bus.StanceChanged(source=root.source, stance="standing", prop=prop, echo=True)
             bus.pulse(bus.Act(source=root.source, delay=get_melee_delay(), then=(then,)))
