@@ -35,7 +35,7 @@ def test_award_caps_clamp_pending(monkeypatch):
         teacher = esper.create_entity()
         # Award caps live on teachers and are keyed per learner + skill.
         esper.add_component(teacher, AwardCap(learners={}))
-        skill = Skill(name="Martial Arts")
+        skill = Skill(name="Martial Arts", rank=50)
 
         monkeypatch.setattr(experience.Trial, "get_award", lambda mult: 1.0)
         # Avoid async loop dependency for time by pinning looptime.
@@ -58,7 +58,7 @@ def test_award_caps_reset_after_ttl(monkeypatch):
         teacher = esper.create_entity()
         # Seed the cap ledger on the teacher to simulate learning from that teacher.
         esper.add_component(teacher, AwardCap(learners={}))
-        skill = Skill(name="Martial Arts")
+        skill = Skill(name="Martial Arts", rank=50)
 
         monkeypatch.setattr(experience.Trial, "get_award", lambda mult: 0.3)
 

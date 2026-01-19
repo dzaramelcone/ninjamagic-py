@@ -9,7 +9,7 @@ from ninjamagic.component import Skill, Skills
 def test_learn_adds_pending(monkeypatch):
     try:
         source = esper.create_entity()
-        skill = Skill(name="Martial Arts")
+        skill = Skill(name="Martial Arts", rank=50)
 
         monkeypatch.setattr(experience.Trial, "get_award", lambda mult: 0.25)
 
