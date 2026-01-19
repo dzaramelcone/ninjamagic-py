@@ -98,7 +98,7 @@ def process():
                 skill.pending = 0.0
                 skill.rest_bonus = 1.0
             else:
-                skill.rest_bonus = 1.8
+                skill.rest_bonus = min(10.0, skill.rest_bonus + 0.8)
 
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
