@@ -30,15 +30,14 @@ def get_damage_story(
 ) -> str:
     """Generate a damage description based on weapon type and damage amount."""
 
-    def map_damage_to_key(damage: float, levels: int) -> int:
+    def map_damage_to_key(damage: float) -> int:
         """Map damage percentage to severity index (0 to levels-1)."""
-        index = int(damage * levels)
-        return min(index, levels - 1)
+        return sum(damage >= t for t in (0.12, 0.175, 0.45, 0.85))
 
     # bodypart = RNG.choice(bodyparts) <- comes from anatomy
     bodypart = "neck"  # placeholder
     severity = DAMAGE[story_key][bodypart]
-    severity_key = map_damage_to_key(damage, len(severity))
+    severity_key = map_damage_to_key(damage)
     return render(STORIES, severity[severity_key])
 
 
