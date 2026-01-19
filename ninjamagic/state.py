@@ -30,7 +30,7 @@ from ninjamagic import (
     survive,
     visibility,
 )
-from ninjamagic.util import get_looptime
+from ninjamagic.util import TickStats, get_looptime
 
 TPS = 240.0
 STEP = 1.0 / TPS
@@ -40,7 +40,6 @@ MAX_LATE_RESET = 0.25
 HALF_LIFE_SECONDS = 30
 TICKS_PER_HALF_LIFE = int(HALF_LIFE_SECONDS * TPS)
 ALPHA = 1 - 2 ** (-1 / TICKS_PER_HALF_LIFE)
-
 
 log = logging.getLogger(__name__)
 
@@ -73,13 +72,13 @@ class State:
         now = deadline = get_looptime()
         prev_ns = time.perf_counter_ns()
 
-        jitter_ema = 0.0
+        stats = TickStats(step=STEP, alpha=ALPHA)
 
         scheduler.start()
 
         while True:
             frame_start_ns = time.perf_counter_ns()
-            _ = (frame_start_ns - prev_ns) * 1e-9  # dt
+            tick_duration = (frame_start_ns - prev_ns) * 1e-9
             prev_ns = frame_start_ns
 
             # invoke systems        #
@@ -125,10 +124,11 @@ class State:
 
             now = get_looptime()
             jitter = now - deadline
-            jitter_ema = (1 - ALPHA) * jitter_ema + ALPHA * jitter
+            stats.record(tick_duration=tick_duration, jitter=jitter)
             current_sec = int(now)
             if current_sec % HALF_LIFE_SECONDS == 0 and current_sec != last_logged_sec:
-                log.info("jitter_ema=%.6f", jitter_ema)
+                snapshot = stats.snapshot_and_reset()
+                log.info("%s", snapshot)
                 last_logged_sec = current_sec
 
 
