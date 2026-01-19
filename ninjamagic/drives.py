@@ -122,7 +122,7 @@ TEMPLATES: dict[TemplateName, Template] = {
             [(player_far(12), "rest")],
         ),
         "rest": (
-            Drives(seek_den=0.1, flee_anchor=1.0),
+            Drives(),
             [(player_near(4), "flee"), (hp_above(70.0), "return")],
         ),
         "return": (
