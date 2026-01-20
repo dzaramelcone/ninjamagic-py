@@ -20,7 +20,7 @@ from ninjamagic.component import (
 from ninjamagic.db import get_repository_factory
 from ninjamagic.gen.query import (
     AsyncQuerier,
-    InsertInventoriesForOwnerParams,
+    ReplaceInventoriesForOwnerParams,
 )
 
 log = logging.getLogger(__name__)
@@ -263,12 +263,9 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
             raise RuntimeError(f"Missing InventoryId for container {loc}")
         container_ids.append(int(container_inv_id))
 
-    await q.delete_inventories_for_owner(owner_id=owner_id)
-    if not ids:
-        return
-
-    await q.insert_inventories_for_owner(
-        InsertInventoriesForOwnerParams(
+    await q.replace_inventories_for_owner(
+        ReplaceInventoriesForOwnerParams(
+            owner_id=owner_id,
             ids=ids,
             owner_ids=owner_ids,
             item_ids=item_ids,

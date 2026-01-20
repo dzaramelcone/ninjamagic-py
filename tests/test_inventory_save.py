@@ -6,11 +6,8 @@ from ninjamagic.inventory import save_owner_inventory
 
 
 class DummyQuerier:
-    async def delete_inventories_for_owner(self, *, owner_id: int) -> None:
-        raise AssertionError("delete should not be called before validation")
-
-    async def insert_inventories_for_owner(self, arg) -> None:
-        raise AssertionError("insert should not be called before validation")
+    async def replace_inventories_for_owner(self, arg) -> None:
+        raise AssertionError("replace should not be called before validation")
 
 
 @pytest.mark.asyncio

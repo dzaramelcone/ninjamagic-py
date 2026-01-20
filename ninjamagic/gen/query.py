@@ -97,6 +97,37 @@ class InsertInventoriesForOwnerParams(pydantic.BaseModel):
     instance_specs: List[Any]
 
 
+REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.owner_id = :p1
+)
+INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+SELECT
+  unnest(:p2\\:\\:bigint[]),
+  unnest(:p3\\:\\:bigint[]),
+  unnest(:p4\\:\\:bigint[]),
+  unnest(:p5\\:\\:text[]),
+  NULLIF(unnest(:p6\\:\\:bigint[]), 0),
+  NULLIF(unnest(:p7\\:\\:integer[]), -1),
+  NULLIF(unnest(:p8\\:\\:integer[]), -1),
+  NULLIF(unnest(:p9\\:\\:integer[]), -1),
+  unnest(:p10\\:\\:jsonb[])
+"""
+
+
+class ReplaceInventoriesForOwnerParams(pydantic.BaseModel):
+    owner_id: int
+    ids: List[int]
+    owner_ids: List[int]
+    item_ids: List[int]
+    slots: List[str]
+    container_ids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    instance_specs: List[Any]
+
+
 UPDATE_CHARACTER = """-- name: update_character \\:exec
 UPDATE characters
 SET
@@ -356,6 +387,20 @@ class AsyncQuerier:
             "p7": arg.xs,
             "p8": arg.ys,
             "p9": arg.instance_specs,
+        })
+
+    async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
+        await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_OWNER), {
+            "p1": arg.owner_id,
+            "p2": arg.ids,
+            "p3": arg.owner_ids,
+            "p4": arg.item_ids,
+            "p5": arg.slots,
+            "p6": arg.container_ids,
+            "p7": arg.map_ids,
+            "p8": arg.xs,
+            "p9": arg.ys,
+            "p10": arg.instance_specs,
         })
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
