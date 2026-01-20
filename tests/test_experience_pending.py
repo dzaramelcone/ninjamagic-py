@@ -111,3 +111,23 @@ def test_newbie_bonus_falls_to_one():
         settings.newbie_exp_buff, rel=1e-3
     )
     assert experience.newbie_multiplier(50) == 1.0
+
+
+def test_rest_absorbs_pending_from_other_skills():
+    try:
+        source = esper.create_entity()
+        skills = Skills(
+            martial_arts=Skill(
+                name="Martial Arts", tnl=0.0, pending=0.4, rest_bonus=2.0
+            ),
+            survival=Skill(name="Survival", tnl=0.0, pending=0.0, rest_bonus=1.0),
+        )
+
+        esper.add_component(source, skills)
+        bus.pulse(bus.AbsorbRestExp(source=source))
+        experience.process()
+
+        assert skills.martial_arts.tnl == pytest.approx(0.8)
+    finally:
+        esper.clear_database()
+        bus.clear()
