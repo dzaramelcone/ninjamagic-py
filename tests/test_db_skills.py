@@ -15,6 +15,13 @@ def test_skills_migration_exists():
     assert Path("migrations/003_skills.sql").exists()
 
 
+def test_skills_migration_backfills_skills_table():
+    from pathlib import Path
+
+    sql = Path("migrations/003_skills.sql").read_text()
+    assert "INSERT INTO" in sql and "skills" in sql
+
+
 def test_factory_load_uses_skills_table():
     from types import SimpleNamespace
 
