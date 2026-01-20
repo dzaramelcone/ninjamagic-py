@@ -32,7 +32,8 @@ def test_absorb_rest_exp_consolidates_pending():
 
         bus.pulse(bus.AbsorbRestExp(source=source))
 
-        experience.process_with_skills_for_test(source=source, skills=skills)
+        esper.add_component(source, skills)
+        experience.process()
 
         assert skills.martial_arts.tnl == 0.1 + (0.5 * 1.8)
         assert skills.martial_arts.pending == 0.0
@@ -51,13 +52,15 @@ def test_absorb_rest_exp_applies_idle_bonus():
 
         bus.pulse(bus.AbsorbRestExp(source=source))
 
-        experience.process_with_skills_for_test(source=source, skills=skills)
+        esper.add_component(source, skills)
+        experience.process()
 
         assert skills.martial_arts.rest_bonus == 1.8
         assert skills.martial_arts.pending == 0.0
     finally:
         esper.clear_database()
         bus.clear()
+
 
 
 def test_rest_bonus_caps_at_ten():
@@ -69,7 +72,8 @@ def test_rest_bonus_caps_at_ten():
 
         bus.pulse(bus.AbsorbRestExp(source=source))
 
-        experience.process_with_skills_for_test(source=source, skills=skills)
+        esper.add_component(source, skills)
+        experience.process()
 
         assert skills.martial_arts.rest_bonus == 10.0
     finally:

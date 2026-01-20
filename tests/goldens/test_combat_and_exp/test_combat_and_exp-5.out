@@ -1,11 +1,11 @@
 {
   "client": "bob",
-  "len": "194 B",
+  "len": "204 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "You hit Alice for 9.7% damage!"
+          "text": "You hit Alice for 9.9% damage!"
         }
       },
       {
@@ -15,33 +15,34 @@
       },
       {
         "msg": {
-          "text": "You gain two ranks in Martial Arts."
+          "text": "You gain three ranks in Martial Arts."
         }
       },
       {
         "health": {
-          "id": 25,
-          "pct": -0.05661025,
+          "id": 190,
+          "pct": -0.059109744,
           "stress_pct": 0.025
         }
       },
       {
         "stance": {
-          "id": 25,
+          "id": 190,
           "text": "lying prone"
         }
       },
       {
         "condition": {
-          "id": 25,
+          "id": 190,
           "text": "in shock"
         }
       },
       {
         "skill": {
           "name": "Martial Arts",
-          "rank": 2,
-          "tnl": 0.41632652
+          "pending": 2.497583,
+          "rank": 3,
+          "tnl": 0.1278289
         }
       }
     ]

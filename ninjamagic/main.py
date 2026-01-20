@@ -141,9 +141,9 @@ async def save(entity_id: EntityId):
         await q.update_character(save_dump)
         await q.upsert_skills(
             char_id=save_dump.id,
-            name=[skill.name for skill in skills_dump],
-            rank=[skill.rank for skill in skills_dump],
-            tnl=[skill.tnl for skill in skills_dump],
+            names=[skill.name for skill in skills_dump],
+            ranks=[skill.rank for skill in skills_dump],
+            tnls=[skill.tnl for skill in skills_dump],
         )
         log.info("%s saved.", entity_id)
 

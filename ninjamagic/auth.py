@@ -253,9 +253,9 @@ if settings.allow_local_auth:
         )
         await q.upsert_skills(
             char_id=char.id,
-            name=[skill.name for skill in body.skills],
-            rank=[skill.rank for skill in body.skills],
-            tnl=[skill.tnl for skill in body.skills],
+            names=[skill.name for skill in body.skills],
+            ranks=[skill.rank for skill in body.skills],
+            tnls=[skill.tnl for skill in body.skills],
         )
         req.session[OWNER_SESSION_KEY] = owner_id
 
