@@ -7,6 +7,7 @@ from ninjamagic.component import (
     ContainedBy,
     Den,
     FromDen,
+    InventoryDirty,
     Slot,
     Transform,
     transform,
@@ -89,6 +90,7 @@ def process():
     for sig in bus.iter(bus.MoveEntity):
         esper.add_component(sig.source, sig.container, ContainedBy)
         esper.add_component(sig.source, sig.slot)
+        esper.add_component(sig.source, InventoryDirty())
 
         if loc := esper.try_component(sig.source, Transform):
             bus.pulse(
@@ -108,3 +110,4 @@ def process():
     for sig in bus.iter(bus.PositionChanged):
         loc = transform(sig.source)
         loc.map_id, loc.y, loc.x = sig.to_map_id, sig.to_y, sig.to_x
+        esper.add_component(sig.source, InventoryDirty())
