@@ -47,18 +47,22 @@ WHERE id = $1;
 -- Skills
 
 -- name: GetSkillsForCharacter :many
-SELECT * FROM skills WHERE char_id = $1;
+SELECT * FROM skills WHERE char_id = sqlc.arg('char_id');
 
 -- name: UpsertSkill :exec
 INSERT INTO skills (char_id, name, rank, tnl)
-VALUES ($1, $2, $3, $4)
+VALUES (sqlc.arg('char_id'), sqlc.arg('name'), sqlc.arg('rank'), sqlc.arg('tnl'))
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl;
 
 -- name: UpsertSkills :exec
 INSERT INTO skills (char_id, name, rank, tnl)
-SELECT $1, unnest($2::text[]), unnest($3::bigint[]), unnest($4::real[])
+SELECT
+  sqlc.arg('char_id'),
+  unnest(sqlc.arg('names')::text[]),
+  unnest(sqlc.arg('ranks')::bigint[]),
+  unnest(sqlc.arg('tnls')::real[])
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl;

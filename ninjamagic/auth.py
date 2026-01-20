@@ -113,12 +113,6 @@ async def post_chargen(
         new.name,
         pronoun,
     )
-    await q.upsert_skills(
-        char_id=new.id,
-        name=["Martial Arts", "Evasion", "Survival"],
-        rank=[0, 0, 0],
-        tnl=[0.0, 0.0, 0.0],
-    )
 
     return RedirectResponse(url="/", status_code=303)
 

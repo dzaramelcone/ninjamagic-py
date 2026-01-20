@@ -73,3 +73,4 @@ class Skill(pydantic.BaseModel):
     name: str
     rank: int
     tnl: float
+    pending: float

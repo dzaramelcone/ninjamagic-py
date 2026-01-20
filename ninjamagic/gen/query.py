@@ -40,7 +40,7 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 
 GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
 
-SELECT id, char_id, name, rank, tnl FROM skills WHERE char_id = :p1
+SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
 
 
@@ -110,7 +110,11 @@ SET rank = EXCLUDED.rank,
 
 UPSERT_SKILLS = """-- name: upsert_skills \\:exec
 INSERT INTO skills (char_id, name, rank, tnl)
-SELECT :p1, unnest(:p2\\:\\:text[]), unnest(:p3\\:\\:bigint[]), unnest(:p4\\:\\:real[])
+SELECT
+  :p1,
+  unnest(:p2\\:\\:text[]),
+  unnest(:p3\\:\\:bigint[]),
+  unnest(:p4\\:\\:real[])
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl
@@ -199,6 +203,7 @@ class AsyncQuerier:
                 name=row[2],
                 rank=row[3],
                 tnl=row[4],
+                pending=row[5],
             )
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
@@ -236,10 +241,10 @@ class AsyncQuerier:
             "p4": tnl,
         })
 
-    async def upsert_skills(self, *, char_id: int, dollar_2: List[str], dollar_3: List[int], dollar_4: List[float]) -> None:
+    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float]) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
             "p1": char_id,
-            "p2": dollar_2,
-            "p3": dollar_3,
-            "p4": dollar_4,
+            "p2": names,
+            "p3": ranks,
+            "p4": tnls,
         })

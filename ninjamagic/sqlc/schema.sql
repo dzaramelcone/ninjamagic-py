@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS skills (
     name        CITEXT    NOT NULL,
     rank        BIGINT    NOT NULL DEFAULT 0,
     tnl         REAL      NOT NULL DEFAULT 0,
+    pending     REAL      NOT NULL DEFAULT 0,
 
     UNIQUE (char_id, name),
     CHECK (rank >= 0 AND tnl >= 0)
