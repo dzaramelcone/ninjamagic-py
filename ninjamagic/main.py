@@ -144,6 +144,7 @@ async def save(entity_id: EntityId):
             names=[skill.name for skill in skills_dump],
             ranks=[skill.rank for skill in skills_dump],
             tnls=[skill.tnl for skill in skills_dump],
+            pendings=[skill.pending for skill in skills_dump],
         )
         log.info("%s saved.", entity_id)
 

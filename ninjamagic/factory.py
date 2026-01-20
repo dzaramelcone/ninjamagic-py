@@ -61,15 +61,15 @@ def load(entity: EntityId, row: models.Character, skill_rows: list[models.Skill]
     esper.add_component(entity, Stats(grace=row.grace, grit=row.grit, wit=row.wit))
     skill_map = {skill.name: skill for skill in (skill_rows or [])}
 
-    def skill_values(name: str) -> tuple[int, float]:
+    def skill_values(name: str) -> tuple[int, float, float]:
         skill = skill_map.get(name)
         if not skill:
-            return 0, 0.0
-        return skill.rank, skill.tnl
+            return 0, 0.0, 0.0
+        return skill.rank, skill.tnl, getattr(skill, "pending", 0.0)
 
-    ma_rank, ma_tnl = skill_values("Martial Arts")
-    ev_rank, ev_tnl = skill_values("Evasion")
-    sv_rank, sv_tnl = skill_values("Survival")
+    ma_rank, ma_tnl, ma_pending = skill_values("Martial Arts")
+    ev_rank, ev_tnl, ev_pending = skill_values("Evasion")
+    sv_rank, sv_tnl, sv_pending = skill_values("Survival")
     esper.add_component(
         entity,
         Skills(
@@ -77,16 +77,19 @@ def load(entity: EntityId, row: models.Character, skill_rows: list[models.Skill]
                 name="Martial Arts",
                 rank=ma_rank,
                 tnl=ma_tnl,
+                pending=ma_pending,
             ),
             evasion=Skill(
                 name="Evasion",
                 rank=ev_rank,
                 tnl=ev_tnl,
+                pending=ev_pending,
             ),
             survival=Skill(
                 name="Survival",
                 rank=sv_rank,
                 tnl=sv_tnl,
+                pending=sv_pending,
             ),
         ),
     )

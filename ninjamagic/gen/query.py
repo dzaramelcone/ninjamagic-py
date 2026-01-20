@@ -100,24 +100,27 @@ RETURNING owner_id
 
 
 UPSERT_SKILL = """-- name: upsert_skill \\:exec
-INSERT INTO skills (char_id, name, rank, tnl)
-VALUES (:p1, :p2, :p3, :p4)
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+VALUES (:p1, :p2, :p3, :p4, :p5)
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
-    tnl = EXCLUDED.tnl
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending
 """
 
 
 UPSERT_SKILLS = """-- name: upsert_skills \\:exec
-INSERT INTO skills (char_id, name, rank, tnl)
+INSERT INTO skills (char_id, name, rank, tnl, pending)
 SELECT
   :p1,
   unnest(:p2\\:\\:text[]),
   unnest(:p3\\:\\:bigint[]),
-  unnest(:p4\\:\\:real[])
+  unnest(:p4\\:\\:real[]),
+  unnest(:p5\\:\\:real[])
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
-    tnl = EXCLUDED.tnl
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending
 """
 
 
@@ -233,18 +236,20 @@ class AsyncQuerier:
             return None
         return row[0]
 
-    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float) -> None:
+    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float, pending: float) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILL), {
             "p1": char_id,
             "p2": name,
             "p3": rank,
             "p4": tnl,
+            "p5": pending,
         })
 
-    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float]) -> None:
+    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float], pendings: List[float]) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
             "p1": char_id,
             "p2": names,
             "p3": ranks,
             "p4": tnls,
+            "p5": pendings,
         })

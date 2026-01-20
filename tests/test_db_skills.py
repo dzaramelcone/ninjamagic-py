@@ -9,6 +9,13 @@ def test_upsert_skills_query_exists():
     assert hasattr(query.AsyncQuerier, "upsert_skills")
 
 
+def test_upsert_skills_handles_pending():
+    import inspect
+
+    src = inspect.getsource(query.AsyncQuerier.upsert_skills)
+    assert "pending" in src
+
+
 def test_skills_migration_exists():
     from pathlib import Path
 

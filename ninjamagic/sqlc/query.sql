@@ -50,19 +50,28 @@ WHERE id = $1;
 SELECT * FROM skills WHERE char_id = sqlc.arg('char_id');
 
 -- name: UpsertSkill :exec
-INSERT INTO skills (char_id, name, rank, tnl)
-VALUES (sqlc.arg('char_id'), sqlc.arg('name'), sqlc.arg('rank'), sqlc.arg('tnl'))
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+VALUES (
+  sqlc.arg('char_id'),
+  sqlc.arg('name'),
+  sqlc.arg('rank'),
+  sqlc.arg('tnl'),
+  sqlc.arg('pending')
+)
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
-    tnl = EXCLUDED.tnl;
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending;
 
 -- name: UpsertSkills :exec
-INSERT INTO skills (char_id, name, rank, tnl)
+INSERT INTO skills (char_id, name, rank, tnl, pending)
 SELECT
   sqlc.arg('char_id'),
   unnest(sqlc.arg('names')::text[]),
   unnest(sqlc.arg('ranks')::bigint[]),
-  unnest(sqlc.arg('tnls')::real[])
+  unnest(sqlc.arg('tnls')::real[]),
+  unnest(sqlc.arg('pendings')::real[])
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
-    tnl = EXCLUDED.tnl;
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending;
