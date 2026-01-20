@@ -55,3 +55,10 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl;
+
+-- name: UpsertSkills :exec
+INSERT INTO skills (char_id, name, rank, tnl)
+SELECT $1, unnest($2::text[]), unnest($3::bigint[]), unnest($4::real[])
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl;

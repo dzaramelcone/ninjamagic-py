@@ -5,6 +5,10 @@ def test_skills_queries_exist():
     assert hasattr(query.AsyncQuerier, "get_skills_for_character")
 
 
+def test_upsert_skills_query_exists():
+    assert hasattr(query.AsyncQuerier, "upsert_skills")
+
+
 def test_skills_migration_exists():
     from pathlib import Path
 

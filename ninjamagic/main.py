@@ -139,13 +139,12 @@ async def save(entity_id: EntityId):
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
     async with get_repository_factory() as q:
         await q.update_character(save_dump)
-        for skill in skills_dump:
-            await q.upsert_skill(
-                char_id=save_dump.id,
-                name=skill.name,
-                rank=skill.rank,
-                tnl=skill.tnl,
-            )
+        await q.upsert_skills(
+            char_id=save_dump.id,
+            name=[skill.name for skill in skills_dump],
+            rank=[skill.rank for skill in skills_dump],
+            tnl=[skill.tnl for skill in skills_dump],
+        )
         log.info("%s saved.", entity_id)
 
 

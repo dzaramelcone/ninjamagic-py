@@ -3,7 +3,7 @@
 #   sqlc v1.30.0
 # source: query.sql
 import pydantic
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, List, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -102,6 +102,15 @@ RETURNING owner_id
 UPSERT_SKILL = """-- name: upsert_skill \\:exec
 INSERT INTO skills (char_id, name, rank, tnl)
 VALUES (:p1, :p2, :p3, :p4)
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl
+"""
+
+
+UPSERT_SKILLS = """-- name: upsert_skills \\:exec
+INSERT INTO skills (char_id, name, rank, tnl)
+SELECT :p1, unnest(:p2\\:\\:text[]), unnest(:p3\\:\\:bigint[]), unnest(:p4\\:\\:real[])
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl
@@ -225,4 +234,12 @@ class AsyncQuerier:
             "p2": name,
             "p3": rank,
             "p4": tnl,
+        })
+
+    async def upsert_skills(self, *, char_id: int, dollar_2: List[str], dollar_3: List[int], dollar_4: List[float]) -> None:
+        await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
+            "p1": char_id,
+            "p2": dollar_2,
+            "p3": dollar_3,
+            "p4": dollar_4,
         })
