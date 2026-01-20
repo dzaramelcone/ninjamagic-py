@@ -3,7 +3,7 @@
 #   sqlc v1.30.0
 # source: query.sql
 import pydantic
-from typing import AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, List, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -18,6 +18,11 @@ INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNIN
 
 DELETE_CHARACTER = """-- name: delete_character \\:exec
 DELETE FROM characters WHERE id = :p1
+"""
+
+
+DELETE_INVENTORY_BY_ID = """-- name: delete_inventory_by_id \\:exec
+DELETE FROM inventories WHERE id = :p1
 """
 
 
@@ -36,6 +41,22 @@ class GetCharacterBriefRow(pydantic.BaseModel):
     id: int
     owner_id: int
     name: str
+
+
+GET_INVENTORIES_FOR_MAP = """-- name: get_inventories_for_map \\:many
+SELECT id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec, created_at, updated_at FROM inventories WHERE map_id = :p1
+"""
+
+
+GET_INVENTORIES_FOR_OWNER = """-- name: get_inventories_for_owner \\:many
+
+SELECT id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec, created_at, updated_at FROM inventories WHERE owner_id = :p1
+"""
+
+
+GET_ITEMS_BY_IDS = """-- name: get_items_by_ids \\:many
+SELECT id, name, spec, created_at, updated_at FROM items WHERE id = ANY(:p1\\:\\:bigint[])
+"""
 
 
 GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
@@ -99,14 +120,67 @@ RETURNING owner_id
 """
 
 
+UPSERT_INVENTORY = """-- name: upsert_inventory \\:one
+INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+VALUES (:p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9)
+ON CONFLICT (id) DO UPDATE
+SET owner_id = EXCLUDED.owner_id,
+    item_id = EXCLUDED.item_id,
+    slot = EXCLUDED.slot,
+    container_id = EXCLUDED.container_id,
+    map_id = EXCLUDED.map_id,
+    x = EXCLUDED.x,
+    y = EXCLUDED.y,
+    instance_spec = EXCLUDED.instance_spec,
+    updated_at = now()
+RETURNING id
+"""
+
+
+class UpsertInventoryParams(pydantic.BaseModel):
+    id: int
+    owner_id: int
+    item_id: int
+    slot: str
+    container_id: Optional[int]
+    map_id: Optional[int]
+    x: Optional[int]
+    y: Optional[int]
+    instance_spec: Optional[Any]
+
+
+UPSERT_ITEM_BY_NAME = """-- name: upsert_item_by_name \\:one
+INSERT INTO items (name, spec)
+VALUES (:p1, :p2)
+ON CONFLICT (name) DO UPDATE
+  SET spec = EXCLUDED.spec,
+      updated_at = now()
+RETURNING id
+"""
+
+
 UPSERT_SKILL = """-- name: upsert_skill \\:exec
 INSERT INTO skills (char_id, name, rank, tnl, pending)
-VALUES (:p1, :p2, :p3, :p4, :p5)
+VALUES (
+  :p1,
+  :p2,
+  :p3,
+  :p4,
+  :p5
+)
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending
 """
+
+
+class UpsertSkillParams(pydantic.BaseModel):
+    char_id: int
+    name: str
+    rank: int
+    tnl: float
+    pending: float
 
 
 UPSERT_SKILLS = """-- name: upsert_skills \\:exec
@@ -122,6 +196,14 @@ SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending
 """
+
+
+class UpsertSkillsParams(pydantic.BaseModel):
+    char_id: int
+    names: List[str]
+    ranks: List[int]
+    tnls: List[float]
+    pendings: List[float]
 
 
 class AsyncQuerier:
@@ -158,6 +240,9 @@ class AsyncQuerier:
 
     async def delete_character(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
+
+    async def delete_inventory_by_id(self, *, id: int) -> None:
+        await self._conn.execute(sqlalchemy.text(DELETE_INVENTORY_BY_ID), {"p1": id})
 
     async def get_character(self, *, owner_id: int) -> Optional[models.Character]:
         row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER), {"p1": owner_id})).first()
@@ -196,6 +281,51 @@ class AsyncQuerier:
             owner_id=row[1],
             name=row[2],
         )
+
+    async def get_inventories_for_map(self, *, map_id: Optional[int]) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_MAP), {"p1": map_id})
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                owner_id=row[1],
+                item_id=row[2],
+                slot=row[3],
+                container_id=row[4],
+                map_id=row[5],
+                x=row[6],
+                y=row[7],
+                instance_spec=row[8],
+                created_at=row[9],
+                updated_at=row[10],
+            )
+
+    async def get_inventories_for_owner(self, *, owner_id: int) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_OWNER), {"p1": owner_id})
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                owner_id=row[1],
+                item_id=row[2],
+                slot=row[3],
+                container_id=row[4],
+                map_id=row[5],
+                x=row[6],
+                y=row[7],
+                instance_spec=row[8],
+                created_at=row[9],
+                updated_at=row[10],
+            )
+
+    async def get_items_by_ids(self, *, dollar_1: List[int]) -> AsyncIterator[models.Item]:
+        result = await self._conn.stream(sqlalchemy.text(GET_ITEMS_BY_IDS), {"p1": dollar_1})
+        async for row in result:
+            yield models.Item(
+                id=row[0],
+                name=row[1],
+                spec=row[2],
+                created_at=row[3],
+                updated_at=row[4],
+            )
 
     async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
         result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_FOR_CHARACTER), {"p1": char_id})
@@ -236,20 +366,42 @@ class AsyncQuerier:
             return None
         return row[0]
 
-    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float, pending: float) -> None:
+    async def upsert_inventory(self, arg: UpsertInventoryParams) -> Optional[int]:
+        row = (await self._conn.execute(sqlalchemy.text(UPSERT_INVENTORY), {
+            "p1": arg.id,
+            "p2": arg.owner_id,
+            "p3": arg.item_id,
+            "p4": arg.slot,
+            "p5": arg.container_id,
+            "p6": arg.map_id,
+            "p7": arg.x,
+            "p8": arg.y,
+            "p9": arg.instance_spec,
+        })).first()
+        if row is None:
+            return None
+        return row[0]
+
+    async def upsert_item_by_name(self, *, name: str, spec: Any) -> Optional[int]:
+        row = (await self._conn.execute(sqlalchemy.text(UPSERT_ITEM_BY_NAME), {"p1": name, "p2": spec})).first()
+        if row is None:
+            return None
+        return row[0]
+
+    async def upsert_skill(self, arg: UpsertSkillParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILL), {
-            "p1": char_id,
-            "p2": name,
-            "p3": rank,
-            "p4": tnl,
-            "p5": pending,
+            "p1": arg.char_id,
+            "p2": arg.name,
+            "p3": arg.rank,
+            "p4": arg.tnl,
+            "p5": arg.pending,
         })
 
-    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float], pendings: List[float]) -> None:
+    async def upsert_skills(self, arg: UpsertSkillsParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
-            "p1": char_id,
-            "p2": names,
-            "p3": ranks,
-            "p4": tnls,
-            "p5": pendings,
+            "p1": arg.char_id,
+            "p2": arg.names,
+            "p3": arg.ranks,
+            "p4": arg.tnls,
+            "p5": arg.pendings,
         })

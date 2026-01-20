@@ -75,3 +75,40 @@ ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending;
+
+-- Items + Inventories
+
+-- name: GetInventoriesForOwner :many
+SELECT * FROM inventories WHERE owner_id = $1;
+
+-- name: GetInventoriesForMap :many
+SELECT * FROM inventories WHERE map_id = $1;
+
+-- name: GetItemsByIds :many
+SELECT * FROM items WHERE id = ANY($1::bigint[]);
+
+-- name: UpsertItemByName :one
+INSERT INTO items (name, spec)
+VALUES ($1, $2)
+ON CONFLICT (name) DO UPDATE
+  SET spec = EXCLUDED.spec,
+      updated_at = now()
+RETURNING id;
+
+-- name: UpsertInventory :one
+INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+ON CONFLICT (id) DO UPDATE
+SET owner_id = EXCLUDED.owner_id,
+    item_id = EXCLUDED.item_id,
+    slot = EXCLUDED.slot,
+    container_id = EXCLUDED.container_id,
+    map_id = EXCLUDED.map_id,
+    x = EXCLUDED.x,
+    y = EXCLUDED.y,
+    instance_spec = EXCLUDED.instance_spec,
+    updated_at = now()
+RETURNING id;
+
+-- name: DeleteInventoryById :exec
+DELETE FROM inventories WHERE id = $1;

@@ -4,7 +4,7 @@
 import datetime
 import enum
 import pydantic
-from typing import Optional
+from typing import Any, Optional
 
 
 class Condition(enum.StrEnum):
@@ -63,6 +63,28 @@ class Character(pydantic.BaseModel):
     grace: int
     grit: int
     wit: int
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class Inventory(pydantic.BaseModel):
+    id: int
+    owner_id: int
+    item_id: int
+    slot: str
+    container_id: Optional[int]
+    map_id: Optional[int]
+    x: Optional[int]
+    y: Optional[int]
+    instance_spec: Optional[Any]
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class Item(pydantic.BaseModel):
+    id: int
+    name: str
+    spec: Any
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
