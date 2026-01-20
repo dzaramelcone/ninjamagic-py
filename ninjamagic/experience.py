@@ -4,14 +4,13 @@ from functools import partial
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Anchor, AwardCap, EntityId, Skill, Skills, skills
+from ninjamagic.component import Anchor, AwardCap, EntityId, Skills, skills
 from ninjamagic.config import settings
 from ninjamagic.util import Trial
 
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
-NEWBIE_MAX = 100.0
 
 
 def send_skills(entity: EntityId):
@@ -29,17 +28,13 @@ def send_skills(entity: EntityId):
     )
 
 
-def process_with_skills_for_test(source: int, skills: Skills):
-    esper.add_component(source, skills)
-    process()
-
 
 def newbie_multiplier(rank: int) -> float:
     if rank >= 50:
         return 1.0
     t = util.clamp01(rank / 50.0)
     progress = util.ease_out_expo(1.0 - t)
-    return 1.0 + (NEWBIE_MAX - 1.0) * progress
+    return 1.0 + (settings.newbie_exp_buff - 1.0) * progress
 
 
 def process():
