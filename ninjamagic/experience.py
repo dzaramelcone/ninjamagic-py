@@ -43,26 +43,6 @@ def process():
     def mark_updated(entity_id: EntityId, skill: Skill) -> None:
         updated_skills[(entity_id, skill.name)] = skill
 
-    def apply_rankups(entity_id: EntityId, skill: Skill) -> None:
-        ranks_gained = 0
-        while skill.tnl >= 1.0:
-            ranks_gained += 1
-            skill.tnl -= 1
-            skill.tnl *= RANKUP_FALLOFF
-        if ranks_gained > 0:
-            skill.rank += ranks_gained
-            mark_updated(entity_id, skill)
-            # TODO this can be removed now and performed clientside
-            bus.pulse(
-                bus.Echo(
-                    source=entity_id,
-                    make_source_sig=partial(
-                        bus.Outbound,
-                        text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
-                    ),
-                )
-            )
-
     for sig in bus.iter(bus.Die):
         award_cap = esper.try_component(sig.source, AwardCap)
         if not award_cap:
@@ -122,24 +102,28 @@ def process():
                 skill.tnl += skill.pending * skill.rest_bonus
                 skill.pending = 0.0
                 skill.rest_bonus = 1.0
-                apply_rankups(sig.source, skill)
                 mark_updated(sig.source, skill)
             else:
                 skill.rest_bonus = min(10.0, skill.rest_bonus + 0.8)
 
-    for sig in bus.iter(bus.Learn):
-        skill = sig.skill
-        apply_rankups(sig.source, skill)
-
-    for sig in bus.iter(bus.GrowAnchor):
-        anchor = esper.component_for_entity(sig.anchor, Anchor)
-        anchor.tnl += sig.amount
-        while anchor.tnl >= 1.0:
-            anchor.rank += 1
-            anchor.tnl -= 1.0
-            anchor.tnl *= RANKUP_FALLOFF
-            log.info("anchor_rankup: anchor=%s rank=%s", sig.anchor, anchor.rank)
-            story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)
+    for (entity_id, _), skill in updated_skills.items():
+        ranks_gained = 0
+        while skill.tnl >= 1.0:
+            ranks_gained += 1
+            skill.tnl -= 1
+            skill.tnl *= RANKUP_FALLOFF
+        if ranks_gained > 0:
+            skill.rank += ranks_gained
+            # TODO this can be removed now and performed clientside
+            bus.pulse(
+                bus.Echo(
+                    source=entity_id,
+                    make_source_sig=partial(
+                        bus.Outbound,
+                        text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
+                    ),
+                )
+            )
 
     if updated_skills:
         bus.pulse(
@@ -154,3 +138,13 @@ def process():
                 for (entity_id, _), skill in updated_skills.items()
             ]
         )
+
+    for sig in bus.iter(bus.GrowAnchor):
+        anchor = esper.component_for_entity(sig.anchor, Anchor)
+        anchor.tnl += sig.amount
+        while anchor.tnl >= 1.0:
+            anchor.rank += 1
+            anchor.tnl -= 1.0
+            anchor.tnl *= RANKUP_FALLOFF
+            log.info("anchor_rankup: anchor=%s rank=%s", sig.anchor, anchor.rank)
+            story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)

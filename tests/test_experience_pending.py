@@ -35,9 +35,17 @@ def test_absorb_rest_exp_consolidates_pending():
         esper.add_component(source, skills)
         experience.process()
 
-        assert skills.martial_arts.tnl == 0.1 + (0.5 * 1.8)
+        assert skills.martial_arts.rank == 1
+        assert skills.martial_arts.tnl == pytest.approx(0.0)
         assert skills.martial_arts.pending == 0.0
         assert skills.martial_arts.rest_bonus == 1.0
+        outbound = [sig for sig in bus.iter(bus.OutboundSkill) if sig.to == source]
+        assert outbound
+        last = outbound[-1]
+        assert last.name == "Martial Arts"
+        assert last.rank == 1
+        assert last.tnl == pytest.approx(0.0)
+        assert last.pending == 0.0
     finally:
         esper.clear_database()
         bus.clear()
