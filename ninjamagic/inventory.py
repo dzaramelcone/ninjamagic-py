@@ -18,7 +18,7 @@ from ninjamagic.component import (
     Transform,
 )
 from ninjamagic.db import get_repository_factory
-from ninjamagic.gen.query import AsyncQuerier
+from ninjamagic.gen.query import AsyncQuerier, UpsertInventoryParams
 from ninjamagic.item_spec import REGISTRY, dump_item_spec, load_item_spec
 
 log = logging.getLogger(__name__)
@@ -86,15 +86,17 @@ async def save_dirty_inventory(q: AsyncQuerier) -> None:
             continue
 
         await q.upsert_inventory(
-            id=int(inv_id),
-            owner_id=owner_id,
-            item_id=template_id,
-            slot=slot,
-            container_id=container_id,
-            map_id=map_id,
-            x=x,
-            y=y,
-            instance_spec=None,
+            UpsertInventoryParams(
+                id=int(inv_id),
+                owner_id=owner_id,
+                item_id=template_id,
+                slot=slot,
+                container_id=container_id,
+                map_id=map_id,
+                x=x,
+                y=y,
+                instance_spec=None,
+            )
         )
         esper.remove_component(eid, InventoryDirty)
 
