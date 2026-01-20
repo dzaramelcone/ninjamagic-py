@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from ninjamagic import bus, factory
+from ninjamagic import bus, factory, inventory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
 from ninjamagic.component import EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
@@ -138,6 +138,7 @@ async def save(entity_id: EntityId):
     save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
     async with get_repository_factory() as q:
+        await inventory.save_dirty_inventory(q)
         await q.update_character(save_dump)
         await q.upsert_skills(
             char_id=save_dump.id,
