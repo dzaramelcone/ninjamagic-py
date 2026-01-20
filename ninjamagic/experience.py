@@ -38,7 +38,31 @@ def newbie_multiplier(rank: int) -> float:
 
 
 def process():
-    payout_updates: list[tuple[EntityId, Skill]] = []
+    updated_skills: dict[tuple[EntityId, str], Skill] = {}
+
+    def mark_updated(entity_id: EntityId, skill: Skill) -> None:
+        updated_skills[(entity_id, skill.name)] = skill
+
+    def apply_rankups(entity_id: EntityId, skill: Skill) -> None:
+        ranks_gained = 0
+        while skill.tnl >= 1.0:
+            ranks_gained += 1
+            skill.tnl -= 1
+            skill.tnl *= RANKUP_FALLOFF
+        if ranks_gained > 0:
+            skill.rank += ranks_gained
+            mark_updated(entity_id, skill)
+            # TODO this can be removed now and performed clientside
+            bus.pulse(
+                bus.Echo(
+                    source=entity_id,
+                    make_source_sig=partial(
+                        bus.Outbound,
+                        text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
+                    ),
+                )
+            )
+
     for sig in bus.iter(bus.Die):
         award_cap = esper.try_component(sig.source, AwardCap)
         if not award_cap:
@@ -56,7 +80,7 @@ def process():
                 learner_skill.tnl += remaining
                 learner_skill.pending += remaining
                 if remaining:
-                    payout_updates.append((learner_id, learner_skill))
+                    mark_updated(learner_id, learner_skill)
 
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
@@ -77,86 +101,35 @@ def process():
                     skill.tnl += granted
                     skill.pending += granted
                     total += granted
+                    mark_updated(sig.source, skill)
                 ledger[skill.name] = (total, now)
                 award = granted
         else:
             award = Trial.get_award(mult=sig.mult) * newbie_multiplier(skill.rank)
             skill.tnl += award
             skill.pending += award
+            if award:
+                mark_updated(sig.source, skill)
         if award:
             log.info("pending gained %s", award)
-
-    if payout_updates:
-        bus.pulse(
-            *[
-                bus.OutboundSkill(
-                    to=entity_id,
-                    name=skill.name,
-                    rank=skill.rank,
-                    tnl=skill.tnl,
-                    pending=skill.pending,
-                )
-                for entity_id, skill in payout_updates
-            ]
-        )
 
     for sig in bus.iter(bus.AbsorbRestExp):
         skills = esper.try_component(sig.source, Skills)
         if not skills:
             continue
-        updated_skills: list[Skill] = []
         for skill in skills:
             if skill.pending:
                 skill.tnl += skill.pending * skill.rest_bonus
                 skill.pending = 0.0
                 skill.rest_bonus = 1.0
-                updated_skills.append(skill)
+                apply_rankups(sig.source, skill)
+                mark_updated(sig.source, skill)
             else:
                 skill.rest_bonus = min(10.0, skill.rest_bonus + 0.8)
-        if updated_skills:
-            bus.pulse(
-                *[
-                    bus.OutboundSkill(
-                        to=sig.source,
-                        name=skill.name,
-                        rank=skill.rank,
-                        tnl=skill.tnl,
-                        pending=skill.pending,
-                    )
-                    for skill in updated_skills
-                ]
-            )
 
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
-        ranks_gained = 0
-        while skill.tnl >= 1.0:
-            ranks_gained += 1
-            skill.tnl -= 1
-            skill.tnl *= RANKUP_FALLOFF
-
-        if ranks_gained > 0:
-            skill.rank += ranks_gained
-            # TODO this can be removed now and performed clientside
-            bus.pulse(
-                bus.Echo(
-                    source=sig.source,
-                    make_source_sig=partial(
-                        bus.Outbound,
-                        text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
-                    ),
-                )
-            )
-
-        bus.pulse(
-            bus.OutboundSkill(
-                to=sig.source,
-                name=skill.name,
-                rank=skill.rank,
-                tnl=skill.tnl,
-                pending=skill.pending,
-            )
-        )
+        apply_rankups(sig.source, skill)
 
     for sig in bus.iter(bus.GrowAnchor):
         anchor = esper.component_for_entity(sig.anchor, Anchor)
@@ -167,3 +140,17 @@ def process():
             anchor.tnl *= RANKUP_FALLOFF
             log.info("anchor_rankup: anchor=%s rank=%s", sig.anchor, anchor.rank)
             story.echo(anchor.rankup_echo, sig.anchor, range=reach.visible)
+
+    if updated_skills:
+        bus.pulse(
+            *[
+                bus.OutboundSkill(
+                    to=entity_id,
+                    name=skill.name,
+                    rank=skill.rank,
+                    tnl=skill.tnl,
+                    pending=skill.pending,
+                )
+                for (entity_id, _), skill in updated_skills.items()
+            ]
+        )

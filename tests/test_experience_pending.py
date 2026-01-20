@@ -131,3 +131,24 @@ def test_rest_absorbs_pending_from_other_skills():
     finally:
         esper.clear_database()
         bus.clear()
+
+
+def test_rest_absorb_triggers_rankup():
+    try:
+        source = esper.create_entity()
+        skills = Skills(
+            martial_arts=Skill(
+                name="Martial Arts", tnl=0.9, pending=0.2, rest_bonus=1.0
+            ),
+        )
+        esper.add_component(source, skills)
+        bus.pulse(bus.AbsorbRestExp(source=source))
+        experience.process()
+
+        assert skills.martial_arts.rank == 1
+        assert skills.martial_arts.tnl == pytest.approx(
+            0.1 * experience.RANKUP_FALLOFF
+        )
+    finally:
+        esper.clear_database()
+        bus.clear()
