@@ -62,6 +62,23 @@ def test_absorb_rest_exp_applies_idle_bonus():
         bus.clear()
 
 
+def test_absorb_rest_exp_emits_outbound_skill():
+    try:
+        source = esper.create_entity()
+        esper.add_component(
+            source,
+            Skills(martial_arts=Skill(name="Martial Arts", pending=0.2)),
+        )
+
+        bus.pulse(bus.AbsorbRestExp(source=source))
+        experience.process()
+
+        assert any(sig.to == source for sig in bus.iter(bus.OutboundSkill))
+    finally:
+        esper.clear_database()
+        bus.clear()
+
+
 
 def test_rest_bonus_caps_at_ten():
     try:
