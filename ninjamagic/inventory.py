@@ -1,7 +1,9 @@
+import asyncio
 import logging
 
 import esper
 
+from ninjamagic import bus
 from ninjamagic.component import (
     Chips,
     ContainedBy,
@@ -9,11 +11,13 @@ from ninjamagic.component import (
     InventoryId,
     ItemDirty,
     ItemTemplateId,
+    Junk,
     Noun,
     OwnerId,
     Slot,
     Transform,
 )
+from ninjamagic.db import get_repository_factory
 from ninjamagic.gen.query import AsyncQuerier
 from ninjamagic.item_spec import REGISTRY, dump_item_spec, load_item_spec
 
@@ -95,6 +99,21 @@ async def save_dirty_inventory(q: AsyncQuerier) -> None:
         esper.remove_component(eid, InventoryDirty)
 
 
+def process() -> None:
+    if bus.is_empty(bus.RestCheck):
+        return
+
+    inventory_ids: list[int] = []
+    for eid, _ in esper.get_component(Junk):
+        if inv_id := esper.try_component(eid, InventoryId):
+            inventory_ids.append(int(inv_id))
+        esper.delete_entity(eid)
+
+    if inventory_ids:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_delete_inventory_rows(inventory_ids))
+
+
 def _apply_item_spec(entity_id: int, spec: list[dict]) -> None:
     for comp in load_item_spec(spec):
         esper.add_component(entity_id, comp)
@@ -146,6 +165,12 @@ def _inventory_location(
         return 0, None, int(loc.map_id), int(loc.x), int(loc.y), ""
 
     return 0, None, None, None, None, ""
+
+
+async def _delete_inventory_rows(inventory_ids: list[int]) -> None:
+    async with get_repository_factory() as q:
+        for inventory_id in inventory_ids:
+            await q.delete_inventory_by_id(id=inventory_id)
 
 
 async def _hydrate_inventories(
