@@ -249,11 +249,14 @@ if settings.allow_local_auth:
                 grace=body.stats.grace,
                 grit=body.stats.grit,
                 wit=body.stats.wit,
-                rank_martial_arts=body.skills.martial_arts.rank,
-                tnl_martial_arts=body.skills.martial_arts.tnl,
-                rank_evasion=body.skills.evasion.rank,
-                tnl_evasion=body.skills.evasion.tnl,
             )
+        )
+        await q.upsert_skills(
+            char_id=char.id,
+            names=[skill.name for skill in body.skills],
+            ranks=[skill.rank for skill in body.skills],
+            tnls=[skill.tnl for skill in body.skills],
+            pendings=[skill.pending for skill in body.skills],
         )
         req.session[OWNER_SESSION_KEY] = owner_id
 

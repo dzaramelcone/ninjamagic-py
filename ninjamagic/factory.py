@@ -15,7 +15,7 @@ from ninjamagic.component import (
     Transform,
     transform,
 )
-from ninjamagic.gen.models import Character
+from ninjamagic.gen import models
 from ninjamagic.gen.query import UpdateCharacterParams
 from ninjamagic.util import Pronouns
 from ninjamagic.world.state import DEMO, NOWHERE
@@ -38,7 +38,7 @@ def move_into_world(entity: EntityId):
     )
 
 
-def load(entity: EntityId, row: Character) -> EntityId:
+def load(entity: EntityId, row: models.Character, skill_rows: list[models.Skill]) -> EntityId:
     esper.add_component(entity, row.owner_id, OwnerId)
     esper.add_component(entity, row.id, CharacterId)
     esper.add_component(
@@ -59,22 +59,45 @@ def load(entity: EntityId, row: Character) -> EntityId:
     )
     esper.add_component(entity, Stance(cur=row.stance))
     esper.add_component(entity, Stats(grace=row.grace, grit=row.grit, wit=row.wit))
+    skill_map = {skill.name: skill for skill in (skill_rows or [])}
+
+    def skill_values(name: str) -> tuple[int, float, float]:
+        skill = skill_map.get(name)
+        if not skill:
+            return 0, 0.0, 0.0
+        return skill.rank, skill.tnl, getattr(skill, "pending", 0.0)
+
+    ma_rank, ma_tnl, ma_pending = skill_values("Martial Arts")
+    ev_rank, ev_tnl, ev_pending = skill_values("Evasion")
+    sv_rank, sv_tnl, sv_pending = skill_values("Survival")
     esper.add_component(
         entity,
         Skills(
             martial_arts=Skill(
                 name="Martial Arts",
-                rank=row.rank_martial_arts,
-                tnl=row.tnl_martial_arts,
+                rank=ma_rank,
+                tnl=ma_tnl,
+                pending=ma_pending,
             ),
-            evasion=Skill(name="Evasion", rank=row.rank_evasion, tnl=row.tnl_evasion),
+            evasion=Skill(
+                name="Evasion",
+                rank=ev_rank,
+                tnl=ev_tnl,
+                pending=ev_pending,
+            ),
+            survival=Skill(
+                name="Survival",
+                rank=sv_rank,
+                tnl=sv_tnl,
+                pending=sv_pending,
+            ),
         ),
     )
     move_into_world(entity)
     return entity
 
 
-def dump(entity: EntityId) -> UpdateCharacterParams:
+def dump(entity: EntityId) -> tuple[UpdateCharacterParams, list[Skill]]:
     char_id = esper.component_for_entity(entity, CharacterId)
     g, h, s, v = esper.component_for_entity(entity, Glyph)
     noun = esper.component_for_entity(entity, Noun)
@@ -101,11 +124,7 @@ def dump(entity: EntityId) -> UpdateCharacterParams:
         grace=stats.grace,
         grit=stats.grit,
         wit=stats.wit,
-        rank_evasion=skills.evasion.rank,
-        tnl_evasion=skills.evasion.tnl,
-        rank_martial_arts=skills.martial_arts.rank,
-        tnl_martial_arts=skills.martial_arts.tnl,
-    )
+    ), list(skills)
 
 
 def create(entity: EntityId):

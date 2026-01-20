@@ -23,7 +23,7 @@ from ninjamagic.component import (
     Stances,
     Transform,
 )
-from ninjamagic.gen.models import Character
+from ninjamagic.gen import models
 from ninjamagic.reach import Selector, adjacent
 from ninjamagic.util import Compass, Looptime, get_looptime, serial
 
@@ -45,7 +45,8 @@ class Connected(Signal):
 
     source: EntityId
     client: WebSocket
-    char: Character
+    char: models.Character
+    skills: list[models.Skill]
 
 
 @signal(frozen=True, slots=True, kw_only=True)
@@ -424,6 +425,7 @@ class OutboundSkill(Signal):
     name: str
     rank: int
     tnl: float
+    pending: float
 
 
 def is_empty[T: Signal](cls: type[T]) -> bool:

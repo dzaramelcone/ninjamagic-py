@@ -220,6 +220,10 @@ export interface Skill {
      * @generated from protobuf field: float tnl = 3
      */
     tnl: number;
+    /**
+     * @generated from protobuf field: float pending = 4
+     */
+    pending: number;
 }
 /**
  * @generated from protobuf message ninjamagic.Datetime
@@ -1025,7 +1029,8 @@ class Skill$Type extends MessageType<Skill> {
         super("ninjamagic.Skill", [
             { no: 1, name: "name", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 2, name: "rank", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 3, name: "tnl", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
+            { no: 3, name: "tnl", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ },
+            { no: 4, name: "pending", kind: "scalar", T: 2 /*ScalarType.FLOAT*/ }
         ]);
     }
     create(value?: PartialMessage<Skill>): Skill {
@@ -1033,6 +1038,7 @@ class Skill$Type extends MessageType<Skill> {
         message.name = "";
         message.rank = 0;
         message.tnl = 0;
+        message.pending = 0;
         if (value !== undefined)
             reflectionMergePartial<Skill>(this, message, value);
         return message;
@@ -1050,6 +1056,9 @@ class Skill$Type extends MessageType<Skill> {
                     break;
                 case /* float tnl */ 3:
                     message.tnl = reader.float();
+                    break;
+                case /* float pending */ 4:
+                    message.pending = reader.float();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1072,6 +1081,9 @@ class Skill$Type extends MessageType<Skill> {
         /* float tnl = 3; */
         if (message.tnl !== 0)
             writer.tag(3, WireType.Bit32).float(message.tnl);
+        /* float pending = 4; */
+        if (message.pending !== 0)
+            writer.tag(4, WireType.Bit32).float(message.pending);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

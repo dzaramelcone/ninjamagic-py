@@ -21,7 +21,7 @@ def process():
     for c in bus.iter(bus.Connected):
         log.info("%s:%s connected.", c.client, c.source)
         esper.add_component(c.source, c.client, Connection)
-        factory.load(c.source, c.char)
+        factory.load(c.source, c.char, c.skills)
         send_init(c)
 
     for d in bus.iter(bus.Disconnected):

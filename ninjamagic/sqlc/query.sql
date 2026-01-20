@@ -41,9 +41,37 @@ SET
   grace = coalesce(sqlc.narg('grace'), grace),
   grit = coalesce(sqlc.narg('grit'), grit),
   wit = coalesce(sqlc.narg('wit'), wit),
-  rank_martial_arts = coalesce(sqlc.narg('rank_martial_arts'), rank_martial_arts),
-  tnl_martial_arts = coalesce(sqlc.narg('tnl_martial_arts'), tnl_martial_arts),
-  rank_evasion = coalesce(sqlc.narg('rank_evasion'), rank_evasion),
-  tnl_evasion = coalesce(sqlc.narg('tnl_evasion'), tnl_evasion),
   updated_at = now()
 WHERE id = $1;
+
+-- Skills
+
+-- name: GetSkillsForCharacter :many
+SELECT * FROM skills WHERE char_id = sqlc.arg('char_id');
+
+-- name: UpsertSkill :exec
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+VALUES (
+  sqlc.arg('char_id'),
+  sqlc.arg('name'),
+  sqlc.arg('rank'),
+  sqlc.arg('tnl'),
+  sqlc.arg('pending')
+)
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending;
+
+-- name: UpsertSkills :exec
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+SELECT
+  sqlc.arg('char_id'),
+  unnest(sqlc.arg('names')::text[]),
+  unnest(sqlc.arg('ranks')::bigint[]),
+  unnest(sqlc.arg('tnls')::real[]),
+  unnest(sqlc.arg('pendings')::real[])
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending;

@@ -9,3 +9,7 @@ ninjamagic.env
 droplet.ninjamagic.env
 
 etc/systemd
+# Allow versioned plans
+!docs/plans/
+!docs/plans/**
+!docs/

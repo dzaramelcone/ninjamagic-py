@@ -26,6 +26,7 @@ export type SkillState = {
   name: string;
   rank: number;
   tnl: number;
+  pending: number;
 };
 
 type ServerTimeState = {
@@ -65,7 +66,7 @@ type GameStore = {
   setHealth: (id: number, pct: number, stressPct: number) => void;
   setStance: (id: number, text: string) => void;
   setCondition: (id: number, text: string) => void;
-  setSkill: (name: string, rank: number, tnl: number) => void;
+  setSkill: (name: string, rank: number, tnl: number, pending: number) => void;
   setServerTime: (unixSeconds: bigint) => void;
   getServerNow: () => Date;
 };
@@ -251,16 +252,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       },
     })),
 
-  setSkill: (name, rank, tnl) =>
+  setSkill: (name, rank, tnl, pending) =>
     set((state) => {
       const existingIdx = state.skills.findIndex((s) => s.name === name);
 
       if (existingIdx !== -1) {
         const newSkills = [...state.skills];
-        newSkills[existingIdx] = { name, rank, tnl };
+        newSkills[existingIdx] = { name, rank, tnl, pending };
         return { skills: newSkills };
       } else {
-        return { skills: [...state.skills, { name, rank, tnl }] };
+        return { skills: [...state.skills, { name, rank, tnl, pending }] };
       }
     }),
 

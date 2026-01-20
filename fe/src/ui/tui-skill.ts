@@ -45,10 +45,10 @@ export class TuiSkill extends LitElement {
 
   private renderContent(skill: SkillState) {
     const tnl = Math.max(0, Math.min(1, skill.tnl));
+    const pending = Math.max(0, Math.min(1, skill.pending));
     const nameStr = skill.name.padStart(COL_WIDTH, " ");
-    const safeTnl = Math.max(0, Math.min(1, tnl));
     let microPct =
-      safeTnl >= 0.999 ? 100.0 : (safeTnl * 5 - Math.floor(safeTnl * 5)) * 100;
+      pending >= 0.999 ? 100.0 : (pending * 5 - Math.floor(pending * 5)) * 100;
     microPct /= 100.0;
 
     const valRank = skill.rank;

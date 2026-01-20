@@ -63,10 +63,6 @@ class Character(pydantic.BaseModel):
     grace: int
     grit: int
     wit: int
-    rank_evasion: int
-    tnl_evasion: float
-    rank_martial_arts: int
-    tnl_martial_arts: float
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -77,3 +73,4 @@ class Skill(pydantic.BaseModel):
     name: str
     rank: int
     tnl: float
+    pending: float

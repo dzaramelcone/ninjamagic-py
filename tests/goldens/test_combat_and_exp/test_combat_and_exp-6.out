@@ -1,11 +1,11 @@
 {
   "client": "alice",
-  "len": "174 B",
+  "len": "181 B",
   "parsed": {
     "envelope": [
       {
         "msg": {
-          "text": "Bob hits you for 9.7% damage!"
+          "text": "Bob hits you for 9.9% damage!"
         }
       },
       {
@@ -15,12 +15,12 @@
       },
       {
         "msg": {
-          "text": "You gain two ranks in Evasion."
+          "text": "You gain three ranks in Evasion."
         }
       },
       {
         "health": {
-          "pct": -0.05661025,
+          "pct": -0.059109744,
           "stress_pct": 0.025
         }
       },
@@ -37,8 +37,9 @@
       {
         "skill": {
           "name": "Evasion",
-          "rank": 2,
-          "tnl": 0.41632652
+          "pending": 2.497583,
+          "rank": 3,
+          "tnl": 0.1278289
         }
       }
     ]

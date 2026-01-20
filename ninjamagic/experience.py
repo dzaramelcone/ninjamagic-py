@@ -4,75 +4,120 @@ from functools import partial
 import esper
 
 from ninjamagic import bus, reach, story, util
-from ninjamagic.component import Anchor, Ate, EntityId, RestExp, Skills, skills
+from ninjamagic.component import Anchor, AwardCap, EntityId, Skill, Skills, skills
+from ninjamagic.config import settings
 from ninjamagic.util import Trial
 
 log = logging.getLogger(__name__)
 MINIMUM_DANGER = 0.35
 RANKUP_FALLOFF = 1 / 1.75
-MAX_EXP_PER_ENTITY = 0.45
 
 
 def send_skills(entity: EntityId):
     bus.pulse(
         *[
             bus.OutboundSkill(
-                to=entity, name=skill.name, rank=skill.rank, tnl=skill.tnl
+                to=entity,
+                name=skill.name,
+                rank=skill.rank,
+                tnl=skill.tnl,
+                pending=skill.pending,
             )
             for skill in skills(entity)
         ]
     )
 
 
+
+def newbie_multiplier(rank: int) -> float:
+    if rank >= 50:
+        return 1.0
+    t = util.clamp01(rank / 50.0)
+    progress = util.ease_out_expo(1.0 - t)
+    return 1.0 + (settings.newbie_exp_buff - 1.0) * progress
+
+
 def process():
+    updated_skills: dict[tuple[EntityId, str], Skill] = {}
+
+    def mark_updated(entity_id: EntityId, skill: Skill) -> None:
+        updated_skills[(entity_id, skill.name)] = skill
+
+    for sig in bus.iter(bus.Die):
+        award_cap = esper.try_component(sig.source, AwardCap)
+        if not award_cap:
+            continue
+        now = util.get_looptime()
+        for learner_id, skill_map in award_cap.learners.items():
+            if not esper.entity_exists(learner_id):
+                continue
+            learner_skills = esper.component_for_entity(learner_id, Skills)
+            for skill_name, (total, last) in skill_map.items():
+                if now - last > settings.award_cap_ttl:
+                    continue
+                remaining = max(0, settings.award_cap - total)
+                learner_skill = learner_skills[skill_name]
+                learner_skill.tnl += remaining
+                learner_skill.pending += remaining
+                if remaining:
+                    mark_updated(learner_id, learner_skill)
+
     for sig in bus.iter(bus.Learn):
         skill = sig.skill
-        award = Trial.get_award(mult=sig.mult)
-        skill.tnl += award
+        award_cap = None
+        if esper.entity_exists(sig.teacher):
+            award_cap = esper.try_component(sig.teacher, AwardCap)
+        if award_cap:
+            award = Trial.get_award(mult=sig.mult) * newbie_multiplier(skill.rank)
+            if award:
+                now = util.get_looptime()
+                ledger = award_cap.learners.setdefault(sig.source, {})
+                total, last = ledger.get(skill.name, (0.0, 0.0))
+                if now - last > settings.award_cap_ttl:
+                    total = 0.0
+                remaining = max(0.0, settings.award_cap - total)
+                granted = min(award, remaining)
+                if granted:
+                    skill.tnl += granted
+                    skill.pending += granted
+                    total += granted
+                    mark_updated(sig.source, skill)
+                ledger[skill.name] = (total, now)
+                award = granted
+        else:
+            award = Trial.get_award(mult=sig.mult) * newbie_multiplier(skill.rank)
+            skill.tnl += award
+            skill.pending += award
+            if award:
+                mark_updated(sig.source, skill)
         if award:
-            rest = esper.try_component(sig.source, RestExp)
-            if not rest:
-                rest = RestExp()
-                esper.add_component(sig.source, rest)
-            rest.gained[skill.name][sig.teacher] += award
-            log.info("rest gained %s", rest.gained)
+            log.info("pending gained %s", award)
 
     for sig in bus.iter(bus.AbsorbRestExp):
-        rest = esper.try_component(sig.source, RestExp)
-        if not rest:
+        skills = esper.try_component(sig.source, Skills)
+        if not skills:
             continue
-        skills = esper.component_for_entity(sig.source, Skills)
-
-        for name, inner in rest.gained.items():
-            skill = skills[name]
-            for eid, award in inner.items():
-                if eid:
-                    award = min(award, MAX_EXP_PER_ENTITY)
-                if ate := esper.try_component(sig.source, Ate):
-                    award *= ate.pips
-                award *= rest.modifiers.get(name, 1)
-                skill.tnl += award
-
-        new_rest = RestExp()
         for skill in skills:
-            if skill.name not in rest.gained:
-                new_rest.modifiers[skill.name] = 1.8
-        esper.add_component(sig.source, new_rest)
+            if skill.pending:
+                skill.tnl += skill.pending * skill.rest_bonus
+                skill.pending = 0.0
+                skill.rest_bonus = 1.0
+                mark_updated(sig.source, skill)
+            else:
+                skill.rest_bonus = min(10.0, skill.rest_bonus + 0.8)
 
-    for sig in bus.iter(bus.Learn):
-        skill = sig.skill
+    for (entity_id, _), skill in updated_skills.items():
         ranks_gained = 0
         while skill.tnl >= 1.0:
             ranks_gained += 1
             skill.tnl -= 1
             skill.tnl *= RANKUP_FALLOFF
-
         if ranks_gained > 0:
             skill.rank += ranks_gained
             # TODO this can be removed now and performed clientside
             bus.pulse(
                 bus.Echo(
-                    source=sig.source,
+                    source=entity_id,
                     make_source_sig=partial(
                         bus.Outbound,
                         text=f"You gain {util.tally(ranks_gained, "rank")} in {skill.name}.",
@@ -80,10 +125,18 @@ def process():
                 )
             )
 
+    if updated_skills:
         bus.pulse(
-            bus.OutboundSkill(
-                to=sig.source, name=skill.name, rank=skill.rank, tnl=skill.tnl
-            )
+            *[
+                bus.OutboundSkill(
+                    to=entity_id,
+                    name=skill.name,
+                    rank=skill.rank,
+                    tnl=skill.tnl,
+                    pending=skill.pending,
+                )
+                for (entity_id, _), skill in updated_skills.items()
+            ]
         )
 
     for sig in bus.iter(bus.GrowAnchor):

@@ -3,7 +3,7 @@
 #   sqlc v1.30.0
 # source: query.sql
 import pydantic
-from typing import Optional
+from typing import AsyncIterator, List, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -12,7 +12,7 @@ from ninjamagic.gen import models
 
 
 CREATE_CHARACTER = """-- name: create_character \\:one
-INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at
+INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, created_at, updated_at
 """
 
 
@@ -22,7 +22,7 @@ DELETE FROM characters WHERE id = :p1
 
 
 GET_CHARACTER = """-- name: get_character \\:one
-SELECT id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, rank_evasion, tnl_evasion, rank_martial_arts, tnl_martial_arts, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
+SELECT id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, created_at, updated_at FROM characters c WHERE c.owner_id = :p1
 """
 
 
@@ -36,6 +36,12 @@ class GetCharacterBriefRow(pydantic.BaseModel):
     id: int
     owner_id: int
     name: str
+
+
+GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
+
+SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
+"""
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -57,10 +63,6 @@ SET
   grace = coalesce(:p15, grace),
   grit = coalesce(:p16, grit),
   wit = coalesce(:p17, wit),
-  rank_martial_arts = coalesce(:p18, rank_martial_arts),
-  tnl_martial_arts = coalesce(:p19, tnl_martial_arts),
-  rank_evasion = coalesce(:p20, rank_evasion),
-  tnl_evasion = coalesce(:p21, tnl_evasion),
   updated_at = now()
 WHERE id = :p1
 """
@@ -84,10 +86,6 @@ class UpdateCharacterParams(pydantic.BaseModel):
     grace: Optional[int]
     grit: Optional[int]
     wit: Optional[int]
-    rank_martial_arts: Optional[int]
-    tnl_martial_arts: Optional[float]
-    rank_evasion: Optional[int]
-    tnl_evasion: Optional[float]
 
 
 UPSERT_IDENTITY = """-- name: upsert_identity \\:one
@@ -98,6 +96,31 @@ ON CONFLICT (provider, subject) DO UPDATE
   SET email = EXCLUDED.email,
       last_login_at = EXCLUDED.last_login_at
 RETURNING owner_id
+"""
+
+
+UPSERT_SKILL = """-- name: upsert_skill \\:exec
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+VALUES (:p1, :p2, :p3, :p4, :p5)
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending
+"""
+
+
+UPSERT_SKILLS = """-- name: upsert_skills \\:exec
+INSERT INTO skills (char_id, name, rank, tnl, pending)
+SELECT
+  :p1,
+  unnest(:p2\\:\\:text[]),
+  unnest(:p3\\:\\:bigint[]),
+  unnest(:p4\\:\\:real[]),
+  unnest(:p5\\:\\:real[])
+ON CONFLICT (char_id, name) DO UPDATE
+SET rank = EXCLUDED.rank,
+    tnl = EXCLUDED.tnl,
+    pending = EXCLUDED.pending
 """
 
 
@@ -129,12 +152,8 @@ class AsyncQuerier:
             grace=row[16],
             grit=row[17],
             wit=row[18],
-            rank_evasion=row[19],
-            tnl_evasion=row[20],
-            rank_martial_arts=row[21],
-            tnl_martial_arts=row[22],
-            created_at=row[23],
-            updated_at=row[24],
+            created_at=row[19],
+            updated_at=row[20],
         )
 
     async def delete_character(self, *, id: int) -> None:
@@ -164,12 +183,8 @@ class AsyncQuerier:
             grace=row[16],
             grit=row[17],
             wit=row[18],
-            rank_evasion=row[19],
-            tnl_evasion=row[20],
-            rank_martial_arts=row[21],
-            tnl_martial_arts=row[22],
-            created_at=row[23],
-            updated_at=row[24],
+            created_at=row[19],
+            updated_at=row[20],
         )
 
     async def get_character_brief(self, *, owner_id: int) -> Optional[GetCharacterBriefRow]:
@@ -181,6 +196,18 @@ class AsyncQuerier:
             owner_id=row[1],
             name=row[2],
         )
+
+    async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
+        result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_FOR_CHARACTER), {"p1": char_id})
+        async for row in result:
+            yield models.Skill(
+                id=row[0],
+                char_id=row[1],
+                name=row[2],
+                rank=row[3],
+                tnl=row[4],
+                pending=row[5],
+            )
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPDATE_CHARACTER), {
@@ -201,10 +228,6 @@ class AsyncQuerier:
             "p15": arg.grace,
             "p16": arg.grit,
             "p17": arg.wit,
-            "p18": arg.rank_martial_arts,
-            "p19": arg.tnl_martial_arts,
-            "p20": arg.rank_evasion,
-            "p21": arg.tnl_evasion,
         })
 
     async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
@@ -212,3 +235,21 @@ class AsyncQuerier:
         if row is None:
             return None
         return row[0]
+
+    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float, pending: float) -> None:
+        await self._conn.execute(sqlalchemy.text(UPSERT_SKILL), {
+            "p1": char_id,
+            "p2": name,
+            "p3": rank,
+            "p4": tnl,
+            "p5": pending,
+        })
+
+    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float], pendings: List[float]) -> None:
+        await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
+            "p1": char_id,
+            "p2": names,
+            "p3": ranks,
+            "p4": tnls,
+            "p5": pendings,
+        })

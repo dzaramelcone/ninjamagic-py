@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, dataclass as component, field, fields
 from enum import StrEnum, auto
@@ -421,6 +420,8 @@ class Skill:
     name: str
     rank: int = 0
     tnl: float = 0
+    pending: float = 0.0
+    rest_bonus: float = 1.0
 
 
 @component(slots=True, kw_only=True)
@@ -449,13 +450,8 @@ class Skills:
 
 
 @component(slots=True, kw_only=True)
-class RestExp:
-    """Exp earned throughout the day that is awarded when camping."""
-
-    gained: dict[str, dict[int, float]] = field(
-        default_factory=lambda: defaultdict(lambda: defaultdict(float))
-    )
-    modifiers: dict[str, float] = field(default_factory=dict)
+class AwardCap:
+    learners: dict[int, dict[str, tuple[float, float]]] = field(default_factory=dict)
 
 
 @component(slots=True, kw_only=True)
