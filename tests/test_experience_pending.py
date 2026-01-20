@@ -105,5 +105,9 @@ def test_restexp_removed():
 
 
 def test_newbie_bonus_falls_to_one():
-    assert experience.newbie_multiplier(0) == pytest.approx(experience.NEWBIE_MAX, rel=1e-3)
+    from ninjamagic.config import settings
+
+    assert experience.newbie_multiplier(0) == pytest.approx(
+        settings.newbie_exp_buff, rel=1e-3
+    )
     assert experience.newbie_multiplier(50) == 1.0
