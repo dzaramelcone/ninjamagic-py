@@ -1,5 +1,5 @@
 from ninjamagic.component import Noun, Weapon
-from ninjamagic.item_spec import dump_item_spec, load_item_spec
+from ninjamagic.inventory import dump_item_spec, load_item_spec
 
 
 def test_item_spec_roundtrip():

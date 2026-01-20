@@ -39,7 +39,6 @@ from ninjamagic.util import (
     Pronouns,
     pop_random,
 )
-from ninjamagic.item_spec import dump_item_spec
 from ninjamagic.world import simple
 from ninjamagic.world.goblin_den import (
     find_open_spots,
@@ -118,8 +117,6 @@ def create_item(
     return eid
 
 
-def item_template_spec(components: tuple[object, ...]) -> list[dict]:
-    return dump_item_spec(list(components))
 
 
 def place_dens(map_id: EntityId, chips: Chips) -> None:

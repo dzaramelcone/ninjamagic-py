@@ -100,7 +100,7 @@ class State:
             combat.process(now=now)
             proc.process(now=now)
             move.process()
-            inventory.process()
+            await inventory.process()
             visibility.process()
             experience.process()
             echo.process()

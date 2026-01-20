@@ -57,13 +57,21 @@ async def ws_main(ws: WebSocket) -> None:
         return
 
     try:
+        entity_id = esper.create_entity()
+        esper.add_component(entity_id, owner_id, OwnerId)
         async with get_repository_factory() as q:
             char = await q.get_character(owner_id=owner_id)
             if not char:
                 log.info(f"Login failed for {owner_id}, no character.")
                 await ws.close(code=4401, reason="No character")
+                esper.delete_entity(entity_id)
                 return
             skills = [row async for row in q.get_skills_for_character(char_id=char.id)]
+            await inventory.load_player_inventory(
+                q,
+                owner_id=owner_id,
+                entity_id=entity_id,
+            )
         await ws.accept()
 
         active[owner_id] = ws
@@ -72,9 +80,6 @@ async def ws_main(ws: WebSocket) -> None:
         active_save_loops[owner_id] = save_gen
 
         host, port = ws.client.host, ws.client.port
-        entity_id = esper.create_entity()
-        esper.add_component(entity_id, owner_id, OwnerId)
-
         log.info(
             "%s:%s WS/LOGIN - [%s:%s->%s]: %s",
             host,
@@ -138,7 +143,13 @@ async def save(entity_id: EntityId):
     save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
     async with get_repository_factory() as q:
-        await inventory.save_dirty_inventory(q)
+        owner_id = esper.try_component(entity_id, OwnerId)
+        if owner_id:
+            await inventory.save_owner_inventory(
+                q,
+                owner_id=owner_id,
+                owner_entity=entity_id,
+            )
         await q.update_character(save_dump)
         await q.upsert_skills(
             char_id=save_dump.id,

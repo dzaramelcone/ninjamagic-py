@@ -8,11 +8,11 @@ import ninjamagic.inventory as inventory
 import ninjamagic.move as move
 from ninjamagic.component import ContainedBy, InventoryId, Noun, OwnerId, Slot, Transform
 from ninjamagic.db import get_repository_factory
-from ninjamagic.gen.query import UpsertInventoryParams
+from ninjamagic.gen.query import InsertInventoriesForOwnerParams
 from ninjamagic.world.state import DEMO
 
 
-async def _ensure_inventory_schema(q) -> None:
+async def ensure_inventory_schema(q) -> None:
     await q._conn.execute(sqlalchemy.text("CREATE EXTENSION IF NOT EXISTS citext"))
     await q._conn.execute(
         sqlalchemy.text(
@@ -44,9 +44,26 @@ async def _ensure_inventory_schema(q) -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 CHECK (
-                    (container_id IS NOT NULL AND map_id IS NULL AND x IS NULL AND y IS NULL)
-                    OR
-                    (container_id IS NULL AND map_id IS NOT NULL AND x IS NOT NULL AND y IS NOT NULL)
+                    (
+                        container_id IS NOT NULL
+                        AND map_id IS NULL
+                        AND x IS NULL
+                        AND y IS NULL
+                        AND owner_id != 0
+                    )
+                    OR (
+                        container_id IS NULL
+                        AND map_id IS NOT NULL
+                        AND x IS NOT NULL
+                        AND y IS NOT NULL
+                    )
+                    OR (
+                        container_id IS NULL
+                        AND map_id IS NULL
+                        AND x IS NULL
+                        AND y IS NULL
+                        AND owner_id != 0
+                    )
                 )
             )
             """
@@ -65,23 +82,23 @@ async def test_inventory_world_item_load_and_pickup():
     spec = [{"kind": "Noun", "value": "torch"}]
 
     async with get_repository_factory() as q:
-        await _ensure_inventory_schema(q)
+        await ensure_inventory_schema(q)
         await q.delete_inventory_by_id(id=inv_id)
         item_id = await q.upsert_item_by_name(
             name="integration-torch",
             spec=Json(spec),
         )
-        await q.upsert_inventory(
-            UpsertInventoryParams(
-                id=inv_id,
-                owner_id=0,
-                item_id=item_id,
-                slot="",
-                container_id=None,
-                map_id=int(DEMO),
-                x=1,
-                y=1,
-                instance_spec=None,
+        await q.insert_inventories_for_owner(
+            InsertInventoriesForOwnerParams(
+                ids=[inv_id],
+                owner_ids=[0],
+                item_ids=[item_id],
+                slots=[""],
+                container_ids=[0],
+                map_ids=[int(DEMO)],
+                xs=[1],
+                ys=[1],
+                instance_specs=[None],
             )
         )
         await inventory.load_world_items(q)

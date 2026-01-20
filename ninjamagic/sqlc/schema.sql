@@ -95,10 +95,29 @@ CREATE TABLE IF NOT EXISTS inventories (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    CHECK (
-        (container_id IS NOT NULL AND map_id IS NULL AND x IS NULL AND y IS NULL)
+    CONSTRAINT inventories_location_check CHECK (
+        (
+            container_id IS NOT NULL
+            AND map_id IS NULL
+            AND x IS NULL
+            AND y IS NULL
+            AND owner_id <> 0
+        )
         OR
-        (container_id IS NULL AND map_id IS NOT NULL AND x IS NOT NULL AND y IS NOT NULL)
+        (
+            container_id IS NULL
+            AND map_id IS NOT NULL
+            AND x IS NOT NULL
+            AND y IS NOT NULL
+        )
+        OR
+        (
+            container_id IS NULL
+            AND map_id IS NULL
+            AND x IS NULL
+            AND y IS NULL
+            AND owner_id <> 0
+        )
     )
 );
 

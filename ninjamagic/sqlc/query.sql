@@ -95,20 +95,21 @@ ON CONFLICT (name) DO UPDATE
       updated_at = now()
 RETURNING id;
 
--- name: UpsertInventory :one
+-- name: DeleteInventoriesForOwner :exec
+DELETE FROM inventories WHERE owner_id = $1;
+
+-- name: InsertInventoriesForOwner :exec
 INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-ON CONFLICT (id) DO UPDATE
-SET owner_id = EXCLUDED.owner_id,
-    item_id = EXCLUDED.item_id,
-    slot = EXCLUDED.slot,
-    container_id = EXCLUDED.container_id,
-    map_id = EXCLUDED.map_id,
-    x = EXCLUDED.x,
-    y = EXCLUDED.y,
-    instance_spec = EXCLUDED.instance_spec,
-    updated_at = now()
-RETURNING id;
+SELECT
+  unnest(sqlc.arg('ids')::bigint[]),
+  unnest(sqlc.arg('owner_ids')::bigint[]),
+  unnest(sqlc.arg('item_ids')::bigint[]),
+  unnest(sqlc.arg('slots')::text[]),
+  NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
+  NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
+  unnest(sqlc.arg('instance_specs')::jsonb[]);
 
 -- name: DeleteInventoryById :exec
 DELETE FROM inventories WHERE id = $1;

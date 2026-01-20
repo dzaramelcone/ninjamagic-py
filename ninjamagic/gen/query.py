@@ -21,6 +21,11 @@ DELETE FROM characters WHERE id = :p1
 """
 
 
+DELETE_INVENTORIES_FOR_OWNER = """-- name: delete_inventories_for_owner \\:exec
+DELETE FROM inventories WHERE owner_id = :p1
+"""
+
+
 DELETE_INVENTORY_BY_ID = """-- name: delete_inventory_by_id \\:exec
 DELETE FROM inventories WHERE id = :p1
 """
@@ -63,6 +68,33 @@ GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
 
 SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
+
+
+INSERT_INVENTORIES_FOR_OWNER = """-- name: insert_inventories_for_owner \\:exec
+INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+SELECT
+  unnest(:p1\\:\\:bigint[]),
+  unnest(:p2\\:\\:bigint[]),
+  unnest(:p3\\:\\:bigint[]),
+  unnest(:p4\\:\\:text[]),
+  NULLIF(unnest(:p5\\:\\:bigint[]), 0),
+  NULLIF(unnest(:p6\\:\\:integer[]), -1),
+  NULLIF(unnest(:p7\\:\\:integer[]), -1),
+  NULLIF(unnest(:p8\\:\\:integer[]), -1),
+  unnest(:p9\\:\\:jsonb[])
+"""
+
+
+class InsertInventoriesForOwnerParams(pydantic.BaseModel):
+    ids: List[int]
+    owner_ids: List[int]
+    item_ids: List[int]
+    slots: List[str]
+    container_ids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    instance_specs: List[Any]
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -118,35 +150,6 @@ ON CONFLICT (provider, subject) DO UPDATE
       last_login_at = EXCLUDED.last_login_at
 RETURNING owner_id
 """
-
-
-UPSERT_INVENTORY = """-- name: upsert_inventory \\:one
-INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
-VALUES (:p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9)
-ON CONFLICT (id) DO UPDATE
-SET owner_id = EXCLUDED.owner_id,
-    item_id = EXCLUDED.item_id,
-    slot = EXCLUDED.slot,
-    container_id = EXCLUDED.container_id,
-    map_id = EXCLUDED.map_id,
-    x = EXCLUDED.x,
-    y = EXCLUDED.y,
-    instance_spec = EXCLUDED.instance_spec,
-    updated_at = now()
-RETURNING id
-"""
-
-
-class UpsertInventoryParams(pydantic.BaseModel):
-    id: int
-    owner_id: int
-    item_id: int
-    slot: str
-    container_id: Optional[int]
-    map_id: Optional[int]
-    x: Optional[int]
-    y: Optional[int]
-    instance_spec: Optional[Any]
 
 
 UPSERT_ITEM_BY_NAME = """-- name: upsert_item_by_name \\:one
@@ -240,6 +243,9 @@ class AsyncQuerier:
 
     async def delete_character(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
+
+    async def delete_inventories_for_owner(self, *, owner_id: int) -> None:
+        await self._conn.execute(sqlalchemy.text(DELETE_INVENTORIES_FOR_OWNER), {"p1": owner_id})
 
     async def delete_inventory_by_id(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_INVENTORY_BY_ID), {"p1": id})
@@ -339,6 +345,19 @@ class AsyncQuerier:
                 pending=row[5],
             )
 
+    async def insert_inventories_for_owner(self, arg: InsertInventoriesForOwnerParams) -> None:
+        await self._conn.execute(sqlalchemy.text(INSERT_INVENTORIES_FOR_OWNER), {
+            "p1": arg.ids,
+            "p2": arg.owner_ids,
+            "p3": arg.item_ids,
+            "p4": arg.slots,
+            "p5": arg.container_ids,
+            "p6": arg.map_ids,
+            "p7": arg.xs,
+            "p8": arg.ys,
+            "p9": arg.instance_specs,
+        })
+
     async def update_character(self, arg: UpdateCharacterParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPDATE_CHARACTER), {
             "p1": arg.id,
@@ -362,22 +381,6 @@ class AsyncQuerier:
 
     async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
         row = (await self._conn.execute(sqlalchemy.text(UPSERT_IDENTITY), {"p1": provider, "p2": subject, "p3": email})).first()
-        if row is None:
-            return None
-        return row[0]
-
-    async def upsert_inventory(self, arg: UpsertInventoryParams) -> Optional[int]:
-        row = (await self._conn.execute(sqlalchemy.text(UPSERT_INVENTORY), {
-            "p1": arg.id,
-            "p2": arg.owner_id,
-            "p3": arg.item_id,
-            "p4": arg.slot,
-            "p5": arg.container_id,
-            "p6": arg.map_id,
-            "p7": arg.x,
-            "p8": arg.y,
-            "p9": arg.instance_spec,
-        })).first()
         if row is None:
             return None
         return row[0]
