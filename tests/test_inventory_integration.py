@@ -4,7 +4,7 @@ import pytest
 
 import ninjamagic.bus as bus
 import ninjamagic.move as move
-from ninjamagic.component import ContainedBy, InventoryId, ItemKey, OwnerId, Slot, Transform
+from ninjamagic.component import ContainedBy, ItemKey, OwnerId, Slot, Transform
 from ninjamagic.db import get_repository_factory
 from ninjamagic.gen.query import ReplaceInventoriesForMapParams
 from ninjamagic.main import app
@@ -38,10 +38,11 @@ async def test_inventory_world_item_load_and_pickup():
     ) as client:
         await client.get("/")
 
+    # Find the torch by its ItemKey and Transform
     item_entity = next(
         eid
-        for eid, inv in esper.get_component(InventoryId)
-        if int(inv) == inv_id
+        for eid, (key, loc) in esper.get_components(ItemKey, Transform)
+        if key.key == "torch" and loc.map_id == map_id and loc.x == 1 and loc.y == 1
     )
     loc = esper.component_for_entity(item_entity, Transform)
     item_key = esper.component_for_entity(item_entity, ItemKey)

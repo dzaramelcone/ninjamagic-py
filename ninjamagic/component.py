@@ -264,7 +264,6 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
-InventoryId = NewType("InventoryId", int)
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,8 +1,4 @@
-from ninjamagic.component import InventoryId, ItemKey
-
-
-def test_inventory_id_defaults():
-    assert InventoryId(0) == 0
+from ninjamagic.component import ItemKey
 
 
 def test_item_key_equality():

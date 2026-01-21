@@ -1,7 +1,7 @@
 import esper
 import pytest
 
-from ninjamagic.component import ContainedBy, InventoryId, OwnerId, Slot
+from ninjamagic.component import ContainedBy, OwnerId, Slot
 from ninjamagic.inventory import save_owner_inventory
 
 
@@ -18,7 +18,6 @@ async def test_save_owner_inventory_requires_item_key():
     item = esper.create_entity()
     esper.add_component(item, owner, ContainedBy)
     esper.add_component(item, Slot.ANY)
-    esper.add_component(item, 10, InventoryId)
 
     with pytest.raises(RuntimeError, match="Missing ItemKey"):
         await save_owner_inventory(DummyQuerier(), owner_id=1, owner_entity=owner)

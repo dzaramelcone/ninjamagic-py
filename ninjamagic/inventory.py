@@ -10,7 +10,6 @@ from ninjamagic.component import (
     Container,
     Food,
     Ingredient,
-    InventoryId,
     ItemKey,
     DoNotSave,
     Level,
@@ -162,7 +161,6 @@ async def load_world_items(q: AsyncQuerier) -> None:
             for comp in deserialize_state(inv.state):
                 esper.add_component(eid, comp)
 
-        esper.add_component(eid, inv.id, InventoryId)
         entity_by_inventory[inv.id] = eid
 
     # Second pass: set up containment and transforms
@@ -205,7 +203,6 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
             for comp in deserialize_state(inv.state):
                 esper.add_component(eid, comp)
 
-        esper.add_component(eid, inv.id, InventoryId)
         entity_by_inventory[inv.id] = eid
 
     # Second pass: set up containment
@@ -270,9 +267,6 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
     levels: list[int] = []
 
     for eid in item_entities:
-        inv_id = esper.try_component(eid, InventoryId)
-        if not inv_id:
-            raise RuntimeError(f"Missing InventoryId for entity {eid}")
         item_key_comp = esper.try_component(eid, ItemKey)
         if not item_key_comp:
             raise RuntimeError(f"Missing ItemKey for entity {eid}")
@@ -285,7 +279,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
         level = esper.try_component(eid, Level) or 0
         owner_ids.append(owner_id)
         keys.append(item_key_comp.key)
-        ids.append(int(inv_id))
+        ids.append(eid)  # Use entity ID as database row ID
         slots.append(str(slot))
         map_ids.append(-1)
         xs.append(-1)
@@ -297,10 +291,8 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
             container_ids.append(0)
             continue
 
-        container_inv_id = esper.try_component(loc, InventoryId)
-        if not container_inv_id:
-            raise RuntimeError(f"Missing InventoryId for container {loc}")
-        container_ids.append(int(container_inv_id))
+        # Container's entity ID is used as its database row ID
+        container_ids.append(loc)
 
     await q.replace_inventories_for_owner(
         ReplaceInventoriesForOwnerParams(
@@ -332,21 +324,14 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
     states: list[object | None] = []
     levels: list[int] = []
 
-    entity_by_inventory: dict[int, int] = {}
-    for eid, (item_key, transform, inv_id) in esper.get_components(ItemKey, Transform, InventoryId):
+    for eid, (item_key, transform) in esper.get_components(ItemKey, Transform):
         if transform.map_id != map_id:
             continue
         if esper.has_component(eid, DoNotSave):
-            continue  # Never save junk items
-        entity_by_inventory[int(inv_id)] = eid
-
-    # Build arrays for bulk insert
-    for inv_id, eid in entity_by_inventory.items():
-        item_key = esper.component_for_entity(eid, ItemKey)
-        transform = esper.component_for_entity(eid, Transform)
+            continue
         level = esper.try_component(eid, Level) or 0
 
-        ids.append(inv_id)
+        ids.append(eid)  # Use entity ID as database row ID
         keys.append(item_key.key)
         slots.append("")
         container_ids.append(0)
