@@ -7,7 +7,7 @@ from ninjamagic.db import get_repository_factory
 
 
 def test_inventories_migration_exists():
-    assert Path("migrations/003_inventories.sql").exists()
+    assert Path("migrations/004_inventories.sql").exists()
 
 
 @pytest.mark.asyncio

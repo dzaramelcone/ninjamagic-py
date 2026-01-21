@@ -19,13 +19,13 @@ def test_upsert_skills_handles_pending():
 def test_skills_migration_exists():
     from pathlib import Path
 
-    assert Path("migrations/004_skills.sql").exists()
+    assert Path("migrations/003_skills.sql").exists()
 
 
 def test_skills_migration_backfills_skills_table():
     from pathlib import Path
 
-    sql = Path("migrations/004_skills.sql").read_text()
+    sql = Path("migrations/003_skills.sql").read_text()
     assert "INSERT INTO" in sql and "skills" in sql
 
 
