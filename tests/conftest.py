@@ -16,11 +16,11 @@ from google.protobuf.json_format import MessageToDict
 from pydantic.dataclasses import Field, dataclass
 from websockets.asyncio.client import ClientConnection
 
-from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
 import ninjamagic.db as db
+from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
 from ninjamagic.db import engine
-from ninjamagic.gen.query import AsyncQuerier
 from ninjamagic.gen.messages_pb2 import Packet
+from ninjamagic.gen.query import AsyncQuerier
 
 BASE_HTTP_URL = "http://localhost:8000"
 BASE_WS_URL = "ws://localhost:8000"

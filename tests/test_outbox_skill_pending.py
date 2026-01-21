@@ -1,10 +1,10 @@
 import esper
 
-from ninjamagic.gen.messages_pb2 import Packet
 import ninjamagic.bus as bus
 import ninjamagic.experience as experience
 import ninjamagic.outbox as outbox
 from ninjamagic.component import Skill, Skills
+from ninjamagic.gen.messages_pb2 import Packet
 
 
 def test_outbound_skill_includes_pending():

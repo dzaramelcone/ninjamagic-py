@@ -1,5 +1,6 @@
 import esper
 import pytest
+
 import ninjamagic.bus as bus
 import ninjamagic.inventory as inventory
 from ninjamagic.component import Junk
