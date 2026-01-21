@@ -1,7 +1,5 @@
-import logging
-
 import esper
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from ninjamagic.component import (
     Anchor,
@@ -15,7 +13,6 @@ from ninjamagic.component import (
     ItemKey,
     Level,
     Noun,
-    OwnerId,
     ProvidesHeat,
     ProvidesLight,
     ProvidesShelter,
@@ -29,13 +26,27 @@ from ninjamagic.gen.query import (
     ReplaceInventoriesForOwnerParams,
 )
 
-log = logging.getLogger(__name__)
-
 # Components that can be serialized to/from state JSON.
 # Only include components that can change at runtime.
 # Weapon is not here because it never changes.
 STATE_TYPES: list[type] = [Noun]
 STATE_ADAPTERS: dict[str, TypeAdapter] = {cls.__name__: TypeAdapter(cls) for cls in STATE_TYPES}
+
+
+class InventoryRow(BaseModel):
+    """One row of inventory data for persistence."""
+
+    id: int
+    key: str
+    slot: str
+    container_id: int
+    map_id: int
+    x: int
+    y: int
+    state: object | None
+    level: int
+    owner_id: int = 0
+
 
 # Item templates keyed by item type string.
 # Each value is a dict mapping component type -> component instance.
@@ -118,37 +129,19 @@ async def load_world_items(q: AsyncQuerier) -> None:
 
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        try:
-            eid = item_factory(inv.key)
-        except ValueError as exc:
-            log.warning("Failed to create item for inventory %s: %s", inv.id, exc)
-            continue
-
-        # Apply state overrides if present
-        if inv.state and isinstance(inv.state, list):
+        eid = item_factory(inv.key)
+        if inv.state:
             for comp in deserialize_state(inv.state):
                 esper.add_component(eid, comp)
-
         entity_by_inventory[inv.id] = eid
 
     # Second pass: set up containment and transforms
     for inv in inventories:
-        if inv.id not in entity_by_inventory:
-            continue
         eid = entity_by_inventory[inv.id]
-        if inv.container_id is not None:
-            if inv.container_id not in entity_by_inventory:
-                log.warning("Missing container %s for inventory %s", inv.container_id, inv.id)
-                continue
-            container_eid = entity_by_inventory[inv.container_id]
-            esper.add_component(eid, container_eid, ContainedBy)
-            try:
-                slot_value = Slot(inv.slot)
-            except ValueError:
-                slot_value = Slot.ANY
-            esper.add_component(eid, slot_value)
-            continue
-        if inv.map_id is not None and inv.x is not None and inv.y is not None:
+        if inv.container_id:
+            esper.add_component(eid, entity_by_inventory[inv.container_id], ContainedBy)
+            esper.add_component(eid, Slot(inv.slot))
+        elif inv.map_id:
             esper.add_component(eid, Transform(map_id=inv.map_id, x=inv.x, y=inv.y))
 
 
@@ -160,166 +153,94 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
 
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        try:
-            eid = item_factory(inv.key)
-        except ValueError as exc:
-            log.warning("Failed to create item for inventory %s: %s", inv.id, exc)
-            continue
-
-        # Apply state overrides if present
-        if inv.state and isinstance(inv.state, list):
+        eid = item_factory(inv.key)
+        if inv.state:
             for comp in deserialize_state(inv.state):
                 esper.add_component(eid, comp)
-
         entity_by_inventory[inv.id] = eid
 
     # Second pass: set up containment
     for inv in inventories:
-        if inv.id not in entity_by_inventory:
-            continue
         eid = entity_by_inventory[inv.id]
-        if inv.container_id is not None:
-            if inv.container_id not in entity_by_inventory:
-                log.warning("Missing container %s for inventory %s", inv.container_id, inv.id)
-                continue
-            container_eid = entity_by_inventory[inv.container_id]
-            esper.add_component(eid, container_eid, ContainedBy)
-            try:
-                slot_value = Slot(inv.slot)
-            except ValueError:
-                slot_value = Slot.ANY
-            esper.add_component(eid, slot_value)
-            continue
-        esper.add_component(eid, entity_id, ContainedBy)
-        try:
-            slot_value = Slot(inv.slot)
-        except ValueError:
-            slot_value = Slot.ANY
-        esper.add_component(eid, slot_value)
+        container = entity_by_inventory[inv.container_id] if inv.container_id else entity_id
+        esper.add_component(eid, container, ContainedBy)
+        esper.add_component(eid, Slot(inv.slot))
 
 
 async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int) -> None:
     """Save player inventory to the database."""
-    owner_component = esper.try_component(owner_entity, OwnerId)
-    if owner_component and int(owner_component) != owner_id:
-        raise RuntimeError(f"Owner mismatch for entity {owner_entity}")
-
     # Collect all items contained by owner (recursively through containers)
     queue = [owner_entity]
     seen = {owner_entity}
-    item_entities: list[int] = []
+    rows: list[InventoryRow] = []
 
     while queue:
         container = queue.pop()
-        for eid, (loc, _slot) in esper.get_components(ContainedBy, Slot):
-            if loc != container:
+        for eid, (item_key, loc, slot) in esper.get_components(ItemKey, ContainedBy, Slot):
+            if loc != container or eid in seen or esper.has_component(eid, DoNotSave):
                 continue
-            if eid in seen:
-                continue
-            if esper.has_component(eid, DoNotSave):
-                continue  # Never save junk items
             seen.add(eid)
-            item_entities.append(eid)
+            rows.append(InventoryRow(
+                id=eid,
+                key=item_key.key,
+                slot=slot,
+                container_id=0 if loc == owner_entity else loc,
+                map_id=0,
+                x=0,
+                y=0,
+                state=serialize_state(eid, item_key.key),
+                level=esper.try_component(eid, Level) or 0,
+                owner_id=owner_id,
+            ))
             if esper.has_component(eid, Container):
                 queue.append(eid)
-
-    ids: list[int] = []
-    owner_ids: list[int] = []
-    keys: list[str] = []
-    slots: list[str] = []
-    container_ids: list[int] = []
-    map_ids: list[int] = []
-    xs: list[int] = []
-    ys: list[int] = []
-    states: list[object | None] = []
-    levels: list[int] = []
-
-    for eid in item_entities:
-        item_key_comp = esper.try_component(eid, ItemKey)
-        if not item_key_comp:
-            raise RuntimeError(f"Missing ItemKey for entity {eid}")
-
-        loc = esper.try_component(eid, ContainedBy)
-        if not loc:
-            raise RuntimeError(f"Inventory entity {eid} has no container")
-
-        slot = esper.try_component(eid, Slot) or Slot.ANY
-        level = esper.try_component(eid, Level) or 0
-        owner_ids.append(owner_id)
-        keys.append(item_key_comp.key)
-        ids.append(eid)  # Use entity ID as database row ID
-        slots.append(str(slot))
-        map_ids.append(-1)
-        xs.append(-1)
-        ys.append(-1)
-        states.append(serialize_state(eid, item_key_comp.key))
-        levels.append(int(level))
-
-        if loc == owner_entity:
-            container_ids.append(0)
-            continue
-
-        # Container's entity ID is used as its database row ID
-        container_ids.append(loc)
 
     await q.replace_inventories_for_owner(
         ReplaceInventoriesForOwnerParams(
             owner_id=owner_id,
-            ids=ids,
-            owner_ids=owner_ids,
-            keys=keys,
-            slots=slots,
-            container_ids=container_ids,
-            map_ids=map_ids,
-            xs=xs,
-            ys=ys,
-            states=states,
-            levels=levels,
+            ids=[r.id for r in rows],
+            owner_ids=[r.owner_id for r in rows],
+            keys=[r.key for r in rows],
+            slots=[r.slot for r in rows],
+            container_ids=[r.container_id for r in rows],
+            map_ids=[r.map_id for r in rows],
+            xs=[r.x for r in rows],
+            ys=[r.y for r in rows],
+            states=[r.state for r in rows],
+            levels=[r.level for r in rows],
         )
     )
 
 
 async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
     """Save world inventory for a map to the database."""
-    # Collect all world items on this map (items with Transform, no owner)
-    ids: list[int] = []
-    keys: list[str] = []
-    slots: list[str] = []
-    container_ids: list[int] = []
-    map_ids: list[int] = []
-    xs: list[int] = []
-    ys: list[int] = []
-    states: list[object | None] = []
-    levels: list[int] = []
-
-    for eid, (item_key, transform) in esper.get_components(ItemKey, Transform):
-        if transform.map_id != map_id:
-            continue
-        if esper.has_component(eid, DoNotSave):
-            continue
-        level = esper.try_component(eid, Level) or 0
-
-        ids.append(eid)  # Use entity ID as database row ID
-        keys.append(item_key.key)
-        slots.append("")
-        container_ids.append(0)
-        map_ids.append(transform.map_id)
-        xs.append(transform.x)
-        ys.append(transform.y)
-        states.append(serialize_state(eid, item_key.key))
-        levels.append(int(level))
+    rows = [
+        InventoryRow(
+            id=eid,
+            key=item_key.key,
+            slot="",
+            container_id=0,
+            map_id=transform.map_id,
+            x=transform.x,
+            y=transform.y,
+            state=serialize_state(eid, item_key.key),
+            level=esper.try_component(eid, Level) or 0,
+        )
+        for eid, (item_key, transform) in esper.get_components(ItemKey, Transform)
+        if transform.map_id == map_id and not esper.has_component(eid, DoNotSave)
+    ]
 
     await q.replace_inventories_for_map(
         ReplaceInventoriesForMapParams(
             map_id=map_id,
-            ids=ids,
-            keys=keys,
-            slots=slots,
-            container_ids=container_ids,
-            map_ids=map_ids,
-            xs=xs,
-            ys=ys,
-            states=states,
-            levels=levels,
+            ids=[r.id for r in rows],
+            keys=[r.key for r in rows],
+            slots=[r.slot for r in rows],
+            container_ids=[r.container_id for r in rows],
+            map_ids=[r.map_id for r in rows],
+            xs=[r.x for r in rows],
+            ys=[r.y for r in rows],
+            states=[r.state for r in rows],
+            levels=[r.level for r in rows],
         )
     )
