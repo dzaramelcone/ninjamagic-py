@@ -1,5 +1,5 @@
-import pytest
 import esper
+import pytest
 
 from ninjamagic.component import ContainedBy, InventoryId, OwnerId, Slot
 from ninjamagic.inventory import save_owner_inventory

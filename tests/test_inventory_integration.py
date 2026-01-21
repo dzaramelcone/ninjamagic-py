@@ -1,115 +1,41 @@
-import pytest
 import esper
-import sqlalchemy
-from psycopg.types.json import Json
 import httpx
+import pytest
 
 import ninjamagic.bus as bus
 import ninjamagic.move as move
-from ninjamagic.component import ContainedBy, InventoryId, Noun, OwnerId, Slot, Transform
+from ninjamagic.component import ContainedBy, InventoryId, ItemKey, OwnerId, Slot, Transform
 from ninjamagic.db import get_repository_factory
-from ninjamagic.gen.query import ReplaceInventoriesForOwnerParams
+from ninjamagic.gen.query import ReplaceInventoriesForMapParams
 from ninjamagic.main import app
 from ninjamagic.world import state as world_state
-
-
-async def ensure_inventory_schema(q) -> None:
-    await q._conn.execute(sqlalchemy.text("CREATE EXTENSION IF NOT EXISTS citext"))
-    await q._conn.execute(
-        sqlalchemy.text(
-            """
-            CREATE TABLE IF NOT EXISTS items (
-                id BIGSERIAL PRIMARY KEY,
-                name CITEXT NOT NULL,
-                spec JSONB NOT NULL DEFAULT '[]'::jsonb,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                UNIQUE (name)
-            )
-            """
-        )
-    )
-    await q._conn.execute(
-        sqlalchemy.text(
-            """
-            CREATE TABLE IF NOT EXISTS inventories (
-                id BIGSERIAL PRIMARY KEY,
-                owner_id BIGINT NOT NULL DEFAULT 0,
-                item_id BIGINT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-                slot TEXT NOT NULL DEFAULT '',
-                container_id BIGINT REFERENCES inventories(id) ON DELETE CASCADE,
-                map_id INTEGER,
-                x INTEGER,
-                y INTEGER,
-                instance_spec JSONB,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                CHECK (
-                    (
-                        container_id IS NOT NULL
-                        AND map_id IS NULL
-                        AND x IS NULL
-                        AND y IS NULL
-                        AND owner_id != 0
-                    )
-                    OR (
-                        container_id IS NULL
-                        AND map_id IS NOT NULL
-                        AND x IS NOT NULL
-                        AND y IS NOT NULL
-                    )
-                    OR (
-                        container_id IS NULL
-                        AND map_id IS NULL
-                        AND x IS NULL
-                        AND y IS NULL
-                        AND owner_id != 0
-                    )
-                )
-            )
-            """
-        )
-    )
-    await q._conn.execute(
-        sqlalchemy.text(
-            "CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id)"
-        )
-    )
 
 
 @pytest.mark.asyncio
 async def test_inventory_world_item_load_and_pickup():
     inv_id = 900001
-    spec = [{"kind": "Noun", "value": "torch"}]
 
     async with get_repository_factory() as q:
-        await ensure_inventory_schema(q)
         await q.delete_inventory_by_id(id=inv_id)
-        item_id = await q.upsert_item_by_name(
-            name="integration-torch",
-            spec=Json(spec),
-        )
         map_id = world_state.build_nowhere()
-        await q.replace_inventories_for_owner(
-            ReplaceInventoriesForOwnerParams(
-                owner_id=0,
+        await q.replace_inventories_for_map(
+            ReplaceInventoriesForMapParams(
+                map_id=int(map_id),
                 ids=[inv_id],
-                owner_ids=[0],
-                item_ids=[item_id],
+                keys=["torch"],
                 slots=[""],
                 container_ids=[0],
                 map_ids=[int(map_id)],
                 xs=[1],
                 ys=[1],
-                instance_specs=[None],
+                states=[None],
             )
         )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://test",
-        ) as client:
-            await client.get("/")
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        await client.get("/")
 
     item_entity = next(
         eid
@@ -117,9 +43,9 @@ async def test_inventory_world_item_load_and_pickup():
         if int(inv) == inv_id
     )
     loc = esper.component_for_entity(item_entity, Transform)
-    noun = esper.component_for_entity(item_entity, Noun)
+    item_key = esper.component_for_entity(item_entity, ItemKey)
     assert loc.map_id == map_id
-    assert noun.value == "torch"
+    assert item_key == "torch"
 
     player = esper.create_entity()
     esper.add_component(player, OwnerId(42))

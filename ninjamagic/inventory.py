@@ -10,7 +10,6 @@ from ninjamagic.component import (
     Container,
     InventoryId,
     ItemKey,
-    ItemTemplateId,
     Junk,
     Noun,
     OwnerId,
@@ -32,6 +31,12 @@ ITEM_SPEC_REGISTRY = {
     "Weapon": Weapon,
 }
 ITEM_SPEC_SKIP_FIELDS = {"match_tokens"}
+
+# Module-level item templates keyed by ItemKey.
+# Templates define the components that make up an item type.
+ITEM_TEMPLATES: dict[str, list[dict]] = {
+    "torch": [{"kind": "Noun", "value": "torch"}],
+}
 
 
 def dump_item_spec(components: list[object]) -> list[dict]:
@@ -97,28 +102,24 @@ async def load_world_items(q: AsyncQuerier) -> None:
     if not inventories:
         return
 
-    item_ids = sorted({inv.item_id for inv in inventories})
-    items = {item.id: item async for item in q.get_items_by_ids(dollar_1=item_ids)}
-
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        item = items.get(inv.item_id)
-        if not item:
-            log.warning("Missing item template %s for inventory %s", inv.item_id, inv.id)
+        template = ITEM_TEMPLATES.get(inv.key)
+        if not template:
+            log.warning("Missing item template %s for inventory %s", inv.key, inv.id)
             continue
         try:
-            spec = item.spec if isinstance(item.spec, list) else []
-            instance_spec = inv.instance_spec if isinstance(inv.instance_spec, list) else None
+            state = inv.state if isinstance(inv.state, list) else None
             eid = hydrate_item_entity(
-                template_name=item.name,
-                spec=spec,
-                instance_spec=instance_spec,
+                template_name=inv.key,
+                spec=template,
+                instance_spec=state,
             )
         except ValueError as exc:
             log.warning("Invalid item spec for inventory %s: %s", inv.id, exc)
             continue
         entity_by_inventory[inv.id] = eid
-        esper.add_component(eid, item.id, ItemTemplateId)
+        esper.add_component(eid, inv.key, ItemKey)
         esper.add_component(eid, inv.id, InventoryId)
 
     for inv in inventories:
@@ -152,28 +153,24 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
     if not inventories:
         return
 
-    item_ids = sorted({inv.item_id for inv in inventories})
-    items = {item.id: item async for item in q.get_items_by_ids(dollar_1=item_ids)}
-
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        item = items.get(inv.item_id)
-        if not item:
-            log.warning("Missing item template %s for inventory %s", inv.item_id, inv.id)
+        template = ITEM_TEMPLATES.get(inv.key)
+        if not template:
+            log.warning("Missing item template %s for inventory %s", inv.key, inv.id)
             continue
         try:
-            spec = item.spec if isinstance(item.spec, list) else []
-            instance_spec = inv.instance_spec if isinstance(inv.instance_spec, list) else None
+            state = inv.state if isinstance(inv.state, list) else None
             eid = hydrate_item_entity(
-                template_name=item.name,
-                spec=spec,
-                instance_spec=instance_spec,
+                template_name=inv.key,
+                spec=template,
+                instance_spec=state,
             )
         except ValueError as exc:
             log.warning("Invalid item spec for inventory %s: %s", inv.id, exc)
             continue
         entity_by_inventory[inv.id] = eid
-        esper.add_component(eid, item.id, ItemTemplateId)
+        esper.add_component(eid, inv.key, ItemKey)
         esper.add_component(eid, inv.id, InventoryId)
 
     for inv in inventories:
