@@ -84,14 +84,14 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE TABLE IF NOT EXISTS inventories (
     id          BIGSERIAL   PRIMARY KEY,
-    owner_id    BIGINT      NOT NULL DEFAULT 0,
-    item_id     BIGINT      NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    owner_id    BIGINT      REFERENCES characters(id) ON DELETE CASCADE,
+    key         TEXT        NOT NULL,
     slot        TEXT        NOT NULL DEFAULT '',
     container_id BIGINT     REFERENCES inventories(id) ON DELETE CASCADE,
     map_id      INTEGER,
     x           INTEGER,
     y           INTEGER,
-    instance_spec JSONB,
+    state       JSONB,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS inventories (
             AND map_id IS NULL
             AND x IS NULL
             AND y IS NULL
-            AND owner_id <> 0
+            AND owner_id IS NOT NULL
         )
         OR
         (
@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS inventories (
             AND map_id IS NOT NULL
             AND x IS NOT NULL
             AND y IS NOT NULL
+            AND owner_id IS NULL
         )
         OR
         (
@@ -116,7 +117,7 @@ CREATE TABLE IF NOT EXISTS inventories (
             AND map_id IS NULL
             AND x IS NULL
             AND y IS NULL
-            AND owner_id <> 0
+            AND owner_id IS NOT NULL
         )
     )
 );
@@ -127,4 +128,4 @@ CREATE INDEX IF NOT EXISTS idx_skills_char ON skills(char_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_owner ON inventories(owner_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_container ON inventories(container_id);
-CREATE INDEX IF NOT EXISTS idx_inventories_item ON inventories(item_id);
+CREATE INDEX IF NOT EXISTS idx_inventories_key ON inventories(key);
