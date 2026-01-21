@@ -8,6 +8,7 @@ from ninjamagic.component import (
     Chips,
     ContainedBy,
     Container,
+    Cookware,
     Food,
     Ingredient,
     ItemKey,
@@ -17,6 +18,7 @@ from ninjamagic.component import (
     OwnerId,
     ProvidesHeat,
     ProvidesLight,
+    ProvidesShelter,
     Slot,
     Transform,
     Weapon,
@@ -68,6 +70,21 @@ ITEM_TYPES: dict[str, dict[type, object]] = {
         Noun: Noun(value="leek"),
         Ingredient: Ingredient(),
         Food: Food(count=1),
+    },
+    "lily_pad": {
+        ItemKey: ItemKey(key="lily_pad"),
+        Noun: Noun(value="lily pad"),
+    },
+    "cookpot": {
+        ItemKey: ItemKey(key="cookpot"),
+        Noun: Noun(adjective="crude", value="cookpot"),
+        Container: Container(),
+        Cookware: Cookware(),
+    },
+    "bedroll": {
+        ItemKey: ItemKey(key="bedroll"),
+        Noun: Noun(adjective="leather", value="bedroll"),
+        ProvidesShelter: ProvidesShelter(prompt="settle into bedroll"),
     },
 }
 
