@@ -6,16 +6,8 @@ import sqlalchemy
 from ninjamagic.db import get_repository_factory
 
 
-def test_items_migration_exists():
-    assert Path("migrations/003_items_inventories.sql").exists()
-
-
-def test_inventory_owner_constraint_migration_exists():
-    assert Path("migrations/004_inventory_owner_constraint.sql").exists()
-
-
-def test_key_inventory_migration_exists():
-    assert Path("migrations/005_key_inventory.sql").exists()
+def test_inventories_migration_exists():
+    assert Path("migrations/003_inventories.sql").exists()
 
 
 @pytest.mark.asyncio
