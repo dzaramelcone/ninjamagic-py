@@ -11,7 +11,7 @@ class DummyQuerier:
 
 
 @pytest.mark.asyncio
-async def test_save_owner_inventory_requires_template_id():
+async def test_save_owner_inventory_requires_item_key():
     owner = esper.create_entity()
     esper.add_component(owner, 1, OwnerId)
 
@@ -20,5 +20,5 @@ async def test_save_owner_inventory_requires_template_id():
     esper.add_component(item, Slot.ANY)
     esper.add_component(item, 10, InventoryId)
 
-    with pytest.raises(RuntimeError, match="Missing ItemTemplateId"):
+    with pytest.raises(RuntimeError, match="Missing ItemKey"):
         await save_owner_inventory(DummyQuerier(), owner_id=1, owner_entity=owner)

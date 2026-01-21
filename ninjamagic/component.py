@@ -265,6 +265,7 @@ class Health:
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
 ItemTemplateId = NewType("ItemTemplateId", int)
+ItemKey = NewType("ItemKey", str)
 InventoryId = NewType("InventoryId", int)
 
 

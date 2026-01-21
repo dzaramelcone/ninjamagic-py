@@ -1,4 +1,9 @@
+from ninjamagic.component import ItemKey
 from ninjamagic.inventory import hydrate_item_entity
+
+
+def test_item_key_component_exists():
+    assert ItemKey("torch")
 
 
 def test_hydrate_item_sets_components():

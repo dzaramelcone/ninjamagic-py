@@ -9,6 +9,7 @@ from ninjamagic.component import (
     ContainedBy,
     Container,
     InventoryId,
+    ItemKey,
     ItemTemplateId,
     Junk,
     Noun,
@@ -224,21 +225,21 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
 
     ids: list[int] = []
     owner_ids: list[int] = []
-    item_ids: list[int] = []
+    keys: list[str] = []
     slots: list[str] = []
     container_ids: list[int] = []
     map_ids: list[int] = []
     xs: list[int] = []
     ys: list[int] = []
-    instance_specs: list[object | None] = []
+    states: list[object | None] = []
 
     for eid in item_entities:
         inv_id = esper.try_component(eid, InventoryId)
         if not inv_id:
             raise RuntimeError(f"Missing InventoryId for entity {eid}")
-        template_id = esper.try_component(eid, ItemTemplateId)
-        if not template_id:
-            raise RuntimeError(f"Missing ItemTemplateId for entity {eid}")
+        item_key = esper.try_component(eid, ItemKey)
+        if not item_key:
+            raise RuntimeError(f"Missing ItemKey for entity {eid}")
 
         loc = esper.try_component(eid, ContainedBy)
         if not loc:
@@ -246,13 +247,13 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
 
         slot = esper.try_component(eid, Slot) or Slot.ANY
         owner_ids.append(owner_id)
-        item_ids.append(int(template_id))
+        keys.append(str(item_key))
         ids.append(int(inv_id))
         slots.append(str(slot))
         map_ids.append(-1)
         xs.append(-1)
         ys.append(-1)
-        instance_specs.append(None)
+        states.append(None)
 
         if loc == owner_entity:
             container_ids.append(0)
@@ -268,13 +269,13 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
             owner_id=owner_id,
             ids=ids,
             owner_ids=owner_ids,
-            item_ids=item_ids,
+            keys=keys,
             slots=slots,
             container_ids=container_ids,
             map_ids=map_ids,
             xs=xs,
             ys=ys,
-            instance_specs=instance_specs,
+            states=states,
         )
     )
 
