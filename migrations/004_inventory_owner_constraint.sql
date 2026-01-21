@@ -35,7 +35,6 @@ ADD CONSTRAINT "inventories_location_check" CHECK (
         AND "map_id" IS NOT NULL
         AND "x" IS NOT NULL
         AND "y" IS NOT NULL
-        AND "owner_id" = 0
     )
     OR (
         "container_id" IS NULL
