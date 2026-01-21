@@ -1,5 +1,5 @@
 import logging
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 
 import esper
 
@@ -90,37 +90,18 @@ ITEM_TYPES: dict[str, dict[type, object]] = {
 
 
 def item_factory(key: str) -> int:
-    """Create an esper entity from an item template.
-
-    Adds all components from ITEM_TYPES[key] to a new entity.
-    """
-    template = ITEM_TYPES.get(key)
-    if template is None:
-        raise ValueError(f"Unknown item type: {key}")
-    eid = esper.create_entity()
-    for comp in template.values():
-        esper.add_component(eid, comp)
-    return eid
+    """Create an esper entity from an item template."""
+    return esper.create_entity(*ITEM_TYPES[key].values())
 
 
 def deserialize_state(state: list[dict]) -> list[object]:
     """Deserialize state JSON into component instances."""
     out: list[object] = []
     for entry in state:
-        kind = entry.get("kind")
-        if not kind:
-            log.warning("State entry missing kind: %s", entry)
-            continue
-        cls = STATE_REGISTRY.get(kind)
-        if cls is None:
-            log.warning("Unknown state component kind: %s", kind)
-            continue
-        if is_dataclass(cls):
-            field_names = {field.name for field in fields(cls)}
-            data = {k: v for k, v in entry.items() if k in field_names}
-            out.append(cls(**data))
-        else:
-            out.append(cls())
+        cls = STATE_REGISTRY[entry["kind"]]
+        field_names = {field.name for field in fields(cls)}
+        data = {k: v for k, v in entry.items() if k in field_names}
+        out.append(cls(**data))
     return out
 
 
@@ -129,30 +110,21 @@ def serialize_state(eid: int, item_key: str) -> list[dict] | None:
 
     Returns None if no components have changed.
     """
-    template = ITEM_TYPES.get(item_key)
-    if template is None:
-        return None
-
+    template = ITEM_TYPES[item_key]
     modified: list[dict] = []
     for cls in STATE_REGISTRY.values():
         comp = esper.try_component(eid, cls)
         if comp is None:
             continue
-        template_comp = template.get(cls)
-        if comp == template_comp:
+        if comp == template.get(cls):
             continue
-        # Component differs from template - serialize it
         kind = type(comp).__name__
-        if is_dataclass(comp):
-            data = {
-                field.name: getattr(comp, field.name)
-                for field in fields(comp)
-                if field.name not in STATE_SKIP_FIELDS
-            }
-            modified.append({"kind": kind, **data})
-        else:
-            modified.append({"kind": kind})
-
+        data = {
+            field.name: getattr(comp, field.name)
+            for field in fields(comp)
+            if field.name not in STATE_SKIP_FIELDS
+        }
+        modified.append({"kind": kind, **data})
     return modified if modified else None
 
 
