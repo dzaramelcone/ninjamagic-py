@@ -99,17 +99,17 @@ RETURNING id;
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = $1
 )
-INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
 SELECT
   unnest(sqlc.arg('ids')::bigint[]),
   unnest(sqlc.arg('owner_ids')::bigint[]),
-  unnest(sqlc.arg('item_ids')::bigint[]),
+  unnest(sqlc.arg('keys')::text[]),
   unnest(sqlc.arg('slots')::text[]),
   NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
   NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
-  unnest(sqlc.arg('instance_specs')::jsonb[]);
+  unnest(sqlc.arg('states')::jsonb[]);
 
 -- name: DeleteInventoryById :exec
 DELETE FROM inventories WHERE id = $1;

@@ -44,13 +44,13 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 
 
 GET_INVENTORIES_FOR_MAP = """-- name: get_inventories_for_map \\:many
-SELECT id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec, created_at, updated_at FROM inventories WHERE map_id = :p1
+SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, created_at, updated_at FROM inventories WHERE map_id = :p1
 """
 
 
 GET_INVENTORIES_FOR_OWNER = """-- name: get_inventories_for_owner \\:many
 
-SELECT id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec, created_at, updated_at FROM inventories WHERE owner_id = :p1
+SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, created_at, updated_at FROM inventories WHERE owner_id = :p1
 """
 
 
@@ -69,11 +69,11 @@ REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exe
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = :p1
 )
-INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
 SELECT
   unnest(:p2\\:\\:bigint[]),
   unnest(:p3\\:\\:bigint[]),
-  unnest(:p4\\:\\:bigint[]),
+  unnest(:p4\\:\\:text[]),
   unnest(:p5\\:\\:text[]),
   NULLIF(unnest(:p6\\:\\:bigint[]), 0),
   NULLIF(unnest(:p7\\:\\:integer[]), -1),
@@ -84,16 +84,16 @@ SELECT
 
 
 class ReplaceInventoriesForOwnerParams(pydantic.BaseModel):
-    owner_id: int
+    owner_id: Optional[int]
     ids: List[int]
     owner_ids: List[int]
-    item_ids: List[int]
+    keys: List[str]
     slots: List[str]
     container_ids: List[int]
     map_ids: List[int]
     xs: List[int]
     ys: List[int]
-    instance_specs: List[Any]
+    states: List[Any]
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -290,30 +290,30 @@ class AsyncQuerier:
             yield models.Inventory(
                 id=row[0],
                 owner_id=row[1],
-                item_id=row[2],
+                key=row[2],
                 slot=row[3],
                 container_id=row[4],
                 map_id=row[5],
                 x=row[6],
                 y=row[7],
-                instance_spec=row[8],
+                state=row[8],
                 created_at=row[9],
                 updated_at=row[10],
             )
 
-    async def get_inventories_for_owner(self, *, owner_id: int) -> AsyncIterator[models.Inventory]:
+    async def get_inventories_for_owner(self, *, owner_id: Optional[int]) -> AsyncIterator[models.Inventory]:
         result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_OWNER), {"p1": owner_id})
         async for row in result:
             yield models.Inventory(
                 id=row[0],
                 owner_id=row[1],
-                item_id=row[2],
+                key=row[2],
                 slot=row[3],
                 container_id=row[4],
                 map_id=row[5],
                 x=row[6],
                 y=row[7],
-                instance_spec=row[8],
+                state=row[8],
                 created_at=row[9],
                 updated_at=row[10],
             )
@@ -346,13 +346,13 @@ class AsyncQuerier:
             "p1": arg.owner_id,
             "p2": arg.ids,
             "p3": arg.owner_ids,
-            "p4": arg.item_ids,
+            "p4": arg.keys,
             "p5": arg.slots,
             "p6": arg.container_ids,
             "p7": arg.map_ids,
             "p8": arg.xs,
             "p9": arg.ys,
-            "p10": arg.instance_specs,
+            "p10": arg.states,
         })
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
