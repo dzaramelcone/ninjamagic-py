@@ -22,9 +22,9 @@ from ninjamagic.component import (
     Transform,
     Weapon,
 )
-from ninjamagic.db import get_repository_factory
 from ninjamagic.gen.query import (
     AsyncQuerier,
+    ReplaceInventoriesForMapParams,
     ReplaceInventoriesForOwnerParams,
 )
 
@@ -251,6 +251,8 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
                 continue
             if eid in seen:
                 continue
+            if esper.has_component(eid, Junk):
+                continue  # Never save junk items
             seen.add(eid)
             item_entities.append(eid)
             if esper.has_component(eid, Container):
@@ -313,20 +315,59 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
     )
 
 
-async def process() -> None:
-    """Clean up junk items at rest check."""
+async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
+    """Save world inventory for a map to the database."""
+    # Collect all world items on this map (items with Transform, no owner)
+    ids: list[int] = []
+    keys: list[str] = []
+    slots: list[str] = []
+    container_ids: list[int] = []
+    map_ids: list[int] = []
+    xs: list[int] = []
+    ys: list[int] = []
+    states: list[object | None] = []
+
+    entity_by_inventory: dict[int, int] = {}
+    for eid, (item_key, transform, inv_id) in esper.get_components(ItemKey, Transform, InventoryId):
+        if transform.map_id != map_id:
+            continue
+        if esper.has_component(eid, Junk):
+            continue  # Never save junk items
+        entity_by_inventory[int(inv_id)] = eid
+
+    # Build arrays for bulk insert
+    for inv_id, eid in entity_by_inventory.items():
+        item_key = esper.component_for_entity(eid, ItemKey)
+        transform = esper.component_for_entity(eid, Transform)
+
+        ids.append(inv_id)
+        keys.append(item_key.key)
+        slots.append("")
+        container_ids.append(0)
+        map_ids.append(transform.map_id)
+        xs.append(transform.x)
+        ys.append(transform.y)
+        states.append(serialize_state(eid, item_key.key))
+
+    await q.replace_inventories_for_map(
+        ReplaceInventoriesForMapParams(
+            map_id=map_id,
+            ids=ids,
+            keys=keys,
+            slots=slots,
+            container_ids=container_ids,
+            map_ids=map_ids,
+            xs=xs,
+            ys=ys,
+            states=states,
+        )
+    )
+
+
+def process() -> None:
+    """Clean up junk item entities at rest check."""
     if bus.is_empty(bus.RestCheck):
         return
 
-    inventory_ids: list[int] = []
     for eid, _ in esper.get_component(Junk):
-        if inv_id := esper.try_component(eid, InventoryId):
-            inventory_ids.append(int(inv_id))
         esper.delete_entity(eid)
-
-    if not inventory_ids:
-        return
-
-    async with get_repository_factory() as q:
-        for inventory_id in inventory_ids:
-            await q.delete_inventory_by_id(id=inventory_id)

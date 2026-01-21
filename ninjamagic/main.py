@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus, factory, inventory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
-from ninjamagic.component import EntityId, OwnerId, Prompt
+from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
 from ninjamagic.db import get_repository_factory
 from ninjamagic.state import State
@@ -169,3 +169,14 @@ async def save_loop(owner_id: OwnerId, entity_id: EntityId, generation: int):
     ):
         await save(entity_id)
         await asyncio.sleep(settings.save_character_rate)
+
+
+async def world_save_loop():
+    while True:
+        await asyncio.sleep(settings.save_character_rate)
+        map_ids = [eid for eid, _ in esper.get_component(Chips)]
+        if not map_ids:
+            continue
+        async with get_repository_factory() as q:
+            for map_id in map_ids:
+                await inventory.save_world_inventory(q, map_id)

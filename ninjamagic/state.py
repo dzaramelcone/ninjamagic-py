@@ -64,6 +64,8 @@ class State:
             await inventory.load_world_items(q)
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())
+        from ninjamagic import main as main_module
+        loop.create_task(main_module.world_save_loop())
         log.info("Started state.")
 
     async def aclose(self):
@@ -100,7 +102,7 @@ class State:
             combat.process(now=now)
             proc.process(now=now)
             move.process()
-            await inventory.process()
+            inventory.process()
             visibility.process()
             experience.process()
             echo.process()
