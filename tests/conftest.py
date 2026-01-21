@@ -247,7 +247,10 @@ async def db_rollback():
         async def _get_repository_factory():
             yield AsyncQuerier(conn)
 
-        token = db._TEST_CONN.set(conn)
+        # Patch db.get_repository_factory for non-FastAPI code paths
+        original_get_repository_factory = db.get_repository_factory
+        db.get_repository_factory = _get_repository_factory
+
         app = importlib.import_module("ninjamagic.main").app
         app.dependency_overrides[db.get_conn] = _get_conn
         app.dependency_overrides[db.get_repository] = _get_repository
@@ -258,5 +261,5 @@ async def db_rollback():
             app.dependency_overrides.pop(db.get_conn, None)
             app.dependency_overrides.pop(db.get_repository, None)
             app.dependency_overrides.pop(db.get_repository_factory, None)
-            db._TEST_CONN.reset(token)
+            db.get_repository_factory = original_get_repository_factory
             await tx.rollback()

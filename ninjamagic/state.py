@@ -31,7 +31,7 @@ from ninjamagic import (
     survive,
     visibility,
 )
-from ninjamagic.db import get_repository_factory
+from ninjamagic import db
 from ninjamagic.util import TickStats, get_looptime
 
 TPS = 240.0
@@ -60,7 +60,7 @@ class State:
     async def aopen(self):
         log.info("Starting state.")
         self.client = httpx.AsyncClient()
-        async with get_repository_factory() as q:
+        async with db.get_repository_factory() as q:
             await inventory.load_world_items(q)
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())

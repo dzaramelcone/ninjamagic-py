@@ -5,7 +5,7 @@ import pytest
 import ninjamagic.bus as bus
 import ninjamagic.move as move
 from ninjamagic.component import ContainedBy, ItemKey, OwnerId, Slot, Transform
-from ninjamagic.db import get_repository_factory
+from ninjamagic import db
 from ninjamagic.gen.query import ReplaceInventoriesForMapParams
 from ninjamagic.main import app
 from ninjamagic.world import state as world_state
@@ -15,7 +15,7 @@ from ninjamagic.world import state as world_state
 async def test_inventory_world_item_load_and_pickup():
     inv_id = 900001
 
-    async with get_repository_factory() as q:
+    async with db.get_repository_factory() as q:
         await q.delete_inventory_by_id(id=inv_id)
         map_id = world_state.build_nowhere()
         await q.replace_inventories_for_map(
@@ -60,5 +60,5 @@ async def test_inventory_world_item_load_and_pickup():
     bus.clear()
     esper.clear_dead_entities()
 
-    async with get_repository_factory() as q:
+    async with db.get_repository_factory() as q:
         await q.delete_inventory_by_id(id=inv_id)

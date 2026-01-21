@@ -9,11 +9,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from ninjamagic import bus, factory, inventory
+from ninjamagic import bus, db, factory, inventory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
 from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
-from ninjamagic.db import get_repository_factory
 from ninjamagic.state import State
 from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
 
@@ -59,7 +58,7 @@ async def ws_main(ws: WebSocket) -> None:
     try:
         entity_id = esper.create_entity()
         esper.add_component(entity_id, owner_id, OwnerId)
-        async with get_repository_factory() as q:
+        async with db.get_repository_factory() as q:
             char = await q.get_character(owner_id=owner_id)
             if not char:
                 log.info(f"Login failed for {owner_id}, no character.")
@@ -142,7 +141,7 @@ async def ws_main(ws: WebSocket) -> None:
 async def save(entity_id: EntityId):
     save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
-    async with get_repository_factory() as q:
+    async with db.get_repository_factory() as q:
         owner_id = esper.try_component(entity_id, OwnerId)
         if owner_id:
             await inventory.save_owner_inventory(
@@ -177,6 +176,6 @@ async def world_save_loop():
         map_ids = [eid for eid, _ in esper.get_component(Chips)]
         if not map_ids:
             continue
-        async with get_repository_factory() as q:
+        async with db.get_repository_factory() as q:
             for map_id in map_ids:
                 await inventory.save_world_inventory(q, map_id)
