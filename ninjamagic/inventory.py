@@ -1,7 +1,7 @@
 import logging
-from dataclasses import fields
 
 import esper
+from pydantic import TypeAdapter
 
 from ninjamagic.component import (
     Anchor,
@@ -9,10 +9,10 @@ from ninjamagic.component import (
     ContainedBy,
     Container,
     Cookware,
+    DoNotSave,
     Food,
     Ingredient,
     ItemKey,
-    DoNotSave,
     Level,
     Noun,
     OwnerId,
@@ -34,9 +34,8 @@ log = logging.getLogger(__name__)
 # Components that can be serialized to/from state JSON.
 # Only include components that can change at runtime.
 # Weapon is not here because it never changes.
-STATE_REGISTRY: dict[str, type] = {
-    "Noun": Noun,
-}
+STATE_TYPES: list[type] = [Noun]
+STATE_ADAPTERS: dict[str, TypeAdapter] = {cls.__name__: TypeAdapter(cls) for cls in STATE_TYPES}
 
 # Item templates keyed by item type string.
 # Each value is a dict mapping component type -> component instance.
@@ -95,33 +94,17 @@ def item_factory(key: str) -> int:
 
 def deserialize_state(state: list[dict]) -> list[object]:
     """Deserialize state JSON into component instances."""
-    out: list[object] = []
-    for entry in state:
-        cls = STATE_REGISTRY[entry["kind"]]
-        field_names = {field.name for field in fields(cls)}
-        data = {k: v for k, v in entry.items() if k in field_names}
-        out.append(cls(**data))
-    return out
+    return [STATE_ADAPTERS[entry["kind"]].validate_python(entry) for entry in state]
 
 
 def serialize_state(eid: int, item_key: str) -> list[dict] | None:
-    """Serialize only components that differ from the template.
-
-    Returns None if no components have changed.
-    """
+    """Serialize only components that differ from the template."""
     template = ITEM_TYPES[item_key]
-    modified: list[dict] = []
-    for cls in STATE_REGISTRY.values():
-        comp = esper.try_component(eid, cls)
-        if comp is None:
-            continue
-        if comp == template.get(cls):
-            continue
-        modified.append({
-            "kind": type(comp).__name__,
-            **{f.name: getattr(comp, f.name) for f in fields(comp)}
-        })
-    return modified if modified else None
+    return [
+        STATE_ADAPTERS[type(comp).__name__].dump_python(comp)
+        for cls in STATE_TYPES
+        if (comp := esper.try_component(eid, cls)) and comp != template.get(cls)
+    ] or None
 
 
 async def load_world_items(q: AsyncQuerier) -> None:
@@ -150,14 +133,14 @@ async def load_world_items(q: AsyncQuerier) -> None:
 
     # Second pass: set up containment and transforms
     for inv in inventories:
-        eid = entity_by_inventory.get(inv.id)
-        if not eid:
+        if inv.id not in entity_by_inventory:
             continue
+        eid = entity_by_inventory[inv.id]
         if inv.container_id is not None:
-            container_eid = entity_by_inventory.get(inv.container_id)
-            if not container_eid:
+            if inv.container_id not in entity_by_inventory:
                 log.warning("Missing container %s for inventory %s", inv.container_id, inv.id)
                 continue
+            container_eid = entity_by_inventory[inv.container_id]
             esper.add_component(eid, container_eid, ContainedBy)
             try:
                 slot_value = Slot(inv.slot)
@@ -192,14 +175,14 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
 
     # Second pass: set up containment
     for inv in inventories:
-        eid = entity_by_inventory.get(inv.id)
-        if not eid:
+        if inv.id not in entity_by_inventory:
             continue
+        eid = entity_by_inventory[inv.id]
         if inv.container_id is not None:
-            container_eid = entity_by_inventory.get(inv.container_id)
-            if not container_eid:
+            if inv.container_id not in entity_by_inventory:
                 log.warning("Missing container %s for inventory %s", inv.container_id, inv.id)
                 continue
+            container_eid = entity_by_inventory[inv.container_id]
             esper.add_component(eid, container_eid, ContainedBy)
             try:
                 slot_value = Slot(inv.slot)

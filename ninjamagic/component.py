@@ -314,6 +314,7 @@ class Noun:
     Used for generating stories in different perspectives and for searching and matching.
     """
 
+    kind: Literal["Noun"] = "Noun"
     adjective: str = ""
     value: str = "thing"
     pronoun: Pronoun = Pronouns.IT
