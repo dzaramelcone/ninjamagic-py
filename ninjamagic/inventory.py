@@ -37,7 +37,6 @@ log = logging.getLogger(__name__)
 STATE_REGISTRY: dict[str, type] = {
     "Noun": Noun,
 }
-STATE_SKIP_FIELDS = {"match_tokens"}
 
 # Item templates keyed by item type string.
 # Each value is a dict mapping component type -> component instance.
@@ -118,13 +117,10 @@ def serialize_state(eid: int, item_key: str) -> list[dict] | None:
             continue
         if comp == template.get(cls):
             continue
-        kind = type(comp).__name__
-        data = {
-            field.name: getattr(comp, field.name)
-            for field in fields(comp)
-            if field.name not in STATE_SKIP_FIELDS
-        }
-        modified.append({"kind": kind, **data})
+        modified.append({
+            "kind": type(comp).__name__,
+            **{f.name: getattr(comp, f.name) for f in fields(comp)}
+        })
     return modified if modified else None
 
 

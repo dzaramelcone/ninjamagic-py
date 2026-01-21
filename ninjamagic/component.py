@@ -304,6 +304,9 @@ class Rotting:
     """The entity has started to rot. Used by food, unless you're giving Malenia."""
 
 
+noun_match_cache: dict[str, tuple[str, ...]] = {}
+
+
 @component(slots=True, frozen=True)
 class Noun:
     """How an entity is referred to.
@@ -315,13 +318,11 @@ class Noun:
     value: str = "thing"
     pronoun: Pronoun = Pronouns.IT
     num: Num = util.SINGULAR
-    hypernyms: list[str] | None = None  # list of nouns?
-    match_tokens: list[str] = field(default_factory=list)
+    hypernyms: list[str] | None = None
 
-    def __post_init__(self):
-        self.match_tokens.append(self.value)
-        for i, m in enumerate(self.match_tokens):
-            self.match_tokens[i] = m.strip().lower()
+    @property
+    def match_tokens(self) -> tuple[str, ...]:
+        return noun_match_cache.setdefault(self.value, (self.value.strip().lower(),))
 
     def short(self) -> str:
         if self.adjective:
