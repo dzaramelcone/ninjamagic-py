@@ -1,4 +1,8 @@
-from ninjamagic.gen.query import AsyncQuerier, ReplaceInventoriesForOwnerParams
+from ninjamagic.gen.query import (
+    AsyncQuerier,
+    ReplaceInventoriesForMapParams,
+    ReplaceInventoriesForOwnerParams,
+)
 
 
 def test_inventory_queries_exist():
@@ -20,3 +24,18 @@ def test_inventory_replace_uses_key_and_state():
         states=[None],
     )
     assert params.keys == ["torch"]
+
+
+def test_inventory_replace_for_map():
+    params = ReplaceInventoriesForMapParams(
+        map_id=1,
+        ids=[1],
+        keys=["torch"],
+        slots=[""],
+        container_ids=[0],
+        map_ids=[1],
+        xs=[1],
+        ys=[1],
+        states=[None],
+    )
+    assert params.map_id == 1

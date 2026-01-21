@@ -65,6 +65,36 @@ SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
 
 
+REPLACE_INVENTORIES_FOR_MAP = """-- name: replace_inventories_for_map \\:exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.map_id = :p1 AND inventories.owner_id IS NULL
+)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+SELECT
+  unnest(:p2\\:\\:bigint[]),
+  NULL,
+  unnest(:p3\\:\\:text[]),
+  unnest(:p4\\:\\:text[]),
+  NULLIF(unnest(:p5\\:\\:bigint[]), 0),
+  unnest(:p6\\:\\:integer[]),
+  unnest(:p7\\:\\:integer[]),
+  unnest(:p8\\:\\:integer[]),
+  unnest(:p9\\:\\:jsonb[])
+"""
+
+
+class ReplaceInventoriesForMapParams(pydantic.BaseModel):
+    map_id: Optional[int]
+    ids: List[int]
+    keys: List[str]
+    slots: List[str]
+    container_ids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    states: List[Any]
+
+
 REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = :p1
@@ -340,6 +370,19 @@ class AsyncQuerier:
                 tnl=row[4],
                 pending=row[5],
             )
+
+    async def replace_inventories_for_map(self, arg: ReplaceInventoriesForMapParams) -> None:
+        await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_MAP), {
+            "p1": arg.map_id,
+            "p2": arg.ids,
+            "p3": arg.keys,
+            "p4": arg.slots,
+            "p5": arg.container_ids,
+            "p6": arg.map_ids,
+            "p7": arg.xs,
+            "p8": arg.ys,
+            "p9": arg.states,
+        })
 
     async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
         await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_OWNER), {

@@ -111,5 +111,21 @@ SELECT
   NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
   unnest(sqlc.arg('states')::jsonb[]);
 
+-- name: ReplaceInventoriesForMap :exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.map_id = $1 AND inventories.owner_id IS NULL
+)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+SELECT
+  unnest(sqlc.arg('ids')::bigint[]),
+  NULL,
+  unnest(sqlc.arg('keys')::text[]),
+  unnest(sqlc.arg('slots')::text[]),
+  NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
+  unnest(sqlc.arg('map_ids')::integer[]),
+  unnest(sqlc.arg('xs')::integer[]),
+  unnest(sqlc.arg('ys')::integer[]),
+  unnest(sqlc.arg('states')::jsonb[]);
+
 -- name: DeleteInventoryById :exec
 DELETE FROM inventories WHERE id = $1;
