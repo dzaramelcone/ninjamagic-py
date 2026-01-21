@@ -13,6 +13,7 @@ from ninjamagic.component import (
     InventoryId,
     ItemKey,
     DoNotSave,
+    Level,
     Noun,
     OwnerId,
     ProvidesHeat,
@@ -266,6 +267,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
     xs: list[int] = []
     ys: list[int] = []
     states: list[object | None] = []
+    levels: list[int] = []
 
     for eid in item_entities:
         inv_id = esper.try_component(eid, InventoryId)
@@ -280,6 +282,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
             raise RuntimeError(f"Inventory entity {eid} has no container")
 
         slot = esper.try_component(eid, Slot) or Slot.ANY
+        level = esper.try_component(eid, Level) or 0
         owner_ids.append(owner_id)
         keys.append(item_key_comp.key)
         ids.append(int(inv_id))
@@ -288,6 +291,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
         xs.append(-1)
         ys.append(-1)
         states.append(serialize_state(eid, item_key_comp.key))
+        levels.append(int(level))
 
         if loc == owner_entity:
             container_ids.append(0)
@@ -310,6 +314,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
             xs=xs,
             ys=ys,
             states=states,
+            levels=levels,
         )
     )
 
@@ -325,6 +330,7 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
     xs: list[int] = []
     ys: list[int] = []
     states: list[object | None] = []
+    levels: list[int] = []
 
     entity_by_inventory: dict[int, int] = {}
     for eid, (item_key, transform, inv_id) in esper.get_components(ItemKey, Transform, InventoryId):
@@ -338,6 +344,7 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
     for inv_id, eid in entity_by_inventory.items():
         item_key = esper.component_for_entity(eid, ItemKey)
         transform = esper.component_for_entity(eid, Transform)
+        level = esper.try_component(eid, Level) or 0
 
         ids.append(inv_id)
         keys.append(item_key.key)
@@ -347,6 +354,7 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
         xs.append(transform.x)
         ys.append(transform.y)
         states.append(serialize_state(eid, item_key.key))
+        levels.append(int(level))
 
     await q.replace_inventories_for_map(
         ReplaceInventoriesForMapParams(
@@ -359,5 +367,6 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
             xs=xs,
             ys=ys,
             states=states,
+            levels=levels,
         )
     )

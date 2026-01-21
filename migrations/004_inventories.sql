@@ -1,22 +1,10 @@
 /*
-Migration: Items and inventories tables
+Migration: Inventories table
 
-Creates the items table (for item templates) and inventories table
-(for item instances in the world and player inventories).
+Creates the inventories table for item instances in the world and player inventories.
+Items are keyed by type string rather than referencing a template table.
 */
 
--- Items table for item templates
-CREATE TABLE IF NOT EXISTS items (
-    id          BIGSERIAL   PRIMARY KEY,
-    name        CITEXT      NOT NULL,
-    spec        JSONB       NOT NULL DEFAULT '[]'::jsonb,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    UNIQUE (name)
-);
-
--- Inventories table for item instances
 CREATE TABLE IF NOT EXISTS inventories (
     id          BIGSERIAL   PRIMARY KEY,
     owner_id    BIGINT      REFERENCES characters(id) ON DELETE CASCADE,
@@ -27,6 +15,7 @@ CREATE TABLE IF NOT EXISTS inventories (
     x           INTEGER,
     y           INTEGER,
     state       JSONB,
+    level       INTEGER     NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 

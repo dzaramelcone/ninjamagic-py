@@ -3,9 +3,8 @@
 #   sqlc v1.30.0
 import datetime
 import enum
-from typing import Any
-
 import pydantic
+from typing import Any, Optional
 
 
 class Condition(enum.StrEnum):
@@ -41,7 +40,7 @@ class Account(pydantic.BaseModel):
     subject: str
     email: str
     created_at: datetime.datetime
-    last_login_at: datetime.datetime | None
+    last_login_at: Optional[datetime.datetime]
 
 
 class Character(pydantic.BaseModel):
@@ -70,22 +69,15 @@ class Character(pydantic.BaseModel):
 
 class Inventory(pydantic.BaseModel):
     id: int
-    owner_id: int | None
+    owner_id: Optional[int]
     key: str
     slot: str
-    container_id: int | None
-    map_id: int | None
-    x: int | None
-    y: int | None
-    state: Any | None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
-
-
-class Item(pydantic.BaseModel):
-    id: int
-    name: str
-    spec: Any
+    container_id: Optional[int]
+    map_id: Optional[int]
+    x: Optional[int]
+    y: Optional[int]
+    state: Optional[Any]
+    level: int
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

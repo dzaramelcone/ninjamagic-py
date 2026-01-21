@@ -2,14 +2,14 @@
 # versions:
 #   sqlc v1.30.0
 # source: query.sql
-from collections.abc import AsyncIterator
-from typing import Any
-
 import pydantic
+from typing import Any, AsyncIterator, List, Optional
+
 import sqlalchemy
 import sqlalchemy.ext.asyncio
 
 from ninjamagic.gen import models
+
 
 CREATE_CHARACTER = """-- name: create_character \\:one
 INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNING id, owner_id, name, pronoun, glyph, glyph_h, glyph_s, glyph_v, map_id, x, y, health, stress, aggravated_stress, stance, condition, grace, grit, wit, created_at, updated_at
@@ -44,18 +44,13 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 
 
 GET_INVENTORIES_FOR_MAP = """-- name: get_inventories_for_map \\:many
-SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, created_at, updated_at FROM inventories WHERE map_id = :p1
+SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE map_id = :p1
 """
 
 
 GET_INVENTORIES_FOR_OWNER = """-- name: get_inventories_for_owner \\:many
 
-SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, created_at, updated_at FROM inventories WHERE owner_id = :p1
-"""
-
-
-GET_ITEMS_BY_IDS = """-- name: get_items_by_ids \\:many
-SELECT id, name, spec, created_at, updated_at FROM items WHERE id = ANY(:p1\\:\\:bigint[])
+SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id = :p1
 """
 
 
@@ -69,7 +64,7 @@ REPLACE_INVENTORIES_FOR_MAP = """-- name: replace_inventories_for_map \\:exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.map_id = :p1 AND inventories.owner_id IS NULL
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
 SELECT
   unnest(:p2\\:\\:bigint[]),
   NULL,
@@ -79,27 +74,29 @@ SELECT
   unnest(:p6\\:\\:integer[]),
   unnest(:p7\\:\\:integer[]),
   unnest(:p8\\:\\:integer[]),
-  unnest(:p9\\:\\:jsonb[])
+  unnest(:p9\\:\\:jsonb[]),
+  unnest(:p10\\:\\:integer[])
 """
 
 
 class ReplaceInventoriesForMapParams(pydantic.BaseModel):
-    map_id: int | None
-    ids: list[int]
-    keys: list[str]
-    slots: list[str]
-    container_ids: list[int]
-    map_ids: list[int]
-    xs: list[int]
-    ys: list[int]
-    states: list[Any]
+    map_id: Optional[int]
+    ids: List[int]
+    keys: List[str]
+    slots: List[str]
+    container_ids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    states: List[Any]
+    levels: List[int]
 
 
 REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = :p1
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
 SELECT
   unnest(:p2\\:\\:bigint[]),
   unnest(:p3\\:\\:bigint[]),
@@ -109,21 +106,23 @@ SELECT
   NULLIF(unnest(:p7\\:\\:integer[]), -1),
   NULLIF(unnest(:p8\\:\\:integer[]), -1),
   NULLIF(unnest(:p9\\:\\:integer[]), -1),
-  unnest(:p10\\:\\:jsonb[])
+  unnest(:p10\\:\\:jsonb[]),
+  unnest(:p11\\:\\:integer[])
 """
 
 
 class ReplaceInventoriesForOwnerParams(pydantic.BaseModel):
-    owner_id: int | None
-    ids: list[int]
-    owner_ids: list[int]
-    keys: list[str]
-    slots: list[str]
-    container_ids: list[int]
-    map_ids: list[int]
-    xs: list[int]
-    ys: list[int]
-    states: list[Any]
+    owner_id: Optional[int]
+    ids: List[int]
+    owner_ids: List[int]
+    keys: List[str]
+    slots: List[str]
+    container_ids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    states: List[Any]
+    levels: List[int]
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -152,22 +151,22 @@ WHERE id = :p1
 
 class UpdateCharacterParams(pydantic.BaseModel):
     id: int
-    glyph: str | None
-    glyph_h: float | None
-    glyph_v: float | None
-    glyph_s: float | None
-    pronoun: models.Pronoun | None
-    map_id: int | None
-    x: int | None
-    y: int | None
-    health: float | None
-    stress: float | None
-    aggravated_stress: float | None
-    stance: models.Stance | None
-    condition: models.Condition | None
-    grace: int | None
-    grit: int | None
-    wit: int | None
+    glyph: Optional[str]
+    glyph_h: Optional[float]
+    glyph_v: Optional[float]
+    glyph_s: Optional[float]
+    pronoun: Optional[models.Pronoun]
+    map_id: Optional[int]
+    x: Optional[int]
+    y: Optional[int]
+    health: Optional[float]
+    stress: Optional[float]
+    aggravated_stress: Optional[float]
+    stance: Optional[models.Stance]
+    condition: Optional[models.Condition]
+    grace: Optional[int]
+    grit: Optional[int]
+    wit: Optional[int]
 
 
 UPSERT_IDENTITY = """-- name: upsert_identity \\:one
@@ -178,16 +177,6 @@ ON CONFLICT (provider, subject) DO UPDATE
   SET email = EXCLUDED.email,
       last_login_at = EXCLUDED.last_login_at
 RETURNING owner_id
-"""
-
-
-UPSERT_ITEM_BY_NAME = """-- name: upsert_item_by_name \\:one
-INSERT INTO items (name, spec)
-VALUES (:p1, :p2)
-ON CONFLICT (name) DO UPDATE
-  SET spec = EXCLUDED.spec,
-      updated_at = now()
-RETURNING id
 """
 
 
@@ -232,17 +221,17 @@ SET rank = EXCLUDED.rank,
 
 class UpsertSkillsParams(pydantic.BaseModel):
     char_id: int
-    names: list[str]
-    ranks: list[int]
-    tnls: list[float]
-    pendings: list[float]
+    names: List[str]
+    ranks: List[int]
+    tnls: List[float]
+    pendings: List[float]
 
 
 class AsyncQuerier:
     def __init__(self, conn: sqlalchemy.ext.asyncio.AsyncConnection):
         self._conn = conn
 
-    async def create_character(self, *, owner_id: int, name: str, pronoun: models.Pronoun) -> models.Character | None:
+    async def create_character(self, *, owner_id: int, name: str, pronoun: models.Pronoun) -> Optional[models.Character]:
         row = (await self._conn.execute(sqlalchemy.text(CREATE_CHARACTER), {"p1": owner_id, "p2": name, "p3": pronoun})).first()
         if row is None:
             return None
@@ -276,7 +265,7 @@ class AsyncQuerier:
     async def delete_inventory_by_id(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_INVENTORY_BY_ID), {"p1": id})
 
-    async def get_character(self, *, owner_id: int) -> models.Character | None:
+    async def get_character(self, *, owner_id: int) -> Optional[models.Character]:
         row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER), {"p1": owner_id})).first()
         if row is None:
             return None
@@ -304,7 +293,7 @@ class AsyncQuerier:
             updated_at=row[20],
         )
 
-    async def get_character_brief(self, *, owner_id: int) -> GetCharacterBriefRow | None:
+    async def get_character_brief(self, *, owner_id: int) -> Optional[GetCharacterBriefRow]:
         row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER_BRIEF), {"p1": owner_id})).first()
         if row is None:
             return None
@@ -314,7 +303,7 @@ class AsyncQuerier:
             name=row[2],
         )
 
-    async def get_inventories_for_map(self, *, map_id: int | None) -> AsyncIterator[models.Inventory]:
+    async def get_inventories_for_map(self, *, map_id: Optional[int]) -> AsyncIterator[models.Inventory]:
         result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_MAP), {"p1": map_id})
         async for row in result:
             yield models.Inventory(
@@ -327,11 +316,12 @@ class AsyncQuerier:
                 x=row[6],
                 y=row[7],
                 state=row[8],
-                created_at=row[9],
-                updated_at=row[10],
+                level=row[9],
+                created_at=row[10],
+                updated_at=row[11],
             )
 
-    async def get_inventories_for_owner(self, *, owner_id: int | None) -> AsyncIterator[models.Inventory]:
+    async def get_inventories_for_owner(self, *, owner_id: Optional[int]) -> AsyncIterator[models.Inventory]:
         result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_OWNER), {"p1": owner_id})
         async for row in result:
             yield models.Inventory(
@@ -344,19 +334,9 @@ class AsyncQuerier:
                 x=row[6],
                 y=row[7],
                 state=row[8],
-                created_at=row[9],
-                updated_at=row[10],
-            )
-
-    async def get_items_by_ids(self, *, dollar_1: list[int]) -> AsyncIterator[models.Item]:
-        result = await self._conn.stream(sqlalchemy.text(GET_ITEMS_BY_IDS), {"p1": dollar_1})
-        async for row in result:
-            yield models.Item(
-                id=row[0],
-                name=row[1],
-                spec=row[2],
-                created_at=row[3],
-                updated_at=row[4],
+                level=row[9],
+                created_at=row[10],
+                updated_at=row[11],
             )
 
     async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
@@ -382,6 +362,7 @@ class AsyncQuerier:
             "p7": arg.xs,
             "p8": arg.ys,
             "p9": arg.states,
+            "p10": arg.levels,
         })
 
     async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
@@ -396,6 +377,7 @@ class AsyncQuerier:
             "p8": arg.xs,
             "p9": arg.ys,
             "p10": arg.states,
+            "p11": arg.levels,
         })
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
@@ -419,14 +401,8 @@ class AsyncQuerier:
             "p17": arg.wit,
         })
 
-    async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> int | None:
+    async def upsert_identity(self, *, provider: models.OauthProvider, subject: str, email: str) -> Optional[int]:
         row = (await self._conn.execute(sqlalchemy.text(UPSERT_IDENTITY), {"p1": provider, "p2": subject, "p3": email})).first()
-        if row is None:
-            return None
-        return row[0]
-
-    async def upsert_item_by_name(self, *, name: str, spec: Any) -> int | None:
-        row = (await self._conn.execute(sqlalchemy.text(UPSERT_ITEM_BY_NAME), {"p1": name, "p2": spec})).first()
         if row is None:
             return None
         return row[0]

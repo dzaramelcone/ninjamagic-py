@@ -7,7 +7,6 @@ from ninjamagic.gen.query import (
 
 def test_inventory_queries_exist():
     assert hasattr(AsyncQuerier, "get_inventories_for_owner")
-    assert hasattr(AsyncQuerier, "get_items_by_ids")
 
 
 def test_inventory_replace_uses_key_and_state():
@@ -22,6 +21,7 @@ def test_inventory_replace_uses_key_and_state():
         xs=[-1],
         ys=[-1],
         states=[None],
+        levels=[0],
     )
     assert params.keys == ["torch"]
 
@@ -37,5 +37,6 @@ def test_inventory_replace_for_map():
         xs=[1],
         ys=[1],
         states=[None],
+        levels=[0],
     )
     assert params.map_id == 1

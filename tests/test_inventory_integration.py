@@ -29,6 +29,7 @@ async def test_inventory_world_item_load_and_pickup():
                 xs=[1],
                 ys=[1],
                 states=[None],
+                levels=[0],
             )
         )
     async with app.router.lifespan_context(app), httpx.AsyncClient(

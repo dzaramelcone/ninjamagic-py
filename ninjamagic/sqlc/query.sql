@@ -84,22 +84,11 @@ SELECT * FROM inventories WHERE owner_id = $1;
 -- name: GetInventoriesForMap :many
 SELECT * FROM inventories WHERE map_id = $1;
 
--- name: GetItemsByIds :many
-SELECT * FROM items WHERE id = ANY($1::bigint[]);
-
--- name: UpsertItemByName :one
-INSERT INTO items (name, spec)
-VALUES ($1, $2)
-ON CONFLICT (name) DO UPDATE
-  SET spec = EXCLUDED.spec,
-      updated_at = now()
-RETURNING id;
-
 -- name: ReplaceInventoriesForOwner :exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = $1
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
 SELECT
   unnest(sqlc.arg('ids')::bigint[]),
   unnest(sqlc.arg('owner_ids')::bigint[]),
@@ -109,13 +98,14 @@ SELECT
   NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
-  unnest(sqlc.arg('states')::jsonb[]);
+  unnest(sqlc.arg('states')::jsonb[]),
+  unnest(sqlc.arg('levels')::integer[]);
 
 -- name: ReplaceInventoriesForMap :exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.map_id = $1 AND inventories.owner_id IS NULL
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state)
+INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
 SELECT
   unnest(sqlc.arg('ids')::bigint[]),
   NULL,
@@ -125,7 +115,8 @@ SELECT
   unnest(sqlc.arg('map_ids')::integer[]),
   unnest(sqlc.arg('xs')::integer[]),
   unnest(sqlc.arg('ys')::integer[]),
-  unnest(sqlc.arg('states')::jsonb[]);
+  unnest(sqlc.arg('states')::jsonb[]),
+  unnest(sqlc.arg('levels')::integer[]);
 
 -- name: DeleteInventoryById :exec
 DELETE FROM inventories WHERE id = $1;
