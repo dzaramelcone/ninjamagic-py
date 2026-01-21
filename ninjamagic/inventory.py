@@ -13,7 +13,7 @@ from ninjamagic.component import (
     Ingredient,
     InventoryId,
     ItemKey,
-    Junk,
+    DoNotSave,
     Noun,
     OwnerId,
     ProvidesHeat,
@@ -251,7 +251,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
                 continue
             if eid in seen:
                 continue
-            if esper.has_component(eid, Junk):
+            if esper.has_component(eid, DoNotSave):
                 continue  # Never save junk items
             seen.add(eid)
             item_entities.append(eid)
@@ -331,7 +331,7 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
     for eid, (item_key, transform, inv_id) in esper.get_components(ItemKey, Transform, InventoryId):
         if transform.map_id != map_id:
             continue
-        if esper.has_component(eid, Junk):
+        if esper.has_component(eid, DoNotSave):
             continue  # Never save junk items
         entity_by_inventory[int(inv_id)] = eid
 
@@ -369,5 +369,5 @@ def process() -> None:
     if bus.is_empty(bus.RestCheck):
         return
 
-    for eid, _ in esper.get_component(Junk):
+    for eid, _ in esper.get_component(DoNotSave):
         esper.delete_entity(eid)

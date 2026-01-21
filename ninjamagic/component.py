@@ -274,8 +274,8 @@ class ItemKey:
     key: str
 
 
-class Junk:
-    """Item should be cleaned up at rest check."""
+class DoNotSave:
+    """Item should not be persisted to database."""
 ContainedBy = NewType("ContainedBy", EntityId)
 
 
