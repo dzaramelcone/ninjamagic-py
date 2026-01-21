@@ -3,7 +3,6 @@ from dataclasses import fields, is_dataclass
 
 import esper
 
-from ninjamagic import bus
 from ninjamagic.component import (
     Anchor,
     Chips,
@@ -362,12 +361,3 @@ async def save_world_inventory(q: AsyncQuerier, map_id: int) -> None:
             states=states,
         )
     )
-
-
-def process() -> None:
-    """Clean up junk item entities at rest check."""
-    if bus.is_empty(bus.RestCheck):
-        return
-
-    for eid, _ in esper.get_component(DoNotSave):
-        esper.delete_entity(eid)
