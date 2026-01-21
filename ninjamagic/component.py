@@ -264,9 +264,14 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
-ItemTemplateId = NewType("ItemTemplateId", int)
-ItemKey = NewType("ItemKey", str)
 InventoryId = NewType("InventoryId", int)
+
+
+@dataclass(frozen=True, slots=True)
+class ItemKey:
+    """The item type key, referencing ITEM_TYPES in inventory.py."""
+
+    key: str
 
 
 class Junk:

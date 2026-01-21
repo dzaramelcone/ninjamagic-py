@@ -45,7 +45,7 @@ async def test_inventory_world_item_load_and_pickup():
     loc = esper.component_for_entity(item_entity, Transform)
     item_key = esper.component_for_entity(item_entity, ItemKey)
     assert loc.map_id == map_id
-    assert item_key == "torch"
+    assert item_key.key == "torch"
 
     player = esper.create_entity()
     esper.add_component(player, OwnerId(42))

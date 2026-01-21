@@ -5,14 +5,19 @@ import esper
 
 from ninjamagic import bus
 from ninjamagic.component import (
+    Anchor,
     Chips,
     ContainedBy,
     Container,
+    Food,
+    Ingredient,
     InventoryId,
     ItemKey,
     Junk,
     Noun,
     OwnerId,
+    ProvidesHeat,
+    ProvidesLight,
     Slot,
     Transform,
     Weapon,
@@ -25,103 +30,142 @@ from ninjamagic.gen.query import (
 
 log = logging.getLogger(__name__)
 
-# Item spec serialization lives here so inventory persistence stays in one module.
-ITEM_SPEC_REGISTRY = {
+# Components that can be serialized to/from state JSON.
+# Only include components that can change at runtime.
+# Weapon is not here because it never changes.
+STATE_REGISTRY: dict[str, type] = {
     "Noun": Noun,
-    "Weapon": Weapon,
 }
-ITEM_SPEC_SKIP_FIELDS = {"match_tokens"}
+STATE_SKIP_FIELDS = {"match_tokens"}
 
-# Module-level item templates keyed by ItemKey.
-# Templates define the components that make up an item type.
-ITEM_TEMPLATES: dict[str, list[dict]] = {
-    "torch": [{"kind": "Noun", "value": "torch"}],
+# Item templates keyed by item type string.
+# Each value is a dict mapping component type -> component instance.
+# All components should be frozen dataclasses with eq=True.
+ITEM_TYPES: dict[str, dict[type, object]] = {
+    "torch": {
+        ItemKey: ItemKey(key="torch"),
+        Noun: Noun(value="torch"),
+        ProvidesLight: ProvidesLight(),
+    },
+    "bonfire": {
+        ItemKey: ItemKey(key="bonfire"),
+        Noun: Noun(value="bonfire"),
+        ProvidesHeat: ProvidesHeat(),
+        ProvidesLight: ProvidesLight(),
+        Anchor: Anchor(rank=1, tnl=0, rankup_echo="The bonfire crackles warmly."),
+    },
+    "broadsword": {
+        ItemKey: ItemKey(key="broadsword"),
+        Noun: Noun(value="broadsword"),
+        Weapon: Weapon(damage=15.0, token_key="slash", story_key="blade", skill_key="martial_arts"),
+    },
+    "backpack": {
+        ItemKey: ItemKey(key="backpack"),
+        Noun: Noun(value="backpack"),
+        Container: Container(),
+    },
+    "leek": {
+        ItemKey: ItemKey(key="leek"),
+        Noun: Noun(value="leek"),
+        Ingredient: Ingredient(),
+        Food: Food(count=1),
+    },
 }
 
 
-def dump_item_spec(components: list[object]) -> list[dict]:
-    spec: list[dict] = []
-    for comp in components:
-        kind = type(comp).__name__
-        if is_dataclass(comp):
-            data = {
-                field.name: getattr(comp, field.name)
-                for field in fields(comp)
-                if field.name not in ITEM_SPEC_SKIP_FIELDS
-            }
-            spec.append({"kind": kind, **data})
-        else:
-            spec.append({"kind": kind})
-    return spec
+def item_factory(key: str) -> int:
+    """Create an esper entity from an item template.
+
+    Adds all components from ITEM_TYPES[key] to a new entity.
+    """
+    template = ITEM_TYPES.get(key)
+    if template is None:
+        raise ValueError(f"Unknown item type: {key}")
+    eid = esper.create_entity()
+    for comp in template.values():
+        esper.add_component(eid, comp)
+    return eid
 
 
-def load_item_spec(spec: list[dict]) -> list[object]:
+def deserialize_state(state: list[dict]) -> list[object]:
+    """Deserialize state JSON into component instances."""
     out: list[object] = []
-    for entry in spec:
+    for entry in state:
         kind = entry.get("kind")
         if not kind:
-            raise ValueError("item spec missing kind")
-        cls = ITEM_SPEC_REGISTRY.get(kind)
+            log.warning("State entry missing kind: %s", entry)
+            continue
+        cls = STATE_REGISTRY.get(kind)
         if cls is None:
-            raise ValueError(f"unknown item component: {kind}")
+            log.warning("Unknown state component kind: %s", kind)
+            continue
         if is_dataclass(cls):
             field_names = {field.name for field in fields(cls)}
-            data = {key: value for key, value in entry.items() if key in field_names}
+            data = {k: v for k, v in entry.items() if k in field_names}
             out.append(cls(**data))
         else:
             out.append(cls())
     return out
 
 
-# Hydration keeps a direct spec->components flow so that the DB format stays visible.
-# This makes the file big, but it makes the data flow easy to audit.
+def serialize_state(eid: int, item_key: str) -> list[dict] | None:
+    """Serialize only components that differ from the template.
 
-def hydrate_item_entity(
-    *,
-    template_name: str,
-    spec: list[dict],
-    instance_spec: list[dict] | None = None,
-) -> int:
-    eid = esper.create_entity()
-    for comp in load_item_spec(spec):
-        esper.add_component(eid, comp)
-    if instance_spec:
-        for comp in load_item_spec(instance_spec):
-            esper.add_component(eid, comp)
-    return eid
+    Returns None if no components have changed.
+    """
+    template = ITEM_TYPES.get(item_key)
+    if template is None:
+        return None
+
+    modified: list[dict] = []
+    for cls in STATE_REGISTRY.values():
+        comp = esper.try_component(eid, cls)
+        if comp is None:
+            continue
+        template_comp = template.get(cls)
+        if comp == template_comp:
+            continue
+        # Component differs from template - serialize it
+        kind = type(comp).__name__
+        if is_dataclass(comp):
+            data = {
+                field.name: getattr(comp, field.name)
+                for field in fields(comp)
+                if field.name not in STATE_SKIP_FIELDS
+            }
+            modified.append({"kind": kind, **data})
+        else:
+            modified.append({"kind": kind})
+
+    return modified if modified else None
 
 
 async def load_world_items(q: AsyncQuerier) -> None:
-    # World item hydration is explicit and verbose so the DB->ECS mapping is easy to trace.
+    """Load world items from the database."""
     map_ids = {eid for eid, _ in esper.get_component(Chips)}
     inventories = []
     for map_id in map_ids:
-        inventories.extend(
-            [row async for row in q.get_inventories_for_map(map_id=map_id)]
-        )
+        inventories.extend([row async for row in q.get_inventories_for_map(map_id=map_id)])
     if not inventories:
         return
 
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        template = ITEM_TEMPLATES.get(inv.key)
-        if not template:
-            log.warning("Missing item template %s for inventory %s", inv.key, inv.id)
-            continue
         try:
-            state = inv.state if isinstance(inv.state, list) else None
-            eid = hydrate_item_entity(
-                template_name=inv.key,
-                spec=template,
-                instance_spec=state,
-            )
+            eid = item_factory(inv.key)
         except ValueError as exc:
-            log.warning("Invalid item spec for inventory %s: %s", inv.id, exc)
+            log.warning("Failed to create item for inventory %s: %s", inv.id, exc)
             continue
-        entity_by_inventory[inv.id] = eid
-        esper.add_component(eid, inv.key, ItemKey)
-        esper.add_component(eid, inv.id, InventoryId)
 
+        # Apply state overrides if present
+        if inv.state and isinstance(inv.state, list):
+            for comp in deserialize_state(inv.state):
+                esper.add_component(eid, comp)
+
+        esper.add_component(eid, inv.id, InventoryId)
+        entity_by_inventory[inv.id] = eid
+
+    # Second pass: set up containment and transforms
     for inv in inventories:
         eid = entity_by_inventory.get(inv.id)
         if not eid:
@@ -139,40 +183,32 @@ async def load_world_items(q: AsyncQuerier) -> None:
             esper.add_component(eid, slot_value)
             continue
         if inv.map_id is not None and inv.x is not None and inv.y is not None:
-            esper.add_component(
-                eid,
-                Transform(map_id=inv.map_id, x=inv.x, y=inv.y),
-            )
+            esper.add_component(eid, Transform(map_id=inv.map_id, x=inv.x, y=inv.y))
 
 
 async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) -> None:
-    # Player inventory hydration mirrors world hydration but roots containment to the player.
-    inventories = [
-        row async for row in q.get_inventories_for_owner(owner_id=owner_id)
-    ]
+    """Load player inventory from the database."""
+    inventories = [row async for row in q.get_inventories_for_owner(owner_id=owner_id)]
     if not inventories:
         return
 
     entity_by_inventory: dict[int, int] = {}
     for inv in inventories:
-        template = ITEM_TEMPLATES.get(inv.key)
-        if not template:
-            log.warning("Missing item template %s for inventory %s", inv.key, inv.id)
-            continue
         try:
-            state = inv.state if isinstance(inv.state, list) else None
-            eid = hydrate_item_entity(
-                template_name=inv.key,
-                spec=template,
-                instance_spec=state,
-            )
+            eid = item_factory(inv.key)
         except ValueError as exc:
-            log.warning("Invalid item spec for inventory %s: %s", inv.id, exc)
+            log.warning("Failed to create item for inventory %s: %s", inv.id, exc)
             continue
-        entity_by_inventory[inv.id] = eid
-        esper.add_component(eid, inv.key, ItemKey)
-        esper.add_component(eid, inv.id, InventoryId)
 
+        # Apply state overrides if present
+        if inv.state and isinstance(inv.state, list):
+            for comp in deserialize_state(inv.state):
+                esper.add_component(eid, comp)
+
+        esper.add_component(eid, inv.id, InventoryId)
+        entity_by_inventory[inv.id] = eid
+
+    # Second pass: set up containment
     for inv in inventories:
         eid = entity_by_inventory.get(inv.id)
         if not eid:
@@ -197,20 +233,20 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
         esper.add_component(eid, slot_value)
 
 
-# Save is intentionally long and linear: build the full owner inventory, delete rows,
-# and bulk insert. This avoids hidden state and makes the DB transaction explicit.
 async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int) -> None:
+    """Save player inventory to the database."""
     owner_component = esper.try_component(owner_entity, OwnerId)
     if owner_component and int(owner_component) != owner_id:
         raise RuntimeError(f"Owner mismatch for entity {owner_entity}")
 
+    # Collect all items contained by owner (recursively through containers)
     queue = [owner_entity]
     seen = {owner_entity}
     item_entities: list[int] = []
 
     while queue:
         container = queue.pop()
-        for eid, (loc, slot) in esper.get_components(ContainedBy, Slot):
+        for eid, (loc, _slot) in esper.get_components(ContainedBy, Slot):
             if loc != container:
                 continue
             if eid in seen:
@@ -234,8 +270,8 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
         inv_id = esper.try_component(eid, InventoryId)
         if not inv_id:
             raise RuntimeError(f"Missing InventoryId for entity {eid}")
-        item_key = esper.try_component(eid, ItemKey)
-        if not item_key:
+        item_key_comp = esper.try_component(eid, ItemKey)
+        if not item_key_comp:
             raise RuntimeError(f"Missing ItemKey for entity {eid}")
 
         loc = esper.try_component(eid, ContainedBy)
@@ -244,13 +280,13 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
 
         slot = esper.try_component(eid, Slot) or Slot.ANY
         owner_ids.append(owner_id)
-        keys.append(str(item_key))
+        keys.append(item_key_comp.key)
         ids.append(int(inv_id))
         slots.append(str(slot))
         map_ids.append(-1)
         xs.append(-1)
         ys.append(-1)
-        states.append(None)
+        states.append(serialize_state(eid, item_key_comp.key))
 
         if loc == owner_entity:
             container_ids.append(0)
@@ -278,7 +314,7 @@ async def save_owner_inventory(q: AsyncQuerier, owner_id: int, owner_entity: int
 
 
 async def process() -> None:
-    # RestCheck cleanup deletes junk entities and their inventory rows in the same tick.
+    """Clean up junk items at rest check."""
     if bus.is_empty(bus.RestCheck):
         return
 
