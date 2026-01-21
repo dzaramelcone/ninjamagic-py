@@ -3,6 +3,7 @@ import json
 import pathlib
 import warnings
 from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
@@ -16,6 +17,9 @@ from pydantic.dataclasses import Field, dataclass
 from websockets.asyncio.client import ClientConnection
 
 from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
+import ninjamagic.db as db
+from ninjamagic.db import engine
+from ninjamagic.gen.query import AsyncQuerier
 from ninjamagic.gen.messages_pb2 import Packet
 
 BASE_HTTP_URL = "http://localhost:8000"
@@ -223,3 +227,36 @@ async def client_factory() -> ClientFactory:
     close_tasks = [conn.close() for conn in active_connections]
     if close_tasks:
         await asyncio.gather(*close_tasks)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def db_rollback():
+    import importlib
+
+    async with engine.connect() as conn:
+        tx = await conn.begin()
+
+        @asynccontextmanager
+        async def _get_conn():
+            yield conn
+
+        async def _get_repository(_):
+            return AsyncQuerier(conn)
+
+        @asynccontextmanager
+        async def _get_repository_factory():
+            yield AsyncQuerier(conn)
+
+        token = db._TEST_CONN.set(conn)
+        app = importlib.import_module("ninjamagic.main").app
+        app.dependency_overrides[db.get_conn] = _get_conn
+        app.dependency_overrides[db.get_repository] = _get_repository
+        app.dependency_overrides[db.get_repository_factory] = _get_repository_factory
+        try:
+            yield
+        finally:
+            app.dependency_overrides.pop(db.get_conn, None)
+            app.dependency_overrides.pop(db.get_repository, None)
+            app.dependency_overrides.pop(db.get_repository_factory, None)
+            db._TEST_CONN.reset(token)
+            await tx.rollback()

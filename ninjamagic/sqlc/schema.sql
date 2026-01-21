@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS inventories (
             AND map_id IS NOT NULL
             AND x IS NOT NULL
             AND y IS NOT NULL
+            AND owner_id = 0
         )
         OR
         (

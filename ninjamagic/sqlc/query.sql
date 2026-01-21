@@ -95,26 +95,10 @@ ON CONFLICT (name) DO UPDATE
       updated_at = now()
 RETURNING id;
 
--- name: DeleteInventoriesForOwner :exec
-DELETE FROM inventories WHERE owner_id = $1;
-
 -- name: ReplaceInventoriesForOwner :exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = $1
 )
-INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
-SELECT
-  unnest(sqlc.arg('ids')::bigint[]),
-  unnest(sqlc.arg('owner_ids')::bigint[]),
-  unnest(sqlc.arg('item_ids')::bigint[]),
-  unnest(sqlc.arg('slots')::text[]),
-  NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
-  NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
-  NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
-  NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
-  unnest(sqlc.arg('instance_specs')::jsonb[]);
-
--- name: InsertInventoriesForOwner :exec
 INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
 SELECT
   unnest(sqlc.arg('ids')::bigint[]),

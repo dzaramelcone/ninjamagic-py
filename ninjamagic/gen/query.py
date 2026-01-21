@@ -21,11 +21,6 @@ DELETE FROM characters WHERE id = :p1
 """
 
 
-DELETE_INVENTORIES_FOR_OWNER = """-- name: delete_inventories_for_owner \\:exec
-DELETE FROM inventories WHERE owner_id = :p1
-"""
-
-
 DELETE_INVENTORY_BY_ID = """-- name: delete_inventory_by_id \\:exec
 DELETE FROM inventories WHERE id = :p1
 """
@@ -68,33 +63,6 @@ GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
 
 SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
-
-
-INSERT_INVENTORIES_FOR_OWNER = """-- name: insert_inventories_for_owner \\:exec
-INSERT INTO inventories (id, owner_id, item_id, slot, container_id, map_id, x, y, instance_spec)
-SELECT
-  unnest(:p1\\:\\:bigint[]),
-  unnest(:p2\\:\\:bigint[]),
-  unnest(:p3\\:\\:bigint[]),
-  unnest(:p4\\:\\:text[]),
-  NULLIF(unnest(:p5\\:\\:bigint[]), 0),
-  NULLIF(unnest(:p6\\:\\:integer[]), -1),
-  NULLIF(unnest(:p7\\:\\:integer[]), -1),
-  NULLIF(unnest(:p8\\:\\:integer[]), -1),
-  unnest(:p9\\:\\:jsonb[])
-"""
-
-
-class InsertInventoriesForOwnerParams(pydantic.BaseModel):
-    ids: List[int]
-    owner_ids: List[int]
-    item_ids: List[int]
-    slots: List[str]
-    container_ids: List[int]
-    map_ids: List[int]
-    xs: List[int]
-    ys: List[int]
-    instance_specs: List[Any]
 
 
 REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exec
@@ -275,9 +243,6 @@ class AsyncQuerier:
     async def delete_character(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
 
-    async def delete_inventories_for_owner(self, *, owner_id: int) -> None:
-        await self._conn.execute(sqlalchemy.text(DELETE_INVENTORIES_FOR_OWNER), {"p1": owner_id})
-
     async def delete_inventory_by_id(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_INVENTORY_BY_ID), {"p1": id})
 
@@ -375,19 +340,6 @@ class AsyncQuerier:
                 tnl=row[4],
                 pending=row[5],
             )
-
-    async def insert_inventories_for_owner(self, arg: InsertInventoriesForOwnerParams) -> None:
-        await self._conn.execute(sqlalchemy.text(INSERT_INVENTORIES_FOR_OWNER), {
-            "p1": arg.ids,
-            "p2": arg.owner_ids,
-            "p3": arg.item_ids,
-            "p4": arg.slots,
-            "p5": arg.container_ids,
-            "p6": arg.map_ids,
-            "p7": arg.xs,
-            "p8": arg.ys,
-            "p9": arg.instance_specs,
-        })
 
     async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
         await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_OWNER), {

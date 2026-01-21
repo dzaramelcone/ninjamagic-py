@@ -2,14 +2,15 @@ import pytest
 import esper
 import sqlalchemy
 from psycopg.types.json import Json
+import httpx
 
 import ninjamagic.bus as bus
-import ninjamagic.inventory as inventory
 import ninjamagic.move as move
 from ninjamagic.component import ContainedBy, InventoryId, Noun, OwnerId, Slot, Transform
 from ninjamagic.db import get_repository_factory
-from ninjamagic.gen.query import InsertInventoriesForOwnerParams
-from ninjamagic.world.state import DEMO
+from ninjamagic.gen.query import ReplaceInventoriesForOwnerParams
+from ninjamagic.main import app
+from ninjamagic.world import state as world_state
 
 
 async def ensure_inventory_schema(q) -> None:
@@ -88,20 +89,27 @@ async def test_inventory_world_item_load_and_pickup():
             name="integration-torch",
             spec=Json(spec),
         )
-        await q.insert_inventories_for_owner(
-            InsertInventoriesForOwnerParams(
+        map_id = world_state.build_nowhere()
+        await q.replace_inventories_for_owner(
+            ReplaceInventoriesForOwnerParams(
+                owner_id=0,
                 ids=[inv_id],
                 owner_ids=[0],
                 item_ids=[item_id],
                 slots=[""],
                 container_ids=[0],
-                map_ids=[int(DEMO)],
+                map_ids=[int(map_id)],
                 xs=[1],
                 ys=[1],
                 instance_specs=[None],
             )
         )
-        await inventory.load_world_items(q)
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            await client.get("/")
 
     item_entity = next(
         eid
@@ -110,7 +118,7 @@ async def test_inventory_world_item_load_and_pickup():
     )
     loc = esper.component_for_entity(item_entity, Transform)
     noun = esper.component_for_entity(item_entity, Noun)
-    assert loc.map_id == DEMO
+    assert loc.map_id == map_id
     assert noun.value == "torch"
 
     player = esper.create_entity()
