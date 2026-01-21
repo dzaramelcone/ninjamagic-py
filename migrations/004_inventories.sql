@@ -50,3 +50,11 @@ CREATE INDEX IF NOT EXISTS idx_inventories_owner ON inventories(owner_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_container ON inventories(container_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_key ON inventories(key);
+
+-- Seed world items on DEMO map (map_id=2)
+-- Note: DEMO is the second entity created after NOWHERE
+INSERT INTO inventories (key, map_id, x, y, level) VALUES
+    ('lily_pad', 2, 8, 11, 0),
+    ('backpack', 2, 9, 4, 0),
+    ('bedroll', 2, 9, 4, 10),
+    ('broadsword', 2, 9, 4, 0);

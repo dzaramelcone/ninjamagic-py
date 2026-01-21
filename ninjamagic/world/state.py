@@ -6,28 +6,20 @@ from ninjamagic.component import (
     Anchor,
     Chips,
     ChipSet,
-    ContainedBy,
-    Container,
-    Cookware,
     Den,
     EntityId,
     ForageEnvironment,
     Glyph,
     Health,
     Hostility,
-    Level,
     Noun,
     ProvidesHeat,
     ProvidesLight,
-    ProvidesShelter,
     Skills,
-    Slot,
     SpawnSlot,
     Stance,
     Stats,
     Transform,
-    Weapon,
-    Wearable,
 )
 from ninjamagic.util import (
     EIGHT_DIRS,
@@ -89,34 +81,6 @@ def create_prop(
     )
     esper.add_component(eid, glyph, Glyph)
     return eid
-
-
-def create_item(
-    *,
-    map_id: EntityId,
-    y: int,
-    x: int,
-    name: str,
-    glyph: tuple[str, float, float, float],
-    adjective: str = "",
-    wearable_slot: Slot = Slot.ANY,
-    container: bool = False,
-    contained_by: EntityId = 0,
-) -> EntityId:
-    """Pickupable item."""
-    eid = esper.create_entity(
-        Transform(map_id=map_id, y=y, x=x),
-        Noun(adjective=adjective, value=name),
-        Wearable(slot=wearable_slot),
-        Slot.ANY,
-    )
-    esper.add_component(eid, glyph, Glyph)
-    esper.add_component(eid, contained_by, ContainedBy)
-    if container:
-        esper.add_component(eid, Container())
-    return eid
-
-
 
 
 def place_dens(map_id: EntityId, chips: Chips) -> None:
@@ -244,55 +208,7 @@ def build_hub(map_id: EntityId, chips: Chips):
     esper.add_component(bonfire, ProvidesHeat())
     esper.add_component(bonfire, ProvidesLight())
 
-    create_item(map_id=map_id, y=11, x=8, name="lily pad", glyph=("ო", 0.33, 0.65, 0.55))
-
     create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
-
-    backpack = create_item(
-        map_id=map_id,
-        y=4,
-        x=9,
-        name="backpack",
-        glyph=("]", 47 / 360, 0.60, 0.85),
-        wearable_slot=Slot.BACK,
-        container=True,
-    )
-
-    pot = create_item(
-        map_id=0,
-        y=0,
-        x=0,
-        name="cookpot",
-        glyph=("]", 47 / 360, 0.60, 0.85),
-        adjective="crude",
-        container=True,
-        contained_by=backpack,
-    )
-    esper.add_component(pot, Cookware())
-
-    bedroll = create_item(
-        map_id=map_id,
-        y=4,
-        x=9,
-        name="bedroll",
-        glyph=("]", 47 / 360, 0.60, 0.85),
-        adjective="leather",
-        wearable_slot=Slot.SHOULDER,
-    )
-    esper.add_component(bedroll, ProvidesShelter(prompt="settle into bedroll"))
-    esper.add_component(bedroll, 10, Level)
-
-    broadsword = create_item(
-        map_id=map_id,
-        y=4,
-        x=9,
-        name="broadsword",
-        glyph=("/", 0.0, 0.0, 0.8),
-        wearable_slot=Slot.RIGHT_HAND,
-    )
-    esper.add_component(
-        broadsword, Weapon(damage=15.0, skill_key="martial_arts", story_key="broadsword")
-    )
 
     place_dens(map_id, chips)
 
