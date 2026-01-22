@@ -88,13 +88,13 @@ SELECT * FROM inventories WHERE map_id = $1;
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = $1
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
 SELECT
-  unnest(sqlc.arg('ids')::bigint[]),
+  unnest(sqlc.arg('eids')::bigint[]),
   unnest(sqlc.arg('owner_ids')::bigint[]),
   unnest(sqlc.arg('keys')::text[]),
   unnest(sqlc.arg('slots')::text[]),
-  NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
+  NULLIF(unnest(sqlc.arg('container_eids')::bigint[]), 0),
   NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
   NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
@@ -105,13 +105,13 @@ SELECT
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.map_id = $1 AND inventories.owner_id IS NULL
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
 SELECT
-  unnest(sqlc.arg('ids')::bigint[]),
+  unnest(sqlc.arg('eids')::bigint[]),
   NULL,
   unnest(sqlc.arg('keys')::text[]),
   unnest(sqlc.arg('slots')::text[]),
-  NULLIF(unnest(sqlc.arg('container_ids')::bigint[]), 0),
+  NULLIF(unnest(sqlc.arg('container_eids')::bigint[]), 0),
   unnest(sqlc.arg('map_ids')::integer[]),
   unnest(sqlc.arg('xs')::integer[]),
   unnest(sqlc.arg('ys')::integer[]),

@@ -44,13 +44,13 @@ class GetCharacterBriefRow(pydantic.BaseModel):
 
 
 GET_INVENTORIES_FOR_MAP = """-- name: get_inventories_for_map \\:many
-SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE map_id = :p1
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE map_id = :p1
 """
 
 
 GET_INVENTORIES_FOR_OWNER = """-- name: get_inventories_for_owner \\:many
 
-SELECT id, owner_id, key, slot, container_id, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id = :p1
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id = :p1
 """
 
 
@@ -64,7 +64,7 @@ REPLACE_INVENTORIES_FOR_MAP = """-- name: replace_inventories_for_map \\:exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.map_id = :p1 AND inventories.owner_id IS NULL
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
 SELECT
   unnest(:p2\\:\\:bigint[]),
   NULL,
@@ -81,10 +81,10 @@ SELECT
 
 class ReplaceInventoriesForMapParams(pydantic.BaseModel):
     map_id: Optional[int]
-    ids: List[int]
+    eids: List[int]
     keys: List[str]
     slots: List[str]
-    container_ids: List[int]
+    container_eids: List[int]
     map_ids: List[int]
     xs: List[int]
     ys: List[int]
@@ -96,7 +96,7 @@ REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exe
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = :p1
 )
-INSERT INTO inventories (id, owner_id, key, slot, container_id, map_id, x, y, state, level)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
 SELECT
   unnest(:p2\\:\\:bigint[]),
   unnest(:p3\\:\\:bigint[]),
@@ -113,11 +113,11 @@ SELECT
 
 class ReplaceInventoriesForOwnerParams(pydantic.BaseModel):
     owner_id: Optional[int]
-    ids: List[int]
+    eids: List[int]
     owner_ids: List[int]
     keys: List[str]
     slots: List[str]
-    container_ids: List[int]
+    container_eids: List[int]
     map_ids: List[int]
     xs: List[int]
     ys: List[int]
@@ -308,17 +308,18 @@ class AsyncQuerier:
         async for row in result:
             yield models.Inventory(
                 id=row[0],
-                owner_id=row[1],
-                key=row[2],
-                slot=row[3],
-                container_id=row[4],
-                map_id=row[5],
-                x=row[6],
-                y=row[7],
-                state=row[8],
-                level=row[9],
-                created_at=row[10],
-                updated_at=row[11],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
             )
 
     async def get_inventories_for_owner(self, *, owner_id: Optional[int]) -> AsyncIterator[models.Inventory]:
@@ -326,17 +327,18 @@ class AsyncQuerier:
         async for row in result:
             yield models.Inventory(
                 id=row[0],
-                owner_id=row[1],
-                key=row[2],
-                slot=row[3],
-                container_id=row[4],
-                map_id=row[5],
-                x=row[6],
-                y=row[7],
-                state=row[8],
-                level=row[9],
-                created_at=row[10],
-                updated_at=row[11],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
             )
 
     async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
@@ -354,10 +356,10 @@ class AsyncQuerier:
     async def replace_inventories_for_map(self, arg: ReplaceInventoriesForMapParams) -> None:
         await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_MAP), {
             "p1": arg.map_id,
-            "p2": arg.ids,
+            "p2": arg.eids,
             "p3": arg.keys,
             "p4": arg.slots,
-            "p5": arg.container_ids,
+            "p5": arg.container_eids,
             "p6": arg.map_ids,
             "p7": arg.xs,
             "p8": arg.ys,
@@ -368,11 +370,11 @@ class AsyncQuerier:
     async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
         await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_OWNER), {
             "p1": arg.owner_id,
-            "p2": arg.ids,
+            "p2": arg.eids,
             "p3": arg.owner_ids,
             "p4": arg.keys,
             "p5": arg.slots,
-            "p6": arg.container_ids,
+            "p6": arg.container_eids,
             "p7": arg.map_ids,
             "p8": arg.xs,
             "p9": arg.ys,

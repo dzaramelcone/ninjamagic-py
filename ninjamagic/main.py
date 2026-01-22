@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus, db, factory, inventory
+from ninjamagic.gen.query import UpsertSkillsParams
 from ninjamagic.auth import CharChallengeDep, router as auth_router
 from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
@@ -144,19 +145,19 @@ async def save(entity_id: EntityId):
     async with db.get_repository_factory() as q:
         owner_id = esper.try_component(entity_id, OwnerId)
         if owner_id:
-            await inventory.save_owner_inventory(
+            await inventory.save_player_inventory(
                 q,
                 owner_id=owner_id,
                 owner_entity=entity_id,
             )
         await q.update_character(save_dump)
-        await q.upsert_skills(
+        await q.upsert_skills(UpsertSkillsParams(
             char_id=save_dump.id,
             names=[skill.name for skill in skills_dump],
             ranks=[skill.rank for skill in skills_dump],
             tnls=[skill.tnl for skill in skills_dump],
             pendings=[skill.pending for skill in skills_dump],
-        )
+        ))
         log.info("%s saved.", entity_id)
 
 
@@ -178,4 +179,4 @@ async def world_save_loop():
             continue
         async with db.get_repository_factory() as q:
             for map_id in map_ids:
-                await inventory.save_world_inventory(q, map_id)
+                await inventory.save_map_inventory(q, map_id)

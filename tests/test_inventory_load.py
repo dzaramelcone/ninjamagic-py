@@ -1,7 +1,7 @@
 import esper
 
 from ninjamagic.component import ItemKey, Noun, ProvidesLight
-from ninjamagic.inventory import ITEM_TYPES, item_factory
+from ninjamagic.inventory import ITEM_TYPES, create_item
 
 
 def test_item_key_component_exists():
@@ -10,7 +10,7 @@ def test_item_key_component_exists():
 
 
 def test_item_factory_creates_entity_with_components():
-    eid = item_factory("torch")
+    eid = create_item("torch")
     assert eid != 0
     # Check components from ITEM_TYPES["torch"] were added
     item_key = esper.component_for_entity(eid, ItemKey)

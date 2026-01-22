@@ -69,10 +69,11 @@ class Character(pydantic.BaseModel):
 
 class Inventory(pydantic.BaseModel):
     id: int
+    eid: int
     owner_id: Optional[int]
     key: str
     slot: str
-    container_id: Optional[int]
+    container_eid: Optional[int]
     map_id: Optional[int]
     x: Optional[int]
     y: Optional[int]

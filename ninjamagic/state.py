@@ -61,7 +61,7 @@ class State:
         log.info("Starting state.")
         self.client = httpx.AsyncClient()
         async with db.get_repository_factory() as q:
-            await inventory.load_world_items(q)
+            await inventory.load_map_inventory(q)
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())
         from ninjamagic import main as main_module

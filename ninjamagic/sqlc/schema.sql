@@ -74,10 +74,11 @@ CREATE TABLE IF NOT EXISTS skills (
 
 CREATE TABLE IF NOT EXISTS inventories (
     id          BIGSERIAL   PRIMARY KEY,
+    eid         BIGINT      NOT NULL,
     owner_id    BIGINT      REFERENCES characters(id) ON DELETE CASCADE,
     key         TEXT        NOT NULL,
     slot        TEXT        NOT NULL DEFAULT '',
-    container_id BIGINT     REFERENCES inventories(id) ON DELETE CASCADE,
+    container_eid BIGINT,
     map_id      INTEGER,
     x           INTEGER,
     y           INTEGER,
@@ -88,7 +89,7 @@ CREATE TABLE IF NOT EXISTS inventories (
 
     CONSTRAINT inventories_location_check CHECK (
         (
-            container_id IS NOT NULL
+            container_eid IS NOT NULL
             AND map_id IS NULL
             AND x IS NULL
             AND y IS NULL
@@ -96,7 +97,7 @@ CREATE TABLE IF NOT EXISTS inventories (
         )
         OR
         (
-            container_id IS NULL
+            container_eid IS NULL
             AND map_id IS NOT NULL
             AND x IS NOT NULL
             AND y IS NOT NULL
@@ -104,7 +105,7 @@ CREATE TABLE IF NOT EXISTS inventories (
         )
         OR
         (
-            container_id IS NULL
+            container_eid IS NULL
             AND map_id IS NULL
             AND x IS NULL
             AND y IS NULL
@@ -118,5 +119,3 @@ CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_id);
 CREATE INDEX IF NOT EXISTS idx_skills_char ON skills(char_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_owner ON inventories(owner_id);
 CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id);
-CREATE INDEX IF NOT EXISTS idx_inventories_container ON inventories(container_id);
-CREATE INDEX IF NOT EXISTS idx_inventories_key ON inventories(key);

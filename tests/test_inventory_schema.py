@@ -18,8 +18,8 @@ async def test_inventory_schema_key_state_fk():
         await q._conn.execute(
             sqlalchemy.text(
                 """
-                INSERT INTO inventories (key, owner_id, map_id, x, y, slot)
-                VALUES ('torch', NULL, 1, 1, 1, '')
+                INSERT INTO inventories (eid, key, owner_id, map_id, x, y, slot)
+                VALUES (1, 'torch', NULL, 1, 1, 1, '')
                 """
             )
         )
