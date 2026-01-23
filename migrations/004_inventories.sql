@@ -1,69 +1,91 @@
 /*
-Migration: Inventories table
+SCRIPT:
+pg-schema-diff plan --from-dsn "postgres://postgres:postgres@localhost:5432/postgres" --to-dir ./ninjamagic/sqlc/schema.sql
 
-Creates the inventories table for item instances in the world and player inventories.
-Items are keyed by type string rather than referencing a template table.
+Statement 0
 */
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+CREATE SEQUENCE "public"."inventories_id_seq"
+	AS bigint
+	INCREMENT BY 1
+	MINVALUE 1 MAXVALUE 9223372036854775807
+	START WITH 1 CACHE 1 NO CYCLE
+;
 
-CREATE TABLE IF NOT EXISTS inventories (
-    id          BIGSERIAL   PRIMARY KEY,
-    eid         BIGINT      NOT NULL,
-    owner_id    BIGINT      REFERENCES characters(id) ON DELETE CASCADE,
-    key         TEXT        NOT NULL,
-    slot        TEXT        NOT NULL DEFAULT '',
-    container_eid BIGINT,
-    map_id      INTEGER,
-    x           INTEGER,
-    y           INTEGER,
-    state       JSONB,
-    level       INTEGER     NOT NULL DEFAULT 0,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT no_coords_if_no_map_id CHECK (
-        (
-            map_id IS NOT NULL
-            AND x IS NOT NULL
-            AND y IS NOT NULL
-        )
-        OR
-        (
-            map_id IS NULL
-            AND x IS NULL
-            AND y IS NULL
-        )
-    ),
-
-    CONSTRAINT inventories_location_check CHECK (
-        (
-            container_eid IS NOT NULL
-            AND map_id IS NULL
-            AND owner_id IS NOT NULL
-        )
-        OR
-        (
-            container_eid IS NULL
-            AND map_id IS NOT NULL
-            AND owner_id IS NULL
-        )
-        OR
-        (
-            container_eid IS NULL
-            AND map_id IS NULL
-            AND owner_id IS NOT NULL
-        )
-    )
+/*
+Statement 1
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+CREATE TABLE "public"."inventories" (
+	"eid" bigint NOT NULL,
+	"owner_id" bigint,
+	"id" bigint DEFAULT nextval('inventories_id_seq'::regclass) NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"container_eid" bigint,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"level" integer DEFAULT 0 NOT NULL,
+	"map_id" integer,
+	"x" integer,
+	"y" integer,
+	"key" text COLLATE "pg_catalog"."default" NOT NULL,
+	"state" jsonb,
+	"slot" text COLLATE "pg_catalog"."default" DEFAULT ''::text NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_inventories_owner ON inventories(owner_id);
-CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id);
-CREATE INDEX IF NOT EXISTS idx_inventories_container ON inventories(container_eid);
-CREATE INDEX IF NOT EXISTS idx_inventories_key ON inventories(key);
+/*
+Statement 2
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."inventories" ADD CONSTRAINT "inventories_location_check" CHECK((((container_eid IS NOT NULL) AND (map_id IS NULL) AND (owner_id IS NOT NULL)) OR ((container_eid IS NOT NULL) AND (map_id IS NULL) AND (owner_id IS NULL)) OR ((container_eid IS NULL) AND (map_id IS NOT NULL) AND (owner_id IS NULL)) OR ((container_eid IS NULL) AND (map_id IS NULL) AND (owner_id IS NOT NULL))));
 
--- Seed world items on DEMO map (map_id=2)
--- Note: DEMO is the second entity created after NOWHERE
-INSERT INTO inventories (eid, key, map_id, x, y, level) VALUES
-    (1, 'lily_pad', 2, 8, 11, 0),
-    (1, 'backpack', 2, 9, 4, 0),
-    (1, 'bedroll', 2, 9, 4, 10),
-    (1, 'broadsword', 2, 9, 4, 0);
+/*
+Statement 3
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."inventories" ADD CONSTRAINT "inventories_owner_id_fkey" FOREIGN KEY (owner_id) REFERENCES characters(id) ON DELETE CASCADE NOT VALID;
+
+/*
+Statement 4
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."inventories" VALIDATE CONSTRAINT "inventories_owner_id_fkey";
+
+/*
+Statement 5
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE UNIQUE INDEX CONCURRENTLY inventories_pkey ON public.inventories USING btree (id);
+
+/*
+Statement 6
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."inventories" ADD CONSTRAINT "inventories_pkey" PRIMARY KEY USING INDEX "inventories_pkey";
+
+/*
+Statement 7
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY idx_inventories_map ON public.inventories USING btree (map_id);
+
+/*
+Statement 8
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY idx_inventories_owner ON public.inventories USING btree (owner_id);
+
+/*
+Statement 9
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER SEQUENCE "public"."inventories_id_seq" OWNED BY "public"."inventories"."id";
