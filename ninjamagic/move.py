@@ -7,6 +7,7 @@ from ninjamagic.component import (
     ContainedBy,
     Den,
     FromDen,
+    Glyph,
     Slot,
     Transform,
     transform,
@@ -60,7 +61,7 @@ def process():
                         y=slot.y,
                         x=slot.x,
                         name="goblin",
-                        glyph=("g", 0.25, 0.7, 0.6),
+                        glyph=Glyph(char="g", h=0.25, s=0.7, v=0.6),
                         components=(
                             Behavior(),
                             FromDen(slot=slot),

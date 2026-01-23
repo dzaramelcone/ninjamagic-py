@@ -45,7 +45,7 @@ def load(entity: EntityId, row: models.Character, skill_rows: list[models.Skill]
         entity, Noun(value=row.name, pronoun=Pronouns.from_str(row.pronoun))
     )
     esper.add_component(
-        entity, (row.glyph, row.glyph_h, row.glyph_s, row.glyph_v), Glyph
+        entity, Glyph(char=row.glyph, h=row.glyph_h, s=row.glyph_s, v=row.glyph_v)
     )
     esper.add_component(entity, Transform(map_id=row.map_id, x=row.x, y=row.y))
     esper.add_component(
@@ -99,7 +99,7 @@ def load(entity: EntityId, row: models.Character, skill_rows: list[models.Skill]
 
 def dump(entity: EntityId) -> tuple[UpdateCharacterParams, list[Skill]]:
     char_id = esper.component_for_entity(entity, CharacterId)
-    g, h, s, v = esper.component_for_entity(entity, Glyph)
+    glyph = esper.component_for_entity(entity, Glyph)
     noun = esper.component_for_entity(entity, Noun)
     pos = esper.component_for_entity(entity, Transform)
     health = esper.component_for_entity(entity, Health)
@@ -108,10 +108,10 @@ def dump(entity: EntityId) -> tuple[UpdateCharacterParams, list[Skill]]:
     skills = esper.component_for_entity(entity, Skills)
     return UpdateCharacterParams(
         id=char_id,
-        glyph=g,
-        glyph_h=h,
-        glyph_v=v,
-        glyph_s=s,
+        glyph=glyph.char,
+        glyph_h=glyph.h,
+        glyph_v=glyph.v,
+        glyph_s=glyph.s,
         pronoun=noun.pronoun.they,
         map_id=pos.map_id,
         x=pos.x,
@@ -131,7 +131,7 @@ def create(entity: EntityId):
     # spawn point
     map, y, x = SPAWN
     esper.add_component(entity, Transform(map_id=map, x=x, y=y))
-    esper.add_component(entity, ("@", 0.5833, 0.7, 0.828), Glyph)
+    esper.add_component(entity, Glyph(char="@", h=0.5833, s=0.7, v=0.828))
     esper.add_component(entity, Noun())
     esper.add_component(entity, Health())
     esper.add_component(entity, Stance())

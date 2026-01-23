@@ -13,6 +13,7 @@ from ninjamagic.component import (
     EntityId,
     FightTimer,
     FromDen,
+    Glyph,
     Lag,
     Level,
     get_wielded_weapon,
@@ -247,7 +248,7 @@ def process(now: Looptime):
             y=loc.y,
             x=loc.x,
             name="corpse",
-            glyph=("%", 0.0, 0.0, 0.4),
+            glyph=Glyph(char="%", h=0.0, s=0.0, v=0.4),
         )
         esper.delete_entity(sig.source)
 

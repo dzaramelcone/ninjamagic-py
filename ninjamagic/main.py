@@ -10,10 +10,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from ninjamagic import bus, db, factory, inventory
-from ninjamagic.gen.query import UpsertSkillsParams
 from ninjamagic.auth import CharChallengeDep, router as auth_router
 from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
+from ninjamagic.gen.query import UpsertSkillsParams
 from ninjamagic.state import State
 from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
 
@@ -67,9 +67,10 @@ async def ws_main(ws: WebSocket) -> None:
                 esper.delete_entity(entity_id)
                 return
             skills = [row async for row in q.get_skills_for_character(char_id=char.id)]
+            factory.load(entity_id, char, skills)
             await inventory.load_player_inventory(
                 q,
-                owner_id=owner_id,
+                owner_id=char.id,
                 entity_id=entity_id,
             )
         await ws.accept()
@@ -143,13 +144,11 @@ async def save(entity_id: EntityId):
     save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
     async with db.get_repository_factory() as q:
-        owner_id = esper.try_component(entity_id, OwnerId)
-        if owner_id:
-            await inventory.save_player_inventory(
-                q,
-                owner_id=owner_id,
-                owner_entity=entity_id,
-            )
+        await inventory.save_player_inventory(
+            q,
+            owner_id=save_dump.id,
+            owner_entity=entity_id,
+        )
         await q.update_character(save_dump)
         await q.upsert_skills(UpsertSkillsParams(
             char_id=save_dump.id,

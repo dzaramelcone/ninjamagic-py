@@ -47,7 +47,7 @@ def create_mob(
     y: int,
     x: int,
     name: str,
-    glyph: tuple[str, float, float, float],
+    glyph: Glyph,
     pronoun: Pronoun = Pronouns.IT,
     components: tuple = (),
 ) -> EntityId:
@@ -58,9 +58,9 @@ def create_mob(
         Stance(),
         Skills(),
         Stats(),
+        glyph,
         *components,
     )
-    esper.add_component(eid, glyph, Glyph)
     return eid
 
 
@@ -70,7 +70,7 @@ def create_prop(
     y: int,
     x: int,
     name: str,
-    glyph: tuple[str, float, float, float],
+    glyph: Glyph,
     adjective: str = "",
     pronoun: Pronoun = Pronouns.IT,
 ) -> EntityId:
@@ -78,8 +78,8 @@ def create_prop(
     eid = esper.create_entity(
         Transform(map_id=map_id, y=y, x=x),
         Noun(adjective=adjective, value=name, pronoun=pronoun),
+        glyph,
     )
-    esper.add_component(eid, glyph, Glyph)
     return eid
 
 
@@ -120,7 +120,7 @@ def place_dens(map_id: EntityId, chips: Chips) -> None:
             x=tile_x + hut_x,
             name="hovel",
             adjective="goblin",
-            glyph=("π", 0.08, 0.30, 0.40),
+            glyph=Glyph(char="π", h=0.08, s=0.30, v=0.40),
         )
 
         # Place decoration props at spots 1-3
@@ -197,18 +197,24 @@ def build_hub(map_id: EntityId, chips: Chips):
         y=8,
         x=5,
         name="wanderer",
-        glyph=("w", 0.12, 0.55, 0.75),
+        glyph=Glyph(char="w", h=0.12, s=0.55, v=0.75),
         pronoun=Pronouns.HE,
     )
 
-    bonfire = create_prop(map_id=map_id, y=9, x=4, name="bonfire", glyph=("⚶", 0.95, 0.6, 0.65))
+    bonfire = create_prop(
+        map_id=map_id, y=9, x=4, name="bonfire",
+        glyph=Glyph(char="⚶", h=0.95, s=0.6, v=0.65),
+    )
     esper.add_component(
         bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
     )
     esper.add_component(bonfire, ProvidesHeat())
     esper.add_component(bonfire, ProvidesLight())
 
-    create_prop(map_id=map_id, y=12, x=5, name="fern", glyph=("ᖗ", 0.33, 0.65, 0.55))
+    create_prop(
+        map_id=map_id, y=12, x=5, name="fern",
+        glyph=Glyph(char="ᖗ", h=0.33, s=0.65, v=0.55),
+    )
 
     place_dens(map_id, chips)
 

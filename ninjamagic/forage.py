@@ -98,16 +98,18 @@ def process() -> None:
         story.echo("{0} {0:spots} {1}!", sig.source, created, range=reach.visible)
 
 
+DEFAULT_FORAGED_GLYPH = Glyph(char="♣", h=0.33, s=0.65, v=0.55)
+
+
 def create_foraged_item(
     *args: Any,
     ilvl: int,
     transform: Transform,
     noun: Noun,
-    glyph: Glyph = ("♣", 0.33, 0.65, 0.55),
+    glyph: Glyph = DEFAULT_FORAGED_GLYPH,
     wearable: Wearable | None = None,
 ) -> EntityId:
-    out = esper.create_entity(transform, noun, Slot.ANY, Ingredient(), *args)
-    esper.add_component(out, glyph, Glyph)
+    out = esper.create_entity(transform, noun, Slot.ANY, Ingredient(), glyph, *args)
     esper.add_component(out, 0, ContainedBy)
     esper.add_component(out, ilvl, Level)
     if wearable:
@@ -152,35 +154,35 @@ FORAGE_TABLE: dict[Biomes, list[ForageFactory]] = {
         partial(
             create_foraged_item,
             noun=Noun(value="chanterelle"),
-            glyph=("♠", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="♠", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="egg"),
-            glyph=("Ο", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="Ο", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="gyromitra"),
-            glyph=("♠", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="♠", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="grub"),
-            glyph=("ɕ", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="ɕ", h=0.73888, s=0.34, v=1.0),
         ),
         partial(create_foraged_item, noun=Noun(value="horseradish")),
         partial(create_foraged_item, noun=Noun(value="hazelnut")),
         partial(
             create_foraged_item,
             noun=Noun(value="leek"),
-            glyph=("φ", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="φ", h=0.73888, s=0.34, v=1.0),
         ),
         partial(create_foraged_item, noun=Noun(value="mango")),
         partial(
             create_foraged_item,
             noun=Noun(value="morel"),
-            glyph=("♠", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="♠", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
@@ -193,29 +195,29 @@ FORAGE_TABLE: dict[Biomes, list[ForageFactory]] = {
         partial(
             create_foraged_item,
             noun=Noun(value="ramps", num=PLURAL),
-            glyph=("φ", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="φ", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="sap", num=PLURAL),
-            glyph=("≈", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="≈", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="scallions", num=PLURAL),
-            glyph=("φ", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="φ", h=0.73888, s=0.34, v=1.0),
         ),
         partial(
             create_foraged_item,
             noun=Noun(value="truffle"),
-            glyph=("♠", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="♠", h=0.73888, s=0.34, v=1.0),
         ),
         partial(create_foraged_item, noun=Noun(value="walnuts", num=PLURAL)),
         partial(
             create_foraged_item,
             noun=Noun(value="wildflower"),
             wearable=Wearable(slot=Slot.ANY),
-            glyph=("⚘", 0.73888, 0.34, 1.0),
+            glyph=Glyph(char="⚘", h=0.73888, s=0.34, v=1.0),
         ),
         partial(create_foraged_item, noun=Noun(value="zucchini")),
     ],

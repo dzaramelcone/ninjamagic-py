@@ -44,7 +44,7 @@ def create_meal(
         Rotting(),
         Food(count=bites),
     )
-    esper.add_component(meal, ("ʘ", 0.33, 0.65, 0.55), Glyph)
+    esper.add_component(meal, Glyph(char="ʘ", h=0.33, s=0.65, v=0.55))
     esper.add_component(meal, 0, ContainedBy)
     esper.add_component(meal, level, Level)
     scheduler.cue(sig=bus.Rot(source=meal), time=nightclock.NightTime(hour=6))

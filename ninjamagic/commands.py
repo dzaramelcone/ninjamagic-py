@@ -17,6 +17,7 @@ from ninjamagic.component import (
     Food,
     Health,
     Ingredient,
+    ItemKey,
     Lag,
     Noun,
     Prompt,
@@ -28,6 +29,7 @@ from ninjamagic.component import (
     Stances,
     Stowed,
     Stunned,
+    Transform,
     Weapon,
     Wearable,
     get_contents,
@@ -993,6 +995,36 @@ class Help(Command):
         return OK
 
 
+class Debug(Command):
+    text: str = "debug"
+    requires_healthy: bool = False
+    requires_not_busy: bool = False
+
+    def trigger(self, root: bus.Inbound) -> Out:
+        lines = ["Items in world:"]
+        for eid, (item_key,) in esper.get_components(ItemKey):
+            item_noun = esper.try_component(eid, Noun)
+            tf = esper.try_component(eid, Transform)
+            contained = esper.try_component(eid, ContainedBy)
+
+            loc = ""
+            if tf:
+                loc = f"map={tf.map_id} ({tf.x},{tf.y})"
+            elif contained:
+                loc = f"in entity {contained}"
+
+            comps = [type(c).__name__ for c in esper.components_for_entity(eid)]
+            name = item_noun.value if item_noun else item_key.key
+            lines.append(f"  [{eid}] {name}: {loc}")
+            lines.append(f"       components: {', '.join(comps)}")
+
+        if len(lines) == 1:
+            lines.append("  (none)")
+
+        bus.pulse(bus.Outbound(to=root.source, text="\n".join(lines)))
+        return OK
+
+
 commands: list[Command] = [
     *[Move(dir.value) for dir in Compass],
     *[Move(shortcut) for shortcut in ["ne", "se", "sw", "nw"]],
@@ -1023,4 +1055,5 @@ commands: list[Command] = [
     Eat(),
     Time(),
     Help(),
+    Debug(),
 ]

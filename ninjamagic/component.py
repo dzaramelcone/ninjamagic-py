@@ -75,21 +75,24 @@ ChipSet = list[Chip]
 Connection = WebSocket
 
 
+@component(slots=True, frozen=True)
 class ProvidesHeat:
     """The entity provides heat. Used by cooking and camping."""
 
 
+@component(slots=True, frozen=True)
 class ProvidesLight:
     """The entity provides light. Used by camping."""
 
 
-@component(slots=True, kw_only=True)
+@component(slots=True, frozen=True, kw_only=True)
 class ProvidesShelter:
     """The entity can be used for shelter. Used by camping."""
 
     prompt: str
 
 
+@component(slots=True, frozen=True)
 class Cookware:
     """Ingredients contained in this entity can be cooked together into a meal.
 
@@ -97,6 +100,7 @@ class Cookware:
     """
 
 
+@component(slots=True, frozen=True)
 class Ingredient:
     """Whether this entity can be cooked when exposed to a heat source.
 
@@ -119,6 +123,7 @@ class Ate:
     pips: int
 
 
+@component(slots=True, frozen=True)
 class Container:
     """Whether this entity can contain other entities. For example, bags or pots."""
 
@@ -243,7 +248,16 @@ class FightTimer:
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
-Glyph = NewType("Glyph", tuple[str, float, float, float])
+
+
+@component(slots=True, frozen=True)
+class Glyph:
+    """Visual representation of an entity."""
+
+    char: str
+    h: float
+    s: float
+    v: float
 
 
 @component(slots=True)
@@ -417,6 +431,8 @@ class Prompt:
     If the callable for a branch is `None`, their input will be handled like a normal command.
 
     Note when all branches are set, the prompt must be responded to.
+
+    These are a bit tricky from the player perspective; put the UX on rails.
     """
 
     text: str
@@ -450,14 +466,12 @@ class Skills:
 
     def __getitem__(self, key: str) -> Skill:
         # First try field name lookup (e.g., "martial_arts")
-        if hasattr(self, key):
-            attr = getattr(self, key)
-            if isinstance(attr, Skill):
-                return attr
-        # Fall back to display name matching (e.g., "Martial Arts")
         for s in self:
             if s.name == key:
                 return s
+        attr = getattr(self, key)
+        if isinstance(attr, Skill):
+            return attr
         raise KeyError
 
 
@@ -518,7 +532,7 @@ class Transform:
     y: int
 
 
-@component(slots=True, kw_only=True)
+@component(slots=True, kw_only=True, frozen=True)
 class Wearable:
     slot: Slot
 
