@@ -88,29 +88,17 @@ CREATE TABLE IF NOT EXISTS inventories (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT inventories_location_check CHECK (
-        (
-            container_eid IS NOT NULL
-            AND map_id IS NULL
-            AND x IS NULL
-            AND y IS NULL
-            AND owner_id IS NOT NULL
-        )
+        -- Item in a container (player-owned)
+        (container_eid IS NOT NULL AND map_id IS NULL AND owner_id IS NOT NULL)
         OR
-        (
-            container_eid IS NULL
-            AND map_id IS NOT NULL
-            AND x IS NOT NULL
-            AND y IS NOT NULL
-            AND owner_id IS NULL
-        )
+        -- Item in a container (world/unowned)
+        (container_eid IS NOT NULL AND map_id IS NULL AND owner_id IS NULL)
         OR
-        (
-            container_eid IS NULL
-            AND map_id IS NULL
-            AND x IS NULL
-            AND y IS NULL
-            AND owner_id IS NOT NULL
-        )
+        -- Item on the ground (world)
+        (container_eid IS NULL AND map_id IS NOT NULL AND owner_id IS NULL)
+        OR
+        -- Item directly on player
+        (container_eid IS NULL AND map_id IS NULL AND owner_id IS NOT NULL)
     )
 );
 
