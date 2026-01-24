@@ -10,5 +10,6 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./ninjamagic/sqlc/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./ninjamagic/sqlc/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./seeds/demo_items.sql:/docker-entrypoint-initdb.d/02_demo_items.sql
     command: ["postgres", "-c", "log_statement=all"]

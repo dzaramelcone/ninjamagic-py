@@ -48,7 +48,7 @@ async def test_solo_client(golden_ws, client_factory, alice_setup) -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat(golden_ws, client_factory, alice_setup, bob_setup):
+async def test_chat(golden_ws, client_factory, alice_setup, bob_setup) -> None:
     alice = await client_factory(alice_setup)
     bob = await client_factory(bob_setup)
     await alice.recv()

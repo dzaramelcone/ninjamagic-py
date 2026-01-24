@@ -9,11 +9,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from ninjamagic import bus, factory
+from ninjamagic import bus, db, factory, inventory
 from ninjamagic.auth import CharChallengeDep, router as auth_router
-from ninjamagic.component import EntityId, OwnerId, Prompt
+from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
-from ninjamagic.db import get_repository_factory
+from ninjamagic.gen.query import UpsertSkillsParams
 from ninjamagic.state import State
 from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
 
@@ -57,13 +57,22 @@ async def ws_main(ws: WebSocket) -> None:
         return
 
     try:
-        async with get_repository_factory() as q:
+        entity_id = esper.create_entity()
+        esper.add_component(entity_id, owner_id, OwnerId)
+        async with db.get_repository_factory() as q:
             char = await q.get_character(owner_id=owner_id)
             if not char:
                 log.info(f"Login failed for {owner_id}, no character.")
                 await ws.close(code=4401, reason="No character")
+                esper.delete_entity(entity_id)
                 return
             skills = [row async for row in q.get_skills_for_character(char_id=char.id)]
+            factory.load(entity_id, char, skills)
+            await inventory.load_player_inventory(
+                q,
+                owner_id=char.id,
+                entity_id=entity_id,
+            )
         await ws.accept()
 
         active[owner_id] = ws
@@ -72,9 +81,6 @@ async def ws_main(ws: WebSocket) -> None:
         active_save_loops[owner_id] = save_gen
 
         host, port = ws.client.host, ws.client.port
-        entity_id = esper.create_entity()
-        esper.add_component(entity_id, owner_id, OwnerId)
-
         log.info(
             "%s:%s WS/LOGIN - [%s:%s->%s]: %s",
             host,
@@ -137,15 +143,20 @@ async def ws_main(ws: WebSocket) -> None:
 async def save(entity_id: EntityId):
     save_dump, skills_dump = factory.dump(entity_id)
     log.info("saving entity %s", save_dump.model_dump_json(indent=1))
-    async with get_repository_factory() as q:
+    async with db.get_repository_factory() as q:
+        await inventory.save_player_inventory(
+            q,
+            owner_id=save_dump.id,
+            owner_entity=entity_id,
+        )
         await q.update_character(save_dump)
-        await q.upsert_skills(
+        await q.upsert_skills(UpsertSkillsParams(
             char_id=save_dump.id,
             names=[skill.name for skill in skills_dump],
             ranks=[skill.rank for skill in skills_dump],
             tnls=[skill.tnl for skill in skills_dump],
             pendings=[skill.pending for skill in skills_dump],
-        )
+        ))
         log.info("%s saved.", entity_id)
 
 
@@ -157,3 +168,14 @@ async def save_loop(owner_id: OwnerId, entity_id: EntityId, generation: int):
     ):
         await save(entity_id)
         await asyncio.sleep(settings.save_character_rate)
+
+
+async def world_save_loop():
+    while True:
+        await asyncio.sleep(settings.save_character_rate)
+        map_ids = [eid for eid, _ in esper.get_component(Chips)]
+        if not map_ids:
+            continue
+        async with db.get_repository_factory() as q:
+            for map_id in map_ids:
+                await inventory.save_map_inventory(q, map_id)

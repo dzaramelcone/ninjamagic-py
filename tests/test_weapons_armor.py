@@ -101,6 +101,7 @@ def test_armor_is_integrated():
     """Armor component is found and mitigate is called during combat."""
     try:
         from ninjamagic.armor import Armor
+        from ninjamagic.component import Level
 
         # Setup attacker (unarmed)
         attacker = esper.create_entity()
@@ -122,11 +123,11 @@ def test_armor_is_integrated():
             armor_eid,
             Armor(
                 skill_key="martial_arts",
-                item_rank=10,
                 physical_immunity=0.5,
                 magical_immunity=0.0,
             ),
         )
+        esper.add_component(armor_eid, Level(10))
         esper.add_component(armor_eid, Noun(value="leather armor"))
         esper.add_component(armor_eid, target, ContainedBy)
         esper.add_component(armor_eid, Slot.ARMOR)

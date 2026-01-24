@@ -14,6 +14,8 @@ from ninjamagic.component import (
     FightTimer,
     FromDen,
     Lag,
+    Level,
+    Transform,
     get_wielded_weapon,
     get_worn_armor,
     health,
@@ -31,7 +33,8 @@ from ninjamagic.util import (
     get_melee_delay,
     proc,
 )
-from ninjamagic.world.state import create_prop, get_recall
+from ninjamagic.inventory import create_item
+from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
 
@@ -101,10 +104,12 @@ def process(now: Looptime):
         mitigation_factor = 1.0
         if has_worn_armor := get_worn_armor(target):
             aid, armor = has_worn_armor
+            level = esper.try_component(aid, Level) or Level(0)
             mitigation_factor = mitigate(
                 defend_ranks=target_skills[armor.skill_key].rank,
                 attack_ranks=attack.rank,
                 armor=armor,
+                item_level=level,
             )
 
         skill_mult = contest(attack.rank, defend.rank)
@@ -239,12 +244,10 @@ def process(now: Looptime):
 
         # Non-player: spawn corpse, delete entity
         loc = transform(sig.source)
-        create_prop(
-            map_id=loc.map_id,
-            y=loc.y,
-            x=loc.x,
-            name="corpse",
-            glyph=("%", 0.0, 0.0, 0.4),
+        create_item(
+            "corpse",
+            transform=Transform(map_id=loc.map_id, y=loc.y, x=loc.x),
+            level=0,
         )
         esper.delete_entity(sig.source)
 

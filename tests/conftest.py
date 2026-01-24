@@ -3,9 +3,11 @@ import json
 import pathlib
 import warnings
 from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
+import esper
 import httpx
 import pytest
 import pytest_asyncio
@@ -15,8 +17,12 @@ from google.protobuf.json_format import MessageToDict
 from pydantic.dataclasses import Field, dataclass
 from websockets.asyncio.client import ClientConnection
 
+import ninjamagic.bus as bus
+import ninjamagic.db as db
 from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
+from ninjamagic.db import engine
 from ninjamagic.gen.messages_pb2 import Packet
+from ninjamagic.gen.query import AsyncQuerier
 
 BASE_HTTP_URL = "http://localhost:8000"
 BASE_WS_URL = "ws://localhost:8000"
@@ -67,6 +73,17 @@ def make_tests_deterministic():
     state = RNG.getstate()
     yield
     RNG.setstate(state)
+
+
+@pytest.fixture(autouse=True)
+def isolated_esper_world(request):
+    """Give each test its own isolated esper world."""
+    world_name = f"test_{request.node.nodeid}"
+    esper.switch_world(world_name)
+    yield
+    bus.clear()
+    esper.switch_world("default")
+    esper.delete_world(world_name)
 
 
 @pytest.fixture
@@ -223,3 +240,39 @@ async def client_factory() -> ClientFactory:
     close_tasks = [conn.close() for conn in active_connections]
     if close_tasks:
         await asyncio.gather(*close_tasks)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def db_rollback():
+    import importlib
+
+    async with engine.connect() as conn:
+        tx = await conn.begin()
+
+        @asynccontextmanager
+        async def _get_conn():
+            yield conn
+
+        async def _get_repository(_):
+            return AsyncQuerier(conn)
+
+        @asynccontextmanager
+        async def _get_repository_factory():
+            yield AsyncQuerier(conn)
+
+        # Patch db.get_repository_factory for non-FastAPI code paths
+        original_get_repository_factory = db.get_repository_factory
+        db.get_repository_factory = _get_repository_factory
+
+        app = importlib.import_module("ninjamagic.main").app
+        app.dependency_overrides[db.get_conn] = _get_conn
+        app.dependency_overrides[db.get_repository] = _get_repository
+        app.dependency_overrides[db.get_repository_factory] = _get_repository_factory
+        try:
+            yield
+        finally:
+            app.dependency_overrides.pop(db.get_conn, None)
+            app.dependency_overrides.pop(db.get_repository, None)
+            app.dependency_overrides.pop(db.get_repository_factory, None)
+            db.get_repository_factory = original_get_repository_factory
+            await tx.rollback()

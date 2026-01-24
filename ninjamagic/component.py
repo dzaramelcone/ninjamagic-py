@@ -64,7 +64,6 @@ ActId = NewType("ActId", int)
 @dataclass(frozen=True)
 class Armor:
     skill_key: str
-    item_rank: int  # armor's rank
     physical_immunity: float  # 0..1 (cap on how much it could block vs physical)
     magical_immunity: float  # 0..1 (cap vs magical)
 
@@ -76,21 +75,24 @@ ChipSet = list[Chip]
 Connection = WebSocket
 
 
+@component(slots=True, frozen=True)
 class ProvidesHeat:
     """The entity provides heat. Used by cooking and camping."""
 
 
+@component(slots=True, frozen=True)
 class ProvidesLight:
     """The entity provides light. Used by camping."""
 
 
-@component(slots=True, kw_only=True)
+@component(slots=True, frozen=True, kw_only=True)
 class ProvidesShelter:
     """The entity can be used for shelter. Used by camping."""
 
     prompt: str
 
 
+@component(slots=True, frozen=True)
 class Cookware:
     """Ingredients contained in this entity can be cooked together into a meal.
 
@@ -98,6 +100,7 @@ class Cookware:
     """
 
 
+@component(slots=True, frozen=True)
 class Ingredient:
     """Whether this entity can be cooked when exposed to a heat source.
 
@@ -120,6 +123,7 @@ class Ate:
     pips: int
 
 
+@component(slots=True, frozen=True)
 class Container:
     """Whether this entity can contain other entities. For example, bags or pots."""
 
@@ -244,7 +248,16 @@ class FightTimer:
 
 
 Gas = NewType("Gas", dict[tuple[int, int], float])
-Glyph = NewType("Glyph", tuple[str, float, float, float])
+
+
+@component(slots=True, frozen=True)
+class Glyph:
+    """Visual representation of an entity."""
+
+    char: str
+    h: float
+    s: float
+    v: float
 
 
 @component(slots=True)
@@ -265,6 +278,17 @@ class Health:
 
 Lag = NewType("Lag", float)
 Level = NewType("Level", int)
+
+
+@dataclass(frozen=True, slots=True)
+class ItemKey:
+    """The item type key, referencing ITEM_TYPES in inventory.py."""
+
+    key: str
+
+
+class DoNotSave:
+    """Item should not be persisted to database."""
 ContainedBy = NewType("ContainedBy", EntityId)
 
 
@@ -294,6 +318,9 @@ class Rotting:
     """The entity has started to rot. Used by food, unless you're giving Malenia."""
 
 
+noun_match_cache: dict[str, tuple[str, ...]] = {}
+
+
 @component(slots=True, frozen=True)
 class Noun:
     """How an entity is referred to.
@@ -305,13 +332,11 @@ class Noun:
     value: str = "thing"
     pronoun: Pronoun = Pronouns.IT
     num: Num = util.SINGULAR
-    hypernyms: list[str] | None = None  # list of nouns?
-    match_tokens: list[str] = field(default_factory=list)
+    hypernyms: list[str] | None = None
 
-    def __post_init__(self):
-        self.match_tokens.append(self.value)
-        for i, m in enumerate(self.match_tokens):
-            self.match_tokens[i] = m.strip().lower()
+    @property
+    def match_tokens(self) -> tuple[str, ...]:
+        return noun_match_cache.setdefault(self.value, (self.value.strip().lower(),))
 
     def short(self) -> str:
         if self.adjective:
@@ -405,6 +430,8 @@ class Prompt:
     If the callable for a branch is `None`, their input will be handled like a normal command.
 
     Note when all branches are set, the prompt must be responded to.
+
+    These are a bit tricky from the player perspective; put the UX on rails.
     """
 
     text: str
@@ -438,14 +465,12 @@ class Skills:
 
     def __getitem__(self, key: str) -> Skill:
         # First try field name lookup (e.g., "martial_arts")
-        if hasattr(self, key):
-            attr = getattr(self, key)
-            if isinstance(attr, Skill):
-                return attr
-        # Fall back to display name matching (e.g., "Martial Arts")
         for s in self:
             if s.name == key:
                 return s
+        attr = getattr(self, key)
+        if isinstance(attr, Skill):
+            return attr
         raise KeyError
 
 
@@ -506,7 +531,7 @@ class Transform:
     y: int
 
 
-@component(slots=True, kw_only=True)
+@component(slots=True, kw_only=True, frozen=True)
 class Wearable:
     slot: Slot
 

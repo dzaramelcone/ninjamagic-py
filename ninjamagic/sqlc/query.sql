@@ -75,3 +75,51 @@ ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending;
+
+-- Items + Inventories
+
+-- name: GetInventoriesForOwner :many
+SELECT * FROM inventories WHERE owner_id = $1;
+
+-- name: GetInventoriesForMap :many
+SELECT * FROM inventories WHERE map_id = $1;
+
+-- name: GetWorldInventories :many
+SELECT * FROM inventories WHERE owner_id IS NULL;
+
+-- name: ReplaceInventoriesForOwner :exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.owner_id = $1
+)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
+SELECT
+  unnest(sqlc.arg('eids')::bigint[]),
+  unnest(sqlc.arg('owner_ids')::bigint[]),
+  unnest(sqlc.arg('keys')::text[]),
+  unnest(sqlc.arg('slots')::text[]),
+  NULLIF(unnest(sqlc.arg('container_eids')::bigint[]), 0),
+  NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
+  unnest(sqlc.arg('states')::jsonb[]),
+  unnest(sqlc.arg('levels')::integer[]);
+
+-- name: ReplaceInventoriesForMap :exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.map_id = $1 AND inventories.owner_id IS NULL
+)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
+SELECT
+  unnest(sqlc.arg('eids')::bigint[]),
+  NULL,
+  unnest(sqlc.arg('keys')::text[]),
+  unnest(sqlc.arg('slots')::text[]),
+  NULLIF(unnest(sqlc.arg('container_eids')::bigint[]), 0),
+  NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
+  unnest(sqlc.arg('states')::jsonb[]),
+  unnest(sqlc.arg('levels')::integer[]);
+
+-- name: DeleteInventoryById :exec
+DELETE FROM inventories WHERE id = $1;

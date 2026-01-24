@@ -1,9 +1,9 @@
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import total_ordering
 from typing import Literal, overload
 
-UTC = timezone.utc
+UTC = UTC
 
 
 HOURS_PER_NIGHT: int = 20  # 06:00 -> 02:00

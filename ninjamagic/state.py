@@ -21,6 +21,7 @@ from ninjamagic import (
     forage,
     gas,
     inbound,
+    inventory,
     move,
     outbox,
     parser,
@@ -30,6 +31,7 @@ from ninjamagic import (
     survive,
     visibility,
 )
+from ninjamagic import db
 from ninjamagic.util import TickStats, get_looptime
 
 TPS = 240.0
@@ -58,12 +60,18 @@ class State:
     async def aopen(self):
         log.info("Starting state.")
         self.client = httpx.AsyncClient()
+        async with db.get_repository_factory() as q:
+            await inventory.load_map_inventory(q)
         loop = asyncio.get_running_loop()
         loop.create_task(self.step())
+        from ninjamagic import main as main_module
+        loop.create_task(main_module.world_save_loop())
         log.info("Started state.")
 
     async def aclose(self):
         log.info("Ending state.")
+        async with db.get_repository_factory() as q:
+            await inventory.save_all_map_inventory(q)
         await self.client.aclose()
         log.info("Ended state.")
 

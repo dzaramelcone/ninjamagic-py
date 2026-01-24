@@ -72,6 +72,38 @@ CREATE TABLE IF NOT EXISTS skills (
     CHECK (rank >= 0 AND tnl >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS inventories (
+    id          BIGSERIAL   PRIMARY KEY,
+    eid         BIGINT      NOT NULL,
+    owner_id    BIGINT      REFERENCES characters(id) ON DELETE CASCADE,
+    key         TEXT        NOT NULL,
+    slot        TEXT        NOT NULL DEFAULT '',
+    container_eid BIGINT,
+    map_id      INTEGER,
+    x           INTEGER,
+    y           INTEGER,
+    state       JSONB,
+    level       INTEGER     NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT inventories_location_check CHECK (
+        -- Item in a container (player-owned)
+        (container_eid IS NOT NULL AND map_id IS NULL AND owner_id IS NOT NULL)
+        OR
+        -- Item in a container (world/unowned)
+        (container_eid IS NOT NULL AND map_id IS NULL AND owner_id IS NULL)
+        OR
+        -- Item on the ground (world)
+        (container_eid IS NULL AND map_id IS NOT NULL AND owner_id IS NULL)
+        OR
+        -- Item directly on player
+        (container_eid IS NULL AND map_id IS NULL AND owner_id IS NOT NULL)
+    )
+);
+
 CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters(owner_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_id);
 CREATE INDEX IF NOT EXISTS idx_skills_char ON skills(char_id);
+CREATE INDEX IF NOT EXISTS idx_inventories_owner ON inventories(owner_id);
+CREATE INDEX IF NOT EXISTS idx_inventories_map ON inventories(map_id);

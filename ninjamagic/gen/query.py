@@ -3,7 +3,7 @@
 #   sqlc v1.30.0
 # source: query.sql
 import pydantic
-from typing import AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, List, Optional
 
 import sqlalchemy
 import sqlalchemy.ext.asyncio
@@ -18,6 +18,11 @@ INSERT INTO characters (owner_id, name, pronoun) VALUES (:p1, :p2, :p3) RETURNIN
 
 DELETE_CHARACTER = """-- name: delete_character \\:exec
 DELETE FROM characters WHERE id = :p1
+"""
+
+
+DELETE_INVENTORY_BY_ID = """-- name: delete_inventory_by_id \\:exec
+DELETE FROM inventories WHERE id = :p1
 """
 
 
@@ -38,10 +43,91 @@ class GetCharacterBriefRow(pydantic.BaseModel):
     name: str
 
 
+GET_INVENTORIES_FOR_MAP = """-- name: get_inventories_for_map \\:many
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE map_id = :p1
+"""
+
+
+GET_INVENTORIES_FOR_OWNER = """-- name: get_inventories_for_owner \\:many
+
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id = :p1
+"""
+
+
 GET_SKILLS_FOR_CHARACTER = """-- name: get_skills_for_character \\:many
 
 SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
+
+
+GET_WORLD_INVENTORIES = """-- name: get_world_inventories \\:many
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id IS NULL
+"""
+
+
+REPLACE_INVENTORIES_FOR_MAP = """-- name: replace_inventories_for_map \\:exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.map_id = :p1 AND inventories.owner_id IS NULL
+)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
+SELECT
+  unnest(:p2\\:\\:bigint[]),
+  NULL,
+  unnest(:p3\\:\\:text[]),
+  unnest(:p4\\:\\:text[]),
+  NULLIF(unnest(:p5\\:\\:bigint[]), 0),
+  NULLIF(unnest(:p6\\:\\:integer[]), -1),
+  NULLIF(unnest(:p7\\:\\:integer[]), -1),
+  NULLIF(unnest(:p8\\:\\:integer[]), -1),
+  unnest(:p9\\:\\:jsonb[]),
+  unnest(:p10\\:\\:integer[])
+"""
+
+
+class ReplaceInventoriesForMapParams(pydantic.BaseModel):
+    map_id: Optional[int]
+    eids: List[int]
+    keys: List[str]
+    slots: List[str]
+    container_eids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    states: List[Any]
+    levels: List[int]
+
+
+REPLACE_INVENTORIES_FOR_OWNER = """-- name: replace_inventories_for_owner \\:exec
+WITH deleted AS (
+  DELETE FROM inventories WHERE inventories.owner_id = :p1
+)
+INSERT INTO inventories (eid, owner_id, key, slot, container_eid, map_id, x, y, state, level)
+SELECT
+  unnest(:p2\\:\\:bigint[]),
+  unnest(:p3\\:\\:bigint[]),
+  unnest(:p4\\:\\:text[]),
+  unnest(:p5\\:\\:text[]),
+  NULLIF(unnest(:p6\\:\\:bigint[]), 0),
+  NULLIF(unnest(:p7\\:\\:integer[]), -1),
+  NULLIF(unnest(:p8\\:\\:integer[]), -1),
+  NULLIF(unnest(:p9\\:\\:integer[]), -1),
+  unnest(:p10\\:\\:jsonb[]),
+  unnest(:p11\\:\\:integer[])
+"""
+
+
+class ReplaceInventoriesForOwnerParams(pydantic.BaseModel):
+    owner_id: Optional[int]
+    eids: List[int]
+    owner_ids: List[int]
+    keys: List[str]
+    slots: List[str]
+    container_eids: List[int]
+    map_ids: List[int]
+    xs: List[int]
+    ys: List[int]
+    states: List[Any]
+    levels: List[int]
 
 
 UPDATE_CHARACTER = """-- name: update_character \\:exec
@@ -101,12 +187,26 @@ RETURNING owner_id
 
 UPSERT_SKILL = """-- name: upsert_skill \\:exec
 INSERT INTO skills (char_id, name, rank, tnl, pending)
-VALUES (:p1, :p2, :p3, :p4, :p5)
+VALUES (
+  :p1,
+  :p2,
+  :p3,
+  :p4,
+  :p5
+)
 ON CONFLICT (char_id, name) DO UPDATE
 SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending
 """
+
+
+class UpsertSkillParams(pydantic.BaseModel):
+    char_id: int
+    name: str
+    rank: int
+    tnl: float
+    pending: float
 
 
 UPSERT_SKILLS = """-- name: upsert_skills \\:exec
@@ -122,6 +222,14 @@ SET rank = EXCLUDED.rank,
     tnl = EXCLUDED.tnl,
     pending = EXCLUDED.pending
 """
+
+
+class UpsertSkillsParams(pydantic.BaseModel):
+    char_id: int
+    names: List[str]
+    ranks: List[int]
+    tnls: List[float]
+    pendings: List[float]
 
 
 class AsyncQuerier:
@@ -158,6 +266,9 @@ class AsyncQuerier:
 
     async def delete_character(self, *, id: int) -> None:
         await self._conn.execute(sqlalchemy.text(DELETE_CHARACTER), {"p1": id})
+
+    async def delete_inventory_by_id(self, *, id: int) -> None:
+        await self._conn.execute(sqlalchemy.text(DELETE_INVENTORY_BY_ID), {"p1": id})
 
     async def get_character(self, *, owner_id: int) -> Optional[models.Character]:
         row = (await self._conn.execute(sqlalchemy.text(GET_CHARACTER), {"p1": owner_id})).first()
@@ -197,6 +308,44 @@ class AsyncQuerier:
             name=row[2],
         )
 
+    async def get_inventories_for_map(self, *, map_id: Optional[int]) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_MAP), {"p1": map_id})
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
+            )
+
+    async def get_inventories_for_owner(self, *, owner_id: Optional[int]) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_INVENTORIES_FOR_OWNER), {"p1": owner_id})
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
+            )
+
     async def get_skills_for_character(self, *, char_id: int) -> AsyncIterator[models.Skill]:
         result = await self._conn.stream(sqlalchemy.text(GET_SKILLS_FOR_CHARACTER), {"p1": char_id})
         async for row in result:
@@ -208,6 +357,54 @@ class AsyncQuerier:
                 tnl=row[4],
                 pending=row[5],
             )
+
+    async def get_world_inventories(self) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_WORLD_INVENTORIES))
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
+            )
+
+    async def replace_inventories_for_map(self, arg: ReplaceInventoriesForMapParams) -> None:
+        await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_MAP), {
+            "p1": arg.map_id,
+            "p2": arg.eids,
+            "p3": arg.keys,
+            "p4": arg.slots,
+            "p5": arg.container_eids,
+            "p6": arg.map_ids,
+            "p7": arg.xs,
+            "p8": arg.ys,
+            "p9": arg.states,
+            "p10": arg.levels,
+        })
+
+    async def replace_inventories_for_owner(self, arg: ReplaceInventoriesForOwnerParams) -> None:
+        await self._conn.execute(sqlalchemy.text(REPLACE_INVENTORIES_FOR_OWNER), {
+            "p1": arg.owner_id,
+            "p2": arg.eids,
+            "p3": arg.owner_ids,
+            "p4": arg.keys,
+            "p5": arg.slots,
+            "p6": arg.container_eids,
+            "p7": arg.map_ids,
+            "p8": arg.xs,
+            "p9": arg.ys,
+            "p10": arg.states,
+            "p11": arg.levels,
+        })
 
     async def update_character(self, arg: UpdateCharacterParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPDATE_CHARACTER), {
@@ -236,20 +433,20 @@ class AsyncQuerier:
             return None
         return row[0]
 
-    async def upsert_skill(self, *, char_id: int, name: str, rank: int, tnl: float, pending: float) -> None:
+    async def upsert_skill(self, arg: UpsertSkillParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILL), {
-            "p1": char_id,
-            "p2": name,
-            "p3": rank,
-            "p4": tnl,
-            "p5": pending,
+            "p1": arg.char_id,
+            "p2": arg.name,
+            "p3": arg.rank,
+            "p4": arg.tnl,
+            "p5": arg.pending,
         })
 
-    async def upsert_skills(self, *, char_id: int, names: List[str], ranks: List[int], tnls: List[float], pendings: List[float]) -> None:
+    async def upsert_skills(self, arg: UpsertSkillsParams) -> None:
         await self._conn.execute(sqlalchemy.text(UPSERT_SKILLS), {
-            "p1": char_id,
-            "p2": names,
-            "p3": ranks,
-            "p4": tnls,
-            "p5": pendings,
+            "p1": arg.char_id,
+            "p2": arg.names,
+            "p3": arg.ranks,
+            "p4": arg.tnls,
+            "p5": arg.pendings,
         })

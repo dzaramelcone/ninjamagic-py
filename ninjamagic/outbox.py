@@ -117,10 +117,10 @@ def try_insert(
         case bus.OutboundGlyph():
             glyph = envelope.add().glyph
             glyph.id = 0 if to == sig.source else sig.source
-            glyph.glyph = sig.glyph
-            glyph.h = sig.h
-            glyph.s = sig.s
-            glyph.v = sig.v
+            glyph.glyph = sig.glyph.char
+            glyph.h = sig.glyph.h
+            glyph.s = sig.glyph.s
+            glyph.v = sig.glyph.v
             return True
         case bus.OutboundMove():
             pos = envelope.add().pos

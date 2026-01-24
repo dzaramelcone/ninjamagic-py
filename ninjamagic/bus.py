@@ -16,6 +16,7 @@ from ninjamagic.component import (
     Conditions,
     EntityId,
     Gas,
+    Glyph,
     ProcVerb,
     Prompt,
     Skill,
@@ -364,10 +365,7 @@ class OutboundGlyph(Signal):
 
     to: EntityId
     source: EntityId
-    glyph: str
-    h: float
-    v: float
-    s: float
+    glyph: Glyph
 
 
 @signal(frozen=True, slots=True, kw_only=True)
