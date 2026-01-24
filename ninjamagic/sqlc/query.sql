@@ -115,9 +115,9 @@ SELECT
   unnest(sqlc.arg('keys')::text[]),
   unnest(sqlc.arg('slots')::text[]),
   NULLIF(unnest(sqlc.arg('container_eids')::bigint[]), 0),
-  unnest(sqlc.arg('map_ids')::integer[]),
-  unnest(sqlc.arg('xs')::integer[]),
-  unnest(sqlc.arg('ys')::integer[]),
+  NULLIF(unnest(sqlc.arg('map_ids')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('xs')::integer[]), -1),
+  NULLIF(unnest(sqlc.arg('ys')::integer[]), -1),
   unnest(sqlc.arg('states')::jsonb[]),
   unnest(sqlc.arg('levels')::integer[]);
 
