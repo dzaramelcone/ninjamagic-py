@@ -78,8 +78,6 @@ class InventoryRow(BaseModel):
     owner_id: int = 0
 
 
-
-
 def create_item(
     key: str,
     *overrides: object,
@@ -101,8 +99,6 @@ def create_item(
     return entity
 
 
-
-
 async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) -> None:
     """Load player inventory from the database."""
     inventories = [row async for row in q.get_inventories_for_owner(owner_id=owner_id)]
@@ -115,7 +111,11 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
     for inv in inventories:
         log.debug(
             "  loading item: %s (eid=%d, container_eid=%s, slot=%s state=%s)",
-            inv.key, inv.eid, inv.container_eid, inv.slot, inv.state
+            inv.key,
+            inv.eid,
+            inv.container_eid,
+            inv.slot,
+            inv.state,
         )
         parsed = State.model_validate(inv.state or {})
         entity = create_item(
@@ -131,8 +131,7 @@ async def load_player_inventory(q: AsyncQuerier, owner_id: int, entity_id: int) 
         entity = entity_by_eid[inv.eid]
         container = entity_by_eid[inv.container_eid] if inv.container_eid else entity_id
         log.debug(
-            "  containment: %s (entity=%d) -> container entity=%d",
-            inv.key, entity, container
+            "  containment: %s (entity=%d) -> container entity=%d", inv.key, entity, container
         )
         esper.add_component(entity, container, ContainedBy)
 
@@ -159,17 +158,22 @@ async def save_player_inventory(q: AsyncQuerier, owner_id: int, owner_entity: in
             container_eid = entity_to_eid.get(loc, 0)
             log.debug(
                 "  saving item: %s (entity=%d) in container_eid=%d, slot=%s",
-                item_key.key, entity, container_eid, slot
+                item_key.key,
+                entity,
+                container_eid,
+                slot,
             )
-            rows.append(InventoryRow(
-                eid=next_eid,
-                key=item_key.key,
-                slot=slot,
-                container_eid=container_eid,
-                state=State.from_entity(entity).model_dump_json(),
-                level=esper.try_component(entity, Level) or 0,
-                owner_id=owner_id,
-            ))
+            rows.append(
+                InventoryRow(
+                    eid=next_eid,
+                    key=item_key.key,
+                    slot=slot,
+                    container_eid=container_eid,
+                    state=State.from_entity(entity).model_dump_json(),
+                    level=esper.try_component(entity, Level) or 0,
+                    owner_id=owner_id,
+                )
+            )
             entity_to_eid[entity] = next_eid
             next_eid += 1
             if esper.has_component(entity, Container):
@@ -216,17 +220,19 @@ async def save_map_inventory(q: AsyncQuerier, map_id: int) -> None:
     # First pass: save root items with Transform
     for entity, item_key, transform in roots:
         seen.add(entity)
-        rows.append(InventoryRow(
-            eid=next_eid,
-            key=item_key.key,
-            slot="",
-            container_eid=0,
-            map_id=transform.map_id,
-            x=transform.x,
-            y=transform.y,
-            state=State.from_entity(entity).model_dump_json(),
-            level=esper.try_component(entity, Level) or 0,
-        ))
+        rows.append(
+            InventoryRow(
+                eid=next_eid,
+                key=item_key.key,
+                slot="",
+                container_eid=0,
+                map_id=transform.map_id,
+                x=transform.x,
+                y=transform.y,
+                state=State.from_entity(entity).model_dump_json(),
+                level=esper.try_component(entity, Level) or 0,
+            )
+        )
         entity_to_eid[entity] = next_eid
         next_eid += 1
         if esper.has_component(entity, Container):
@@ -242,14 +248,16 @@ async def save_map_inventory(q: AsyncQuerier, map_id: int) -> None:
                 continue
 
             seen.add(entity)
-            rows.append(InventoryRow(
-                eid=next_eid,
-                key=item_key.key,
-                slot=slot,
-                container_eid=entity_to_eid[loc],
-                state=State.from_entity(entity).model_dump_json(),
-                level=esper.try_component(entity, Level) or 0,
-            ))
+            rows.append(
+                InventoryRow(
+                    eid=next_eid,
+                    key=item_key.key,
+                    slot=slot,
+                    container_eid=entity_to_eid[loc],
+                    state=State.from_entity(entity).model_dump_json(),
+                    level=esper.try_component(entity, Level) or 0,
+                )
+            )
             entity_to_eid[entity] = next_eid
             next_eid += 1
             if esper.has_component(entity, Container):
@@ -326,6 +334,7 @@ async def load_map_inventory(q: AsyncQuerier) -> None:
             entity = entity_by_eid[inv.eid]
             esper.add_component(entity, entity_by_eid[inv.container_eid], ContainedBy)
 
+
 # Item templates keyed by item type string.
 # Each value is a dict mapping component type -> component instance.
 # All components should be frozen dataclasses with eq=True.
@@ -358,7 +367,9 @@ ITEM_TYPES: dict[str, dict[type, object]] = {
         ItemKey: ItemKey(key="broadsword"),
         Noun: Noun(value="broadsword"),
         Glyph: Glyph(char="/", h=0.0, s=0.1, v=0.8),
-        Weapon: Weapon(damage=15.0, token_key="slash", story_key="blade", skill_key="martial_arts"),
+        Weapon: Weapon(
+            damage=15.0, token_key="slash", story_key="broadsword", skill_key="martial_arts"
+        ),
     },
     "backpack": {
         ItemKey: ItemKey(key="backpack"),
