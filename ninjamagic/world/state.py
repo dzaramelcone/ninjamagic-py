@@ -3,6 +3,7 @@ import logging
 import esper
 
 from ninjamagic.component import (
+    Anchor,
     Chips,
     ChipSet,
     Den,
