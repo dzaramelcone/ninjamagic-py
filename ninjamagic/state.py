@@ -70,6 +70,8 @@ class State:
 
     async def aclose(self):
         log.info("Ending state.")
+        async with db.get_repository_factory() as q:
+            await inventory.save_all_map_inventory(q)
         await self.client.aclose()
         log.info("Ended state.")
 

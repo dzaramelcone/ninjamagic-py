@@ -272,6 +272,15 @@ async def save_map_inventory(q: AsyncQuerier, map_id: int) -> None:
         )
     )
 
+
+async def save_all_map_inventory(q: AsyncQuerier) -> None:
+    """Save world-space inventory for all loaded maps."""
+    map_ids = [eid for eid, _ in esper.get_component(Chips)]
+    log.info("save_all_map_inventory: %d maps", len(map_ids))
+    for map_id in map_ids:
+        await save_map_inventory(q, map_id)
+
+
 async def load_map_inventory(q: AsyncQuerier) -> None:
     """Load world items from the database."""
     map_ids = {eid for eid, _ in esper.get_component(Chips)}

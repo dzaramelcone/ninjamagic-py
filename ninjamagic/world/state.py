@@ -6,6 +6,7 @@ from ninjamagic.component import (
     Chips,
     ChipSet,
     Den,
+    DoNotSave,
     EntityId,
     ForageEnvironment,
     Glyph,
@@ -97,6 +98,7 @@ def place_dens(map_id: EntityId, chips: Chips) -> None:
             "prop",
             Noun(adjective="goblin", value="hovel"),
             Glyph(char="π", h=0.08, s=0.30, v=0.40),
+            DoNotSave(),
             transform=Transform(map_id=map_id, y=tile_y + hut_y, x=tile_x + hut_x),
             level=0,
         )
@@ -110,6 +112,7 @@ def place_dens(map_id: EntityId, chips: Chips) -> None:
                 "prop",
                 Noun(value=name),
                 Glyph(char=char, h=h, s=s, v=v),
+                DoNotSave(),
                 transform=Transform(map_id=map_id, y=tile_y + py, x=tile_x + px),
                 level=0,
             )
@@ -183,6 +186,7 @@ def build_hub(map_id: EntityId, chips: Chips):
         "prop",
         Noun(value="fern"),
         Glyph(char="ᖗ", h=0.33, s=0.65, v=0.55),
+        DoNotSave(),
         transform=Transform(map_id=map_id, y=12, x=5),
         level=0,
     )

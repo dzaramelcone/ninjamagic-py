@@ -76,9 +76,9 @@ SELECT
   unnest(:p3\\:\\:text[]),
   unnest(:p4\\:\\:text[]),
   NULLIF(unnest(:p5\\:\\:bigint[]), 0),
-  unnest(:p6\\:\\:integer[]),
-  unnest(:p7\\:\\:integer[]),
-  unnest(:p8\\:\\:integer[]),
+  NULLIF(unnest(:p6\\:\\:integer[]), -1),
+  NULLIF(unnest(:p7\\:\\:integer[]), -1),
+  NULLIF(unnest(:p8\\:\\:integer[]), -1),
   unnest(:p9\\:\\:jsonb[]),
   unnest(:p10\\:\\:integer[])
 """
