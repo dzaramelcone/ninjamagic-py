@@ -13,9 +13,9 @@ from ninjamagic.component import (
     EntityId,
     FightTimer,
     FromDen,
-    Glyph,
     Lag,
     Level,
+    Transform,
     get_wielded_weapon,
     get_worn_armor,
     health,
@@ -33,7 +33,8 @@ from ninjamagic.util import (
     get_melee_delay,
     proc,
 )
-from ninjamagic.world.state import create_prop, get_recall
+from ninjamagic.inventory import create_item
+from ninjamagic.world.state import get_recall
 
 log = logging.getLogger(__name__)
 
@@ -243,12 +244,10 @@ def process(now: Looptime):
 
         # Non-player: spawn corpse, delete entity
         loc = transform(sig.source)
-        create_prop(
-            map_id=loc.map_id,
-            y=loc.y,
-            x=loc.x,
-            name="corpse",
-            glyph=Glyph(char="%", h=0.0, s=0.0, v=0.4),
+        create_item(
+            "corpse",
+            transform=Transform(map_id=loc.map_id, y=loc.y, x=loc.x),
+            level=0,
         )
         esper.delete_entity(sig.source)
 

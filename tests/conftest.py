@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
+import esper
 import httpx
 import pytest
 import pytest_asyncio
@@ -16,6 +17,7 @@ from google.protobuf.json_format import MessageToDict
 from pydantic.dataclasses import Field, dataclass
 from websockets.asyncio.client import ClientConnection
 
+import ninjamagic.bus as bus
 import ninjamagic.db as db
 from ninjamagic.component import Glyph, Health, Noun, Skills, Stance, Stats, Transform
 from ninjamagic.db import engine
@@ -71,6 +73,17 @@ def make_tests_deterministic():
     state = RNG.getstate()
     yield
     RNG.setstate(state)
+
+
+@pytest.fixture(autouse=True)
+def isolated_esper_world(request):
+    """Give each test its own isolated esper world."""
+    world_name = f"test_{request.node.nodeid}"
+    esper.switch_world(world_name)
+    yield
+    bus.clear()
+    esper.switch_world("default")
+    esper.delete_world(world_name)
 
 
 @pytest.fixture

@@ -6,16 +6,15 @@ from ninjamagic import bus, nightclock, scheduler, story
 from ninjamagic.component import (
     ContainedBy,
     Food,
-    Glyph,
     Ingredient,
     Level,
     Noun,
-    Rotting,
     Slot,
     Transform,
     skills,
 )
-from ninjamagic.util import INFLECTOR, Feat, contest, tags
+from ninjamagic.inventory import create_item
+from ninjamagic.util import INFLECTOR, SINGULAR, Feat, Num, contest, tags
 
 log = logging.getLogger(__name__)
 
@@ -34,19 +33,16 @@ DEFAULT_OUTCOME = ("seared", "")
 
 
 def create_meal(
-    *, adjective: str, name: str, num: str = "", level: int, bites: int = 1
+    *, adjective: str, name: str, num: Num = SINGULAR, level: int, bites: int = 1
 ) -> int:
     """Create a cooked meal entity. Rots at dawn."""
-    meal = esper.create_entity(
+    meal = create_item(
+        "meal",
         Noun(adjective=adjective, value=name, num=num),
-        Transform(map_id=0, y=0, x=0),
-        Slot.ANY,
-        Rotting(),
         Food(count=bites),
+        transform=Transform(map_id=0, y=0, x=0),
+        level=level,
     )
-    esper.add_component(meal, Glyph(char="ʘ", h=0.33, s=0.65, v=0.55))
-    esper.add_component(meal, 0, ContainedBy)
-    esper.add_component(meal, level, Level)
     scheduler.cue(sig=bus.Rot(source=meal), time=nightclock.NightTime(hour=6))
     return meal
 

@@ -1,19 +1,15 @@
 import logging
 from collections.abc import Callable
 from functools import partial
-from typing import Any
 
 import esper
 
 from ninjamagic import bus, nightclock, reach, scheduler, story
 from ninjamagic.component import (
     Biomes,
-    ContainedBy,
     EntityId,
     ForageEnvironment,
     Glyph,
-    Ingredient,
-    Level,
     Noun,
     Rotting,
     Slot,
@@ -22,6 +18,7 @@ from ninjamagic.component import (
     skills,
     transform,
 )
+from ninjamagic.inventory import create_item
 from ninjamagic.util import PLURAL, RNG, Trial, contest
 from ninjamagic.world.state import get_random_nearby_location
 
@@ -102,16 +99,19 @@ DEFAULT_FORAGED_GLYPH = Glyph(char="♣", h=0.33, s=0.65, v=0.55)
 
 
 def create_foraged_item(
-    *args: Any,
     ilvl: int,
     transform: Transform,
     noun: Noun,
     glyph: Glyph = DEFAULT_FORAGED_GLYPH,
     wearable: Wearable | None = None,
 ) -> EntityId:
-    out = esper.create_entity(transform, noun, Slot.ANY, Ingredient(), glyph, *args)
-    esper.add_component(out, 0, ContainedBy)
-    esper.add_component(out, ilvl, Level)
+    out = create_item(
+        "forage",
+        noun,
+        glyph,
+        transform=transform,
+        level=ilvl,
+    )
     if wearable:
         esper.add_component(out, wearable)
 

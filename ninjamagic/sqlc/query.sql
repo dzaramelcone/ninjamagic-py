@@ -84,6 +84,9 @@ SELECT * FROM inventories WHERE owner_id = $1;
 -- name: GetInventoriesForMap :many
 SELECT * FROM inventories WHERE map_id = $1;
 
+-- name: GetWorldInventories :many
+SELECT * FROM inventories WHERE owner_id IS NULL;
+
 -- name: ReplaceInventoriesForOwner :exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.owner_id = $1

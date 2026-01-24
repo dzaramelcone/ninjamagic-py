@@ -60,6 +60,11 @@ SELECT id, char_id, name, rank, tnl, pending FROM skills WHERE char_id = :p1
 """
 
 
+GET_WORLD_INVENTORIES = """-- name: get_world_inventories \\:many
+SELECT id, eid, owner_id, key, slot, container_eid, map_id, x, y, state, level, created_at, updated_at FROM inventories WHERE owner_id IS NULL
+"""
+
+
 REPLACE_INVENTORIES_FOR_MAP = """-- name: replace_inventories_for_map \\:exec
 WITH deleted AS (
   DELETE FROM inventories WHERE inventories.map_id = :p1 AND inventories.owner_id IS NULL
@@ -351,6 +356,25 @@ class AsyncQuerier:
                 rank=row[3],
                 tnl=row[4],
                 pending=row[5],
+            )
+
+    async def get_world_inventories(self) -> AsyncIterator[models.Inventory]:
+        result = await self._conn.stream(sqlalchemy.text(GET_WORLD_INVENTORIES))
+        async for row in result:
+            yield models.Inventory(
+                id=row[0],
+                eid=row[1],
+                owner_id=row[2],
+                key=row[3],
+                slot=row[4],
+                container_eid=row[5],
+                map_id=row[6],
+                x=row[7],
+                y=row[8],
+                state=row[9],
+                level=row[10],
+                created_at=row[11],
+                updated_at=row[12],
             )
 
     async def replace_inventories_for_map(self, arg: ReplaceInventoriesForMapParams) -> None:

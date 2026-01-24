@@ -3,7 +3,6 @@ import logging
 import esper
 
 from ninjamagic.component import (
-    Anchor,
     Chips,
     ChipSet,
     Den,
@@ -13,14 +12,13 @@ from ninjamagic.component import (
     Health,
     Hostility,
     Noun,
-    ProvidesHeat,
-    ProvidesLight,
     Skills,
     SpawnSlot,
     Stance,
     Stats,
     Transform,
 )
+from ninjamagic.inventory import create_item
 from ninjamagic.util import (
     EIGHT_DIRS,
     RNG,
@@ -64,25 +62,6 @@ def create_mob(
     return eid
 
 
-def create_prop(
-    *,
-    map_id: EntityId,
-    y: int,
-    x: int,
-    name: str,
-    glyph: Glyph,
-    adjective: str = "",
-    pronoun: Pronoun = Pronouns.IT,
-) -> EntityId:
-    """Non-pickupable scenery."""
-    eid = esper.create_entity(
-        Transform(map_id=map_id, y=y, x=x),
-        Noun(adjective=adjective, value=name, pronoun=pronoun),
-        glyph,
-    )
-    return eid
-
-
 def place_dens(map_id: EntityId, chips: Chips) -> None:
     """Place goblin dens with terrain modifications in each tile (except hub).
 
@@ -114,26 +93,25 @@ def place_dens(map_id: EntityId, chips: Chips) -> None:
 
         # Place hovel at first spot
         hut_y, hut_x = spots[0]
-        den_eid = create_prop(
-            map_id=map_id,
-            y=tile_y + hut_y,
-            x=tile_x + hut_x,
-            name="hovel",
-            adjective="goblin",
-            glyph=Glyph(char="π", h=0.08, s=0.30, v=0.40),
+        den_eid = create_item(
+            "prop",
+            Noun(adjective="goblin", value="hovel"),
+            Glyph(char="π", h=0.08, s=0.30, v=0.40),
+            transform=Transform(map_id=map_id, y=tile_y + hut_y, x=tile_x + hut_x),
+            level=0,
         )
 
         # Place decoration props at spots 1-3
-        for i, (name, glyph, h, s, v) in enumerate(prop_defs):
+        for i, (name, char, h, s, v) in enumerate(prop_defs):
             if i + 1 >= len(spots):
                 break
             py, px = spots[i + 1]
-            create_prop(
-                map_id=map_id,
-                y=tile_y + py,
-                x=tile_x + px,
-                name=name,
-                glyph=(glyph, h, s, v),
+            create_item(
+                "prop",
+                Noun(value=name),
+                Glyph(char=char, h=h, s=s, v=v),
+                transform=Transform(map_id=map_id, y=tile_y + py, x=tile_x + px),
+                level=0,
             )
 
         # Create spawn slots for mob spawning (use spots 0 and 4 if available)
@@ -201,19 +179,12 @@ def build_hub(map_id: EntityId, chips: Chips):
         pronoun=Pronouns.HE,
     )
 
-    bonfire = create_prop(
-        map_id=map_id, y=9, x=4, name="bonfire",
-        glyph=Glyph(char="⚶", h=0.95, s=0.6, v=0.65),
-    )
-    esper.add_component(
-        bonfire, Anchor(rankup_echo="{0:def} {0:flares}, casting back the darkness.")
-    )
-    esper.add_component(bonfire, ProvidesHeat())
-    esper.add_component(bonfire, ProvidesLight())
-
-    create_prop(
-        map_id=map_id, y=12, x=5, name="fern",
-        glyph=Glyph(char="ᖗ", h=0.33, s=0.65, v=0.55),
+    create_item(
+        "prop",
+        Noun(value="fern"),
+        Glyph(char="ᖗ", h=0.33, s=0.65, v=0.55),
+        transform=Transform(map_id=map_id, y=12, x=5),
+        level=0,
     )
 
     place_dens(map_id, chips)
