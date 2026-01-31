@@ -13,7 +13,7 @@ import "./ui/tui-tab-selector";
 function startApp() {
   function getElement<T extends HTMLElement>(
     id: string,
-    type: { new (): T }
+    type: { new (): T },
   ): T {
     const element = document.getElementById(id);
     if (!element) throw new Error(`Fatal Error: Element #${id} not found.`);

@@ -15,7 +15,7 @@ from ninjamagic.component import Chips, EntityId, OwnerId, Prompt
 from ninjamagic.config import settings
 from ninjamagic.gen.query import UpsertSkillsParams
 from ninjamagic.state import State
-from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY, VITE_HTML
+from ninjamagic.util import BUILD_HTML, OWNER_SESSION_KEY
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger(__name__)
@@ -29,8 +29,6 @@ app.mount("/static", StaticFiles(directory="ninjamagic/static/"), name="static")
 
 @app.get("/")
 async def index(_: CharChallengeDep):
-    if settings.use_vite_proxy:
-        return HTMLResponse(VITE_HTML)
     return HTMLResponse(BUILD_HTML)
 
 

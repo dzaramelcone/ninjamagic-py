@@ -259,11 +259,20 @@ const handlerMap = {
 };
 
 export function initializeNetwork() {
-  const url = new URL("/ws", location.origin);
-  url.protocol = url.protocol.replace("http", "ws");
+  // In dev (port 5173), connect directly to FastAPI; in prod, use same origin
+  const wsOrigin = location.port === "5173" ? "ws://localhost:8000" : location.origin.replace("http", "ws");
+  const url = new URL("/ws", wsOrigin);
 
   ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
+
+  ws.addEventListener("close", (ev) => {
+    if (ev.code === 4401 || ev.code === 1006) {
+      // In dev, auth must happen on :8000 for cookie to work with WebSocket
+      const authUrl = location.port === "5173" ? "http://localhost:8000/auth/" : "/auth/";
+      window.location.href = authUrl;
+    }
+  });
 
   ws.addEventListener("message", (ev: MessageEvent<ArrayBuffer>) => {
     const packet = Packet.fromBinary(new Uint8Array(ev.data));

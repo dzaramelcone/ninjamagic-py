@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     pg: PostgresDsn
     session_secret: str
     allow_local_auth: bool = False
-    use_vite_proxy: bool = False
     log_level: str = "WARNING"
     random_seed: str = Field(default_factory=lambda: str(uuid4()))
 

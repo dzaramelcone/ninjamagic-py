@@ -11,7 +11,7 @@ from ninjamagic.component import Noun, Transform
 from ninjamagic.config import settings
 from ninjamagic.db import Repository
 from ninjamagic.gen.models import OauthProvider, Pronoun
-from ninjamagic.gen.query import GetCharacterBriefRow, UpdateCharacterParams
+from ninjamagic.gen.query import GetCharacterBriefRow, UpdateCharacterParams, UpsertSkillsParams
 from ninjamagic.state import ClientDep
 from ninjamagic.util import CHARGEN_HTML, LOGIN_HTML, OWNER_SESSION_KEY
 
@@ -118,8 +118,11 @@ async def post_chargen(
 
 
 @router.get("/", include_in_schema=False)
-async def login(owner: OwnerDep):
+async def login(owner: OwnerDep, q: Repository):
     if owner:
+        char = await q.get_character_brief(owner_id=owner)
+        if not char:
+            return RedirectResponse(url="/auth/chargen/", status_code=303)
         return RedirectResponse(url="/", status_code=303)
     return HTMLResponse(LOGIN_HTML)
 
@@ -251,13 +254,13 @@ if settings.allow_local_auth:
                 wit=body.stats.wit,
             )
         )
-        await q.upsert_skills(
+        await q.upsert_skills(UpsertSkillsParams(
             char_id=char.id,
             names=[skill.name for skill in body.skills],
             ranks=[skill.rank for skill in body.skills],
             tnls=[skill.tnl for skill in body.skills],
             pendings=[skill.pending for skill in body.skills],
-        )
+        ))
         req.session[OWNER_SESSION_KEY] = owner_id
 
         return RedirectResponse(url="/", status_code=303)

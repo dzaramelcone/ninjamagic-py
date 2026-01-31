@@ -38,9 +38,26 @@ function protobufPlugin() {
   };
 }
 
-export default defineConfig({
-  base: "/static/gen",
+export default defineConfig(({ command }) => ({
+  base: command === "serve" ? "/" : "/static/gen",
   plugins: [protobufPlugin()],
+  server: {
+    proxy: {
+      "/ws": {
+        target: "http://localhost:8000",
+        ws: true,
+        changeOrigin: true,
+      },
+      "/auth": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/static/icons": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: "../ninjamagic/static/gen",
     emptyOutDir: true,
@@ -50,4 +67,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
